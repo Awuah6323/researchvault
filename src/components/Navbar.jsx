@@ -12,7 +12,7 @@ export default function Navbar({
   onLogout
 }) {
   const themes = [
-    { id: 'cyber-emerald', label: '⚡ Cyber Emerald (Green/Black)' },
+    { id: 'cyber-emerald', label: '⚡ Cyber Emerald' },
     { id: 'scholarly-light', label: 'Scholarly Light' },
     { id: 'warm-sepia', label: 'Warm Sepia' },
     { id: 'midnight-oled', label: 'Midnight OLED' }
