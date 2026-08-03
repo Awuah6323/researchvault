@@ -1,0 +1,261 @@
+/* ==========================================================================
+   RESEARCHVAULT DESIGN SYSTEM - CSS THEME ENGINE & CUSTOM UTILITIES
+   ========================================================================== */
+
+:root {
+  /* Default Theme: Scholarly Light */
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --bg-sidebar: #0f172a;
+  --text-sidebar: #94a3b8;
+  --text-sidebar-active: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #eff6ff;
+  --primary-text: #1e40af;
+  --secondary: #0d9488;
+  --accent-gold: #d97706;
+  --accent-gold-light: #fef3c7;
+  --border-color: #e2e8f0;
+  --border-focus: #3b82f6;
+  --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --header-bg: rgba(255, 255, 255, 0.85);
+  --badge-bg: #e0e7ff;
+  --badge-text: #3730a3;
+  --reader-bg: #ffffff;
+  --reader-text: #0f172a;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* Theme: Dark Vault */
+[data-theme="dark-vault"] {
+  --bg-main: #0b1329;
+  --bg-card: #131f3d;
+  --bg-card-hover: #1a294d;
+  --bg-sidebar: #070d1f;
+  --text-sidebar: #64748b;
+  --text-sidebar-active: #38bdf8;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --primary: #38bdf8;
+  --primary-hover: #0284c7;
+  --primary-light: #0c4a6e;
+  --primary-text: #e0f2fe;
+  --secondary: #14b8a6;
+  --accent-gold: #fbbf24;
+  --accent-gold-light: #451a03;
+  --border-color: #1e293b;
+  --border-focus: #38bdf8;
+  --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
+  --header-bg: rgba(19, 31, 61, 0.85);
+  --badge-bg: #1e3a8a;
+  --badge-text: #93c5fd;
+  --reader-bg: #0f172a;
+  --reader-text: #f1f5f9;
+}
+
+/* Theme: Warm Sepia */
+[data-theme="warm-sepia"] {
+  --bg-main: #f5efe6;
+  --bg-card: #fffcf7;
+  --bg-card-hover: #eae3d2;
+  --bg-sidebar: #2c221e;
+  --text-sidebar: #a89f91;
+  --text-sidebar-active: #f5efe6;
+  --text-main: #3b2f2f;
+  --text-muted: #78665c;
+  --primary: #8b4513;
+  --primary-hover: #68330e;
+  --primary-light: #f5e6d3;
+  --primary-text: #5c2c0c;
+  --secondary: #a0522d;
+  --accent-gold: #b8860b;
+  --accent-gold-light: #fdf5e6;
+  --border-color: #e6dac8;
+  --border-focus: #8b4513;
+  --card-shadow: 0 4px 18px rgba(139, 69, 19, 0.08);
+  --header-bg: rgba(255, 252, 247, 0.9);
+  --badge-bg: #e8d8c8;
+  --badge-text: #5c2c0c;
+  --reader-bg: #faf0e6;
+  --reader-text: #3b2f2f;
+}
+
+/* Theme: Midnight OLED */
+[data-theme="midnight-oled"] {
+  --bg-main: #000000;
+  --bg-card: #0d0d0d;
+  --bg-card-hover: #171717;
+  --bg-sidebar: #050505;
+  --text-sidebar: #737373;
+  --text-sidebar-active: #00e5ff;
+  --text-main: #ffffff;
+  --text-muted: #a3a3a3;
+  --primary: #00e5ff;
+  --primary-hover: #00b8d4;
+  --primary-light: #00363a;
+  --primary-text: #80deea;
+  --secondary: #1de9b6;
+  --accent-gold: #ffd600;
+  --accent-gold-light: #332b00;
+  --border-color: #262626;
+  --border-focus: #00e5ff;
+  --card-shadow: 0 8px 30px rgba(0, 229, 255, 0.07);
+  --header-bg: rgba(13, 13, 13, 0.9);
+  --badge-bg: #004d40;
+  --badge-text: #a7ffeb;
+  --reader-bg: #000000;
+  --reader-text: #eeeeee;
+}
+
+/* Theme: Emerald Academic */
+[data-theme="emerald-academic"] {
+  --bg-main: #f0fdf4;
+  --bg-card: #ffffff;
+  --bg-card-hover: #dcfce7;
+  --bg-sidebar: #064e3b;
+  --text-sidebar: #a7f3d0;
+  --text-sidebar-active: #ffffff;
+  --text-main: #064e3b;
+  --text-muted: #047857;
+  --primary: #059669;
+  --primary-hover: #047857;
+  --primary-light: #d1fae5;
+  --primary-text: #065f46;
+  --secondary: #0f766e;
+  --accent-gold: #d97706;
+  --accent-gold-light: #fef3c7;
+  --border-color: #a7f3d0;
+  --border-focus: #059669;
+  --card-shadow: 0 4px 20px rgba(5, 150, 105, 0.08);
+  --header-bg: rgba(255, 255, 255, 0.9);
+  --badge-bg: #a7f3d0;
+  --badge-text: #064e3b;
+  --reader-bg: #f0fdf4;
+  --reader-text: #064e3b;
+}
+
+/* Global Reset & Base Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Utility Animations & Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  opacity: 0.4;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 15px rgba(37, 99, 235, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(37, 99, 235, 0.5); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  border-radius: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: var(--badge-bg);
+  color: var(--badge-text);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--primary);
+  color: #ffffff;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 12px;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--primary-light);
+  color: var(--primary-text);
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  transition: background-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: var(--border-color);
+}

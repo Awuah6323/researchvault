@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+/.pnpm-store
+
+# Build outputs
+/dist
+/build
+android/build/
+android/app/build/
+android/app/src/main/assets/www/assets/
+*.apk
+*.aar
+
+# Environment variables & local secrets
+.env
+.env.local
+.env.*.local
+local.properties
+debug.keystore
+
+# IDE / Editor files
+*.iml
+.gradle
+.kotlin
+/.idea/
+/.vscode/
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+

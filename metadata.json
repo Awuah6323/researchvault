@@ -1,0 +1,6 @@
+{
+  "name": "ResearchVault",
+  "description": "Academic Research Library and Organizer for students, researchers, and academics to discover, save, organize, read, and cite scholarly papers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
