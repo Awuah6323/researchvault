@@ -50,8 +50,8 @@ export default function AuthPage({ onLoginSuccess }) {
 
   React.useEffect(() => {
     const initGoogleGsi = () => {
-      if (typeof window !== 'undefined' && window.google?.accounts?.id) {
-        const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '939401724491-placeholder.apps.googleusercontent.com';
+      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      if (googleClientId && typeof window !== 'undefined' && window.google?.accounts?.id) {
         try {
           window.google.accounts.id.initialize({
             client_id: googleClientId,
@@ -95,9 +95,9 @@ export default function AuthPage({ onLoginSuccess }) {
   }, []);
 
   const handleGoogleSignIn = () => {
-    if (window.google?.accounts?.id) {
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (googleClientId && window.google?.accounts?.id) {
       try {
-        const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '939401724491-placeholder.apps.googleusercontent.com';
         window.google.accounts.id.initialize({
           client_id: googleClientId,
           callback: (response) => {
