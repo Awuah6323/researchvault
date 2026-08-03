@@ -2,7 +2,14 @@
 // Gemini AI + Friendly Academic Fallback Engine
 
 const BASE_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+// NOTE: gemini-2.0-flash was retired by Google in 2026 — every call using it
+// fails silently and falls through to the scripted fallback engine below,
+// which is why the app looked "canned" instead of answering freely.
+// gemini-2.5-flash is GA and current as of Aug 2026. Google's docs also list
+// gemini-3.6-flash / gemini-3.5-flash-lite as the newest GA models if you
+// want to upgrade further later — same request shape, just swap the model
+// name in this URL.
 
 /**
  * Sanitizes input text to reduce control characters,
@@ -145,10 +152,17 @@ async function callGeminiApi(
         if (generatedText) {
           return generatedText;
         }
+      } else {
+        // Surface the real reason in dev tools instead of failing silently
+        const errBody = await response.text().catch(() => "");
+        console.warn(
+          `Gemini API responded with ${response.status}: ${errBody}`
+        );
       }
     } catch (err) {
       console.warn(
-        "Direct Gemini API call failed. Using ResearchVault Academic Fallback Engine."
+        "Direct Gemini API call failed. Using ResearchVault Academic Fallback Engine.",
+        err
       );
     }
   }
@@ -164,7 +178,8 @@ async function callGeminiApi(
 /**
  * Friendly ResearchVault AI fallback engine.
  *
- * This runs when Gemini is unavailable.
+ * This runs only when Gemini is unavailable (no key, network error,
+ * or non-OK response) — it is a scripted safety net, not a real chatbot.
  */
 function generateScholarlyFallbackResponse(
   prompt,
@@ -350,9 +365,7 @@ If you give me your research topic, I can help you identify possible research ga
   // GENERAL FALLBACK
   // -----------------------------------------
 
-  return `Hey ${userName}! 😊 I'm here and ready to help.
-
-I can help you with things like:
+  return `Hey ${userName}! 😊 I'm having trouble reaching the AI service right now, so I can't give you a full answer to that one — but here's what I can normally help with once it's back:
 
 - 📚 Understanding research papers
 - 🔬 Developing research topics
@@ -363,7 +376,7 @@ I can help you with things like:
 - 📖 Summarizing academic papers
 - 🎓 Academic writing and citations
 
-Tell me what's on your mind, and we'll work through it together.`;
+Try asking again in a moment, or check that the API key/backend is set up correctly.`;
 }
 
 /**
@@ -500,6 +513,9 @@ Use Markdown only when it improves readability.
 
 /**
  * Main conversational ResearchVault AI chat.
+ *
+ * This is a general-purpose chatbox: it is prompted to answer ANY
+ * question the user asks (not just research topics), conversationally.
  */
 export async function chatWithGemini(
   userMessage,
@@ -535,14 +551,14 @@ export async function chatWithGemini(
     isGreeting(safeMsg);
 
   const prompt = `
-You are ResearchVault AI, a friendly, intelligent, supportive, and conversational academic research assistant.
+You are ResearchVault AI, a friendly, intelligent, supportive, and conversational AI assistant. Think of yourself as a general-purpose chatbox first, with a specialty in academic research.
 
-You are chatting directly with a researcher named "${safeUserName}".
+You are chatting directly with a user named "${safeUserName}".
 
 Your personality:
 
 - Be warm, friendly, natural, and human-like.
-- Talk to the user as a helpful research companion.
+- Talk to the user as a helpful, knowledgeable companion.
 - Do not sound like a formal textbook unless the user specifically asks for a formal academic response.
 - Be encouraging and supportive when the user is confused, stressed, or struggling.
 - Use the user's name naturally when appropriate.
@@ -553,9 +569,14 @@ Your personality:
 - If the user says "AI", "Hey AI", "Hi AI", or calls you "ResearchVault AI", recognize that they are talking directly to you.
 - If the user shares good news, celebrate with them.
 - If the user is frustrated, acknowledge their frustration and reassure them.
+
+IMPORTANT — SCOPE OF QUESTIONS:
+
+- You are NOT limited to academic or research questions. Answer ANY question the user asks — general knowledge, coding, everyday advice, casual conversation, math, current events framed generally, anything — as accurately and helpfully as you can.
 - If the user asks a simple question, give a simple and friendly answer.
-- If the user asks a complex academic question, explain it clearly while maintaining a conversational tone.
+- If the user asks a complex or academic question, explain it clearly while maintaining a conversational tone.
 - If the user asks for help with research, guide them step by step.
+- If you are genuinely unsure or the question needs information you don't have, say so honestly instead of guessing.
 - Ask a natural follow-up question when it would help continue the conversation.
 - Use emojis occasionally when they fit naturally, but do not overuse them.
 
@@ -591,9 +612,7 @@ If the user directly calls you "AI", respond as if they are calling your attenti
 
 If the user is simply greeting you, respond warmly and naturally.
 
-If the user asks an academic question, start conversationally when appropriate and then answer the actual question.
-
-Always prioritize the user's actual question.
+Always prioritize answering the user's actual question, whatever the topic.
 
 User Name:
 ${safeUserName}
@@ -623,7 +642,7 @@ Remember:
 - Use "${safeUserName}" naturally when appropriate.
 - Do not force a greeting if the conversation is already ongoing.
 - Do not repeat the same opening style every time.
-- Answer the user's message directly.
+- Answer the user's message directly and accurately, on any topic.
 - Use clean Markdown when it improves readability.
 `;
 

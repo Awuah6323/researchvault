@@ -33,7 +33,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Server GEMINI_API_KEY environment variable is not configured.' });
     }
 
-    const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+    const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
     const payload = {
       contents: [
         {
