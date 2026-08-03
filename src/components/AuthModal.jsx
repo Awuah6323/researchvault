@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, LogIn, UserPlus, Shield, Check, Lock, Mail, User, Building } from 'lucide-react';
 import { storage } from '../services/storage';
+import { waitForGoogleIdentity } from '../utils/googleIdentity';
 
 export default function AuthModal({ onClose, onLoginSuccess }) {
   const [mode, setMode] = useState('login'); // 'login', 'signup'
@@ -86,52 +87,48 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
   };
 
   const handleGoogleSignIn = () => {
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (googleClientId && typeof window !== 'undefined') {
-      if (window.google?.accounts?.oauth2) {
-        try {
-          const tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: googleClientId,
-            scope: 'email profile',
-            callback: async (tokenResponse) => {
-              if (tokenResponse && tokenResponse.access_token) {
-                try {
-                  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                  });
-                  const profile = await res.json();
-                  if (profile && profile.email) {
-                    handleGoogleAccountSelect({
-                      name: profile.name || profile.given_name || 'Google User',
-                      email: profile.email,
-                      institution: 'Google Verified Account'
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '73859989622-gfnm64hfcom43l064d0gf19f8losasrh.apps.googleusercontent.com';
+    
+    waitForGoogleIdentity()
+      .then((google) => {
+        if (google.accounts?.oauth2) {
+          try {
+            const tokenClient = google.accounts.oauth2.initTokenClient({
+              client_id: googleClientId,
+              scope: 'email profile',
+              callback: async (tokenResponse) => {
+                if (tokenResponse && tokenResponse.access_token) {
+                  try {
+                    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                      headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
                     });
-                    return;
+                    const profile = await res.json();
+                    if (profile && profile.email) {
+                      handleGoogleAccountSelect({
+                        name: profile.name || profile.given_name || 'Google User',
+                        email: profile.email,
+                        institution: 'Google Verified Account'
+                      });
+                      return;
+                    }
+                  } catch (err) {
+                    console.error('Error fetching Google profile:', err);
                   }
-                } catch (err) {
-                  console.error('Error fetching Google profile:', err);
                 }
+                setShowGooglePicker(true);
               }
-              setShowGooglePicker(true);
-            }
-          });
-          tokenClient.requestAccessToken({ prompt: 'select_account' });
-          return;
-        } catch (e) {
-          console.warn('OAuth2 TokenClient init error:', e);
+            });
+            tokenClient.requestAccessToken({ prompt: 'select_account' });
+            return;
+          } catch (e) {
+            console.warn('OAuth2 TokenClient init error:', e);
+          }
         }
-      }
-
-      try {
-        const redirectUri = window.location.origin;
-        const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(googleClientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&prompt=select_account`;
-        const popup = window.open(oauthUrl, 'GoogleAccountChooser', 'width=520,height=620,top=100,left=100');
-        if (popup) return;
-      } catch (e) {
-        console.warn('Popup window error:', e);
-      }
-    }
-    setShowGooglePicker(true);
+        setShowGooglePicker(true);
+      })
+      .catch(() => {
+        setShowGooglePicker(true);
+      });
   };
 
 

@@ -14,6 +14,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { storage } from '../services/storage';
+import { waitForGoogleIdentity } from '../utils/googleIdentity';
 
 export default function AuthPage({ onLoginSuccess }) {
   const [activeTab, setActiveTab] = useState('login');
@@ -33,6 +34,50 @@ export default function AuthPage({ onLoginSuccess }) {
 
   // Google Client ID from .env with registered default fallback
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '73859989622-gfnm64hfcom43l064d0gf19f8losasrh.apps.googleusercontent.com';
+
+  /**
+   * Initialize Google Identity Services safely after script loads
+   */
+  useEffect(() => {
+    let isMounted = true;
+
+    waitForGoogleIdentity()
+      .then((google) => {
+        if (!isMounted) return;
+        const activeClientId = googleClientId || '73859989622-gfnm64hfcom43l064d0gf19f8losasrh.apps.googleusercontent.com';
+
+        try {
+          google.accounts.id.initialize({
+            client_id: activeClientId,
+            callback: handleGoogleCredential,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+
+          const container = document.getElementById('googleGsiButtonContainer');
+          if (container) {
+            container.innerHTML = '';
+            google.accounts.id.renderButton(container, {
+              theme: 'outline',
+              size: 'large',
+              width: 400,
+              text: 'continue_with',
+              shape: 'rectangular',
+              logo_alignment: 'left',
+            });
+          }
+        } catch (err) {
+          console.error('Google Sign-In initialization failed:', err);
+        }
+      })
+      .catch((err) => {
+        console.warn('Google Identity Services setup warning:', err.message);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [googleClientId]);
 
   /**
    * Handle successful Google login
@@ -140,97 +185,6 @@ export default function AuthPage({ onLoginSuccess }) {
       return null;
     }
   };
-
-  /**
-   * Initialize Google Identity Services
-   */
-  useEffect(() => {
-    const initializeGoogleSignIn = () => {
-      const activeClientId = googleClientId || '73859989622-gfnm64hfcom43l064d0gf19f8losasrh.apps.googleusercontent.com';
-
-      if (
-        typeof window === 'undefined' ||
-        !window.google ||
-        !window.google.accounts ||
-        !window.google.accounts.id
-      ) {
-        console.warn(
-          'Google Identity Services script has not loaded yet.'
-        );
-
-        return;
-      }
-
-      try {
-        // Initialize Google Identity Services
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-
-          callback: handleGoogleCredential,
-
-          auto_select: false,
-
-          cancel_on_tap_outside: true,
-        });
-
-        // Find Google button container
-        const container = document.getElementById(
-          'googleGsiButtonContainer'
-        );
-
-        if (!container) {
-          console.warn(
-            'Google Sign-In button container not found.'
-          );
-
-          return;
-        }
-
-        // Clear existing Google button
-        container.innerHTML = '';
-
-        // Render official Google button
-        window.google.accounts.id.renderButton(
-          container,
-          {
-            theme: 'outline',
-
-            size: 'large',
-
-            width: 400,
-
-            text: 'continue_with',
-
-            shape: 'rectangular',
-
-            logo_alignment: 'left',
-          }
-        );
-      } catch (error) {
-        console.error(
-          'Google Identity Services initialization error:',
-          error
-        );
-
-        setError(
-          'Unable to initialize Google Sign-In.'
-        );
-      }
-    };
-
-    // Try immediately
-    initializeGoogleSignIn();
-
-    // Try again after Google script loads
-    const timer = setTimeout(
-      initializeGoogleSignIn,
-      1000
-    );
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [googleClientId]);
 
   /**
    * Normal email/password login and signup
