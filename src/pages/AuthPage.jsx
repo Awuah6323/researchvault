@@ -31,8 +31,8 @@ export default function AuthPage({ onLoginSuccess }) {
   const [success, setSuccess] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Google Client ID from .env
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  // Google Client ID from .env with registered default fallback
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '73859989622-gfnm64hfcom43l064d0gf19f8losasrh.apps.googleusercontent.com';
 
   /**
    * Handle successful Google login
@@ -146,17 +146,7 @@ export default function AuthPage({ onLoginSuccess }) {
    */
   useEffect(() => {
     const initializeGoogleSignIn = () => {
-      if (!googleClientId) {
-        console.error(
-          'VITE_GOOGLE_CLIENT_ID is missing from .env'
-        );
-
-        setError(
-          'Google Sign-In is not configured. Please check your .env file.'
-        );
-
-        return;
-      }
+      const activeClientId = googleClientId || '73859989622-gfnm64hfcom43l064d0gf19f8losasrh.apps.googleusercontent.com';
 
       if (
         typeof window === 'undefined' ||
@@ -763,29 +753,6 @@ export default function AuthPage({ onLoginSuccess }) {
               id="googleGsiButtonContainer"
             />
           </div>
-
-          {/* GOOGLE CONFIG ERROR */}
-          {!googleClientId && (
-            <div
-              style={{
-                padding: '12px',
-
-                marginBottom: '16px',
-
-                borderRadius: '10px',
-
-                backgroundColor: '#fee2e2',
-
-                color: '#991b1b',
-
-                fontSize: '0.85rem',
-              }}
-            >
-              Google Sign-In is not configured.
-              Please add VITE_GOOGLE_CLIENT_ID to
-              your .env file and restart the app.
-            </div>
-          )}
 
           {/* DIVIDER */}
           <div
