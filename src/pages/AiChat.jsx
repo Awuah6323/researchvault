@@ -4,11 +4,14 @@ import { chatWithGemini } from '../services/geminiService';
 import { storage } from '../services/storage';
 
 export default function AiChat({ onSaveNote }) {
+  const session = storage.getSession() || storage.getProfile();
+  const userName = session?.name || 'Scholar';
+
   const [messages, setMessages] = useState([
     {
       id: 1,
       sender: 'ai',
-      text: "Hello! I am your ResearchVault AI Assistant powered by Gemini 2.0 Flash. How can I assist with your literature review, paper methodology, or research questions today?",
+      text: `Hello ${userName}! 👋 I am your ResearchVault AI Assistant powered by Gemini 2.0 Flash. How can I assist with your literature review, paper methodology, or research questions today?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -49,7 +52,7 @@ export default function AiChat({ onSaveNote }) {
     setLoading(true);
 
     try {
-      const responseText = await chatWithGemini(text, messages);
+      const responseText = await chatWithGemini(text, messages, userName);
       const aiMsg = {
         id: Date.now() + 1,
         sender: 'ai',

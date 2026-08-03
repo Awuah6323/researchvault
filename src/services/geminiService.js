@@ -13,7 +13,7 @@ function sanitizeInput(text, maxLen = 4000) {
   return clean.length > maxLen ? clean.slice(0, maxLen) + "..." : clean;
 }
 
-async function callGeminiApi(promptText) {
+async function callGeminiApi(promptText, userName = "Scholar") {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
   // If valid API key is present, execute live call to Gemini 2.0 Flash
@@ -45,14 +45,35 @@ async function callGeminiApi(promptText) {
   }
 
   // Graceful Scholarly AI Fallback Engine
-  return generateScholarlyFallbackResponse(promptText);
+  return generateScholarlyFallbackResponse(promptText, userName);
 }
 
-function generateScholarlyFallbackResponse(prompt) {
-  const query = prompt.toLowerCase();
+function generateScholarlyFallbackResponse(prompt, userName = "Scholar") {
+  const query = prompt.toLowerCase().trim();
+
+  const greetingPatterns = [
+    /^hi[\s!.,]*$/i,
+    /^hello[\s!.,]*$/i,
+    /^hey[\s!.,]*$/i,
+    /^greetings[\s!.,]*$/i,
+    /^good\s*(morning|afternoon|evening)[\s!.,]*$/i,
+    /^hi\s+there[\s!.,]*$/i,
+    /^what'?s\s+up[\s!.,]*$/i
+  ];
+
+  const isGreeting = greetingPatterns.some(pattern => pattern.test(query)) ||
+    query.startsWith("hi ") || query.startsWith("hello ") || query.startsWith("hey ");
+
+  if (isGreeting) {
+    return `Hello **${userName}**! 👋
+
+Welcome to **ResearchVault AI Chat Assistant**. How can I assist you with your research papers, literature review, methodology design, or academic writing today?`;
+  }
 
   if (query.includes("transformer") || query.includes("attention")) {
     return `### 🤖 Transformer Architecture & Attention Mechanisms
+
+Hello **${userName}**! Here is a breakdown of the Transformer architecture:
 
 The **Transformer** architecture replaces recurrent neural networks (RNNs) with **Self-Attention Mechanisms**:
 
@@ -65,7 +86,7 @@ The **Transformer** architecture replaces recurrent neural networks (RNNs) with 
   if (query.includes("literature review") || query.includes("methodology")) {
     return `### 📚 Structured Literature Review Framework
 
-When conducting a systematic academic literature review:
+Great question, **${userName}**! When conducting a systematic academic literature review:
 
 - **1. Define Scope & Research Gaps**: Clearly state theoretical boundaries and unresolved empirical questions.
 - **2. Taxonomic Classification**: Group literature by methodology (e.g., qualitative vs. quantitative), framework models, and publication year.
@@ -75,7 +96,7 @@ When conducting a systematic academic literature review:
 
   return `### 🔬 Academic Research Insights & Analysis
 
-Thank you for your research query. Based on scholarly literature analysis:
+Thank you for your inquiry, **${userName}**. Based on scholarly literature analysis:
 
 - **Theoretical Framework**: Academic rigor requires establishing testable hypotheses grounded in validated empirical methodologies.
 - **Data & Experimental Validity**: Ensure robust sample sizes, cross-validation metrics, and bias reduction controls.
@@ -122,22 +143,27 @@ Provide a precise, scholarly yet highly readable answer based on the context.
   return callGeminiApi(prompt);
 }
 
-export async function chatWithGemini(userMessage, chatHistory = []) {
+export async function chatWithGemini(userMessage, chatHistory = [], userName = "Scholar") {
   const safeMsg = sanitizeInput(userMessage, 2000);
+  const safeUserName = sanitizeInput(userName, 100);
   const historyText = chatHistory.slice(-6).map(h => `${h.sender === 'user' ? 'User' : 'ResearchVault AI'}: ${sanitizeInput(h.text, 1000)}`).join('\n');
 
   const prompt = `
-You are ResearchVault AI Chat Engine, an expert academic advisor and scholarly research assistant.
-Help the researcher with their question, literature analysis, thesis writing, methodology design, or scientific concept explanation.
+You are ResearchVault AI Chat Engine, an expert academic advisor and friendly AI assistant.
+The researcher you are conversing with is named "${safeUserName}".
+
+IMPORTANT INSTRUCTION FOR GREETINGS AND INTERACTION:
+- If the user says "hi", "hello", "hey", "greetings", or asks how you are, respond with a warm, personalized greeting addressing them by their name "${safeUserName}" (e.g. "Hello ${safeUserName}! 👋 How can I help with your research today?").
+- Be helpful, conversational, encouraging, and clear.
 
 Conversation History:
 ${historyText}
 
 User Message: ${safeMsg}
 
-Provide a well-structured, clear, insightful answer with Markdown formatting, bullet points, and code/math blocks where helpful.
+Provide a clear, natural, well-formatted Markdown response.
 `;
-  return callGeminiApi(prompt);
+  return callGeminiApi(prompt, safeUserName);
 }
 
 
