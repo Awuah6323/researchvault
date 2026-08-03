@@ -3,12 +3,6 @@
 
 const BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
-// NOTE: gemini-2.0-flash was retired by Google, and gemini-2.5-flash is now
-// closed to new users too ("no longer available to new users" 404) — Google
-// has been deprecating Gemini models fast in 2026. gemini-3.6-flash is the
-// current GA flash model as of Aug 2026. If this one also 404s down the
-// line, check https://ai.google.dev/gemini-api/docs/models for whatever the
-// newest GA flash model is and swap the name here — same request shape.
 
 /**
  * Sanitizes input text to reduce control characters,
@@ -87,7 +81,8 @@ async function callGeminiApi(
   userName = "Scholar",
   rawUserMessage = ""
 ) {
-  // 1. Try secure backend serverless API route (/api/gemini)
+  // Try the secure backend serverless route first (api/gemini.js).
+  // The API key lives server-side there and never reaches the client bundle.
   try {
     const apiResponse = await fetch('/api/gemini', {
       method: 'POST',
@@ -100,12 +95,17 @@ async function callGeminiApi(
       if (data && data.text) {
         return data.text;
       }
+    } else {
+      const errBody = await apiResponse.text().catch(() => "");
+      console.warn(`/api/gemini responded with ${apiResponse.status}: ${errBody}`);
     }
   } catch (backendErr) {
-    // Backend endpoint not active in local standalone mode; fallback to direct client call or fallback engine
+    console.warn("Backend /api/gemini call failed, trying direct client call.", backendErr);
   }
 
-  // 2. Direct client fallback if VITE_GEMINI_API_KEY is configured
+  // Direct client call as a secondary fallback (only fires if you set
+  // VITE_GEMINI_API_KEY locally too — in production this should be unset
+  // now that the key lives server-side, so this block will just be skipped).
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const hasValidApiKey =
     apiKey &&
@@ -126,37 +126,26 @@ async function callGeminiApi(
         ],
       };
 
-      // Google's current docs authenticate via the x-goog-api-key header
-      // rather than a ?key= query param. This matters especially for the
-      // newer "AQ." auth-style keys AI Studio now issues by default.
       const response = await fetch(
         BASE_URL,
         {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
             "x-goog-api-key": apiKey,
           },
-
           body: JSON.stringify(payload),
         }
       );
 
       if (response.ok) {
         const data = await response.json();
-
-        const candidate =
-          data.candidates?.[0];
-
-        const generatedText =
-          candidate?.content?.parts?.[0]?.text;
-
+        const candidate = data.candidates?.[0];
+        const generatedText = candidate?.content?.parts?.[0]?.text;
         if (generatedText) {
           return generatedText;
         }
       } else {
-        // Surface the real reason in dev tools instead of failing silently
         const errBody = await response.text().catch(() => "");
         console.warn(
           `Gemini API responded with ${response.status}: ${errBody}`
@@ -170,7 +159,7 @@ async function callGeminiApi(
     }
   }
 
-  // 3. Fallback to ResearchVault Academic Engine
+  // Fallback to ResearchVault Academic Engine (only reached if the direct call failed)
   return generateScholarlyFallbackResponse(
     promptText,
     userName,
