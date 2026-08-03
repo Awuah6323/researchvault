@@ -2,14 +2,13 @@
 // Gemini AI + Friendly Academic Fallback Engine
 
 const BASE_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
-// NOTE: gemini-2.0-flash was retired by Google in 2026 — every call using it
-// fails silently and falls through to the scripted fallback engine below,
-// which is why the app looked "canned" instead of answering freely.
-// gemini-2.5-flash is GA and current as of Aug 2026. Google's docs also list
-// gemini-3.6-flash / gemini-3.5-flash-lite as the newest GA models if you
-// want to upgrade further later — same request shape, just swap the model
-// name in this URL.
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
+// NOTE: gemini-2.0-flash was retired by Google, and gemini-2.5-flash is now
+// closed to new users too ("no longer available to new users" 404) — Google
+// has been deprecating Gemini models fast in 2026. gemini-3.6-flash is the
+// current GA flash model as of Aug 2026. If this one also 404s down the
+// line, check https://ai.google.dev/gemini-api/docs/models for whatever the
+// newest GA flash model is and swap the name here — same request shape.
 
 /**
  * Sanitizes input text to reduce control characters,
@@ -127,13 +126,17 @@ async function callGeminiApi(
         ],
       };
 
+      // Google's current docs authenticate via the x-goog-api-key header
+      // rather than a ?key= query param. This matters especially for the
+      // newer "AQ." auth-style keys AI Studio now issues by default.
       const response = await fetch(
-        `${BASE_URL}?key=${apiKey}`,
+        BASE_URL,
         {
           method: "POST",
 
           headers: {
             "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
           },
 
           body: JSON.stringify(payload),
