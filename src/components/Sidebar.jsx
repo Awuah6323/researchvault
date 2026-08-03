@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Search, Library, FolderKanban, Sparkles, User, PlusCircle, FileText } from 'lucide-react';
+import { Home, Search, Library, FolderKanban, Sparkles, User, PlusCircle, FileText, MessageSquare } from 'lucide-react';
 
 export default function Sidebar({ activeTab, onNavigate, onOpenAddModal }) {
   const menuItems = [
@@ -7,6 +7,7 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal }) {
     { id: 'search', label: 'Academic Search', icon: Search },
     { id: 'library', label: 'My Library', icon: Library },
     { id: 'categories', label: 'Categories & Folders', icon: FolderKanban },
+    { id: 'aichat', label: 'AI Chat Assistant', icon: MessageSquare },
     { id: 'notes', label: 'Research Notes', icon: FileText },
     { id: 'synthesis', label: 'AI Literature Review', icon: Sparkles },
     { id: 'profile', label: 'Profile & Settings', icon: User }

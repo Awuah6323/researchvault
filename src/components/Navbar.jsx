@@ -7,7 +7,9 @@ export default function Navbar({
   currentTheme, 
   setTheme, 
   userProfile, 
-  onNavigate 
+  onNavigate,
+  onOpenAuthModal,
+  onLogout
 }) {
   const themes = [
     { id: 'scholarly-light', label: 'Scholarly Light' },
@@ -111,40 +113,51 @@ export default function Navbar({
             </select>
           </div>
 
-          {/* User Profile Avatar */}
-          <div 
-            onClick={() => onNavigate('profile')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '4px 10px',
-              borderRadius: '20px',
-              backgroundColor: 'var(--bg-card)',
-              border: '1px solid var(--border-color)',
-              cursor: 'pointer'
-            }}
-          >
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--primary-light)',
-              color: 'var(--primary-text)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 700,
-              fontSize: '0.85rem'
-            }}>
-              {userProfile?.name ? userProfile.name.split(' ').map(n => n[0]).join('') : 'AR'}
+          {/* User Account / Auth Action */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div 
+              onClick={() => onNavigate('profile')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '4px 10px',
+                borderRadius: '20px',
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border-color)',
+                cursor: 'pointer'
+              }}
+            >
+              <div style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--primary-light)',
+                color: 'var(--primary-text)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: '0.8rem'
+              }}>
+                {userProfile?.name ? userProfile.name.split(' ').map(n => n[0]).join('') : 'AR'}
+              </div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                {userProfile?.name || 'Alex Rivera'}
+              </div>
             </div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
-              {userProfile?.name || 'Alex Rivera'}
-            </div>
+
+            <button
+              onClick={onOpenAuthModal}
+              className="btn-primary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+            >
+              Sign In / Switch
+            </button>
           </div>
         </div>
       </div>
     </header>
   );
 }
+

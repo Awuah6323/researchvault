@@ -88,6 +88,25 @@ Provide a precise, scholarly yet highly readable answer based on the context.
   return callGeminiApi(prompt);
 }
 
+export async function chatWithGemini(userMessage, chatHistory = []) {
+  const safeMsg = sanitizeInput(userMessage, 2000);
+  const historyText = chatHistory.slice(-6).map(h => `${h.sender === 'user' ? 'User' : 'ResearchVault AI'}: ${sanitizeInput(h.text, 1000)}`).join('\n');
+
+  const prompt = `
+You are ResearchVault AI Chat Engine, an expert academic advisor and scholarly research assistant.
+Help the researcher with their question, literature analysis, thesis writing, methodology design, or scientific concept explanation.
+
+Conversation History:
+${historyText}
+
+User Message: ${safeMsg}
+
+Provide a well-structured, clear, insightful answer with Markdown formatting, bullet points, and code/math blocks where helpful.
+`;
+  return callGeminiApi(prompt);
+}
+
+
 export async function synthesizeLiteratureReview(papers) {
   const formatted = papers.map((p, idx) => 
     `Paper ${idx + 1}: ${sanitizeInput(p.title, 300)}\nAuthors: ${sanitizeInput(p.authors, 300)}\nAbstract: ${sanitizeInput(p.abstractText, 2000)}`

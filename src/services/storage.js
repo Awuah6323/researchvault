@@ -6,7 +6,9 @@ const KEYS = {
   NOTES: 'researchvault_notes',
   BOOKMARKS: 'researchvault_bookmarks',
   PROFILE: 'researchvault_profile',
-  THEME: 'researchvault_theme'
+  THEME: 'researchvault_theme',
+  USERS: 'researchvault_users',
+  SESSION: 'researchvault_session'
 };
 
 const DEFAULT_CATEGORIES = [
@@ -275,7 +277,76 @@ export const storage = {
     const updated = [...newItems, ...current];
     this.saveResources(updated);
     return updated;
+  },
+
+  getUsers() {
+    const data = localStorage.getItem(KEYS.USERS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  registerUser(name, email, password, institution = 'Academic Institution', fieldOfStudy = 'General Research') {
+    const users = this.getUsers();
+    const existing = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (existing) {
+      throw new Error("An account with this email address already exists.");
+    }
+    const newUser = {
+      id: Date.now(),
+      name,
+      email,
+      password,
+      institution,
+      fieldOfStudy,
+      researchInterests: 'Academic Literature, Data Analysis',
+      createdAt: new Date().toISOString()
+    };
+    users.push(newUser);
+    localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+    this.saveSession(newUser);
+    return newUser;
+  },
+
+  loginUser(email, password) {
+    const users = this.getUsers();
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+    if (!user) {
+      throw new Error("Invalid email address or password.");
+    }
+    this.saveSession(user);
+    return user;
+  },
+
+  saveSession(user) {
+    const profile = {
+      name: user.name,
+      email: user.email,
+      institution: user.institution || 'Academic Institution',
+      fieldOfStudy: user.fieldOfStudy || 'General Research',
+      researchInterests: user.researchInterests || 'Literature Review',
+      isGuest: false
+    };
+    localStorage.setItem(KEYS.SESSION, JSON.stringify(profile));
+    this.saveProfile(profile);
+  },
+
+  getSession() {
+    const data = localStorage.getItem(KEYS.SESSION);
+    if (data) {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  },
+
+  logoutUser() {
+    localStorage.removeItem(KEYS.SESSION);
+    this.saveProfile(DEFAULT_PROFILE);
+    return DEFAULT_PROFILE;
   }
 };
+
 
 

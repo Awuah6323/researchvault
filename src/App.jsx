@@ -5,6 +5,7 @@ import ResourceCard from './components/ResourceCard';
 import CitationModal from './components/CitationModal';
 import AiSummarizerModal from './components/AiSummarizerModal';
 import AddResourceModal from './components/AddResourceModal';
+import AuthModal from './components/AuthModal';
 
 import HomeDashboard from './pages/HomeDashboard';
 import AcademicSearch from './pages/AcademicSearch';
@@ -14,6 +15,7 @@ import DocumentReader from './pages/DocumentReader';
 import LiteratureSynthesis from './pages/LiteratureSynthesis';
 import ProfileSettings from './pages/ProfileSettings';
 import NotesManager from './pages/NotesManager';
+import AiChat from './pages/AiChat';
 
 import { storage } from './services/storage';
 
@@ -36,6 +38,7 @@ export default function App() {
   const [citationModalResource, setCitationModalResource] = useState(null);
   const [aiModalResource, setAiModalResource] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     setResources(storage.getResources());
@@ -86,6 +89,11 @@ export default function App() {
     storage.addNote(resourceId, noteText, pageNumber);
   };
 
+  const handleLogout = () => {
+    const defaultProf = storage.logoutUser();
+    setUserProfile(defaultProf);
+  };
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)' }}>
       <Navbar
@@ -95,6 +103,8 @@ export default function App() {
         setTheme={handleSetTheme}
         userProfile={userProfile}
         onNavigate={(tab) => setActiveTab(tab)}
+        onOpenAuthModal={() => setShowAuthModal(true)}
+        onLogout={handleLogout}
       />
 
       <div style={{ display: 'flex', maxWidth: '1440px', margin: '0 auto' }}>
@@ -146,6 +156,12 @@ export default function App() {
               onSelectCategory={(catName) => {
                 setActiveTab('library');
               }}
+            />
+          )}
+
+          {activeTab === 'aichat' && (
+            <AiChat
+              onSaveNote={handleSaveNote}
             />
           )}
 
@@ -207,6 +223,15 @@ export default function App() {
           onAdd={handleAddResource}
         />
       )}
+
+      {/* Login & Sign Up Auth Modal */}
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          onLoginSuccess={(p) => setUserProfile(p)}
+        />
+      )}
     </div>
   );
 }
+
