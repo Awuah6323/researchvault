@@ -49,9 +49,9 @@ export default function AuthPage({ onLoginSuccess }) {
   };
 
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
-      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-      if (googleClientId) {
+    const initGoogleGsi = () => {
+      if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+        const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '939401724491-placeholder.apps.googleusercontent.com';
         try {
           window.google.accounts.id.initialize({
             client_id: googleClientId,
@@ -66,30 +66,38 @@ export default function AuthPage({ onLoginSuccess }) {
                   });
                 }
               }
-            }
+            },
+            auto_select: false,
+            cancel_on_tap_outside: true,
           });
+
           const container = document.getElementById('googleGsiButtonContainer');
           if (container) {
+            container.innerHTML = '';
             window.google.accounts.id.renderButton(container, {
               theme: 'outline',
               size: 'large',
-              width: '100%',
+              width: '320',
               text: 'continue_with',
-              shape: 'pill'
+              shape: 'rectangular',
+              logo_alignment: 'left'
             });
           }
         } catch (e) {
           console.warn("GSI init warning", e);
         }
       }
-    }
+    };
+
+    initGoogleGsi();
+    const timer = setTimeout(initGoogleGsi, 800);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleGoogleSignIn = () => {
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
-    if (window.google?.accounts?.id && googleClientId) {
+    if (window.google?.accounts?.id) {
       try {
+        const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '939401724491-placeholder.apps.googleusercontent.com';
         window.google.accounts.id.initialize({
           client_id: googleClientId,
           callback: (response) => {
@@ -107,9 +115,17 @@ export default function AuthPage({ onLoginSuccess }) {
             setShowGooglePicker(true);
           }
         });
+
+        // Trigger Google One-Tap Account Chooser Popup
         window.google.accounts.id.prompt((notification) => {
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            setShowGooglePicker(true);
+            const container = document.getElementById('googleGsiButtonContainer');
+            const googleBtn = container?.querySelector('div[role="button"]') || container?.querySelector('iframe');
+            if (googleBtn) {
+              googleBtn.click();
+            } else {
+              setShowGooglePicker(true);
+            }
           }
         });
       } catch (e) {
