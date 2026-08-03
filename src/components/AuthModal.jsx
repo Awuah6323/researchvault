@@ -119,61 +119,36 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
             </div>
 
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-              Choose a Google account to continue to ResearchVault:
+              Enter your Google Account details to sign in:
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-              {defaultGoogleAccounts.map((acc, i) => (
-                <div
-                  key={i}
-                  onClick={() => handleGoogleAccountSelect(acc)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 14px',
-                    borderRadius: '12px',
-                    backgroundColor: 'var(--bg-main)',
-                    border: '1px solid var(--border-color)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem' }}>
-                    {acc.name[0]}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{acc.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{acc.email} • {acc.institution}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px' }}>Use Another Google Account</div>
-              <form onSubmit={handleCustomGoogleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <form onSubmit={handleCustomGoogleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Full Name *</label>
                 <input
                   type="text"
                   required
-                  placeholder="Your Full Name (e.g. Jane Doe)"
+                  placeholder="e.g. John Doe"
                   value={customGoogleName}
                   onChange={(e) => setCustomGoogleName(e.target.value)}
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem' }}
                 />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Google Email Address *</label>
                 <input
                   type="email"
                   required
-                  placeholder="Your Google Email (e.g. jane@gmail.com)"
+                  placeholder="e.g. user@gmail.com"
                   value={customGoogleEmail}
                   onChange={(e) => setCustomGoogleEmail(e.target.value)}
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem' }}
                 />
-                <button type="submit" className="btn-primary" style={{ width: '100%' }}>
-                  Sign In with Google Account
-                </button>
-              </form>
-            </div>
+              </div>
+              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '6px' }}>
+                Continue with Google Account
+              </button>
+            </form>
           </div>
         ) : (
           <>

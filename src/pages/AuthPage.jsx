@@ -20,15 +20,10 @@ export default function AuthPage({ onLoginSuccess }) {
   const [customGoogleName, setCustomGoogleName] = useState('');
   const [customGoogleEmail, setCustomGoogleEmail] = useState('');
 
-  const defaultGoogleAccounts = [
-    { name: 'Prince Fosu', email: 'quavoawuah@st.umat.edu.gh', institution: 'University of Mine and Technology' },
-    { name: 'Prof. Marcus Vance', email: 'm.vance@mit.edu', institution: 'MIT Media Lab' }
-  ];
-
   const handleGoogleAccountSelect = (acc) => {
     try {
       const user = storage.loginWithGoogle(acc.email, acc.name, acc.institution);
-      setSuccess(`Authenticated via Google as ${user.name}! Redirecting...`);
+      setSuccess(`Signed in with Google as ${user.name} (${user.email})! Redirecting...`);
       setTimeout(() => {
         onLoginSuccess(storage.getProfile());
       }, 700);
@@ -204,66 +199,42 @@ export default function AuthPage({ onLoginSuccess }) {
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                   </svg>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Choose Google Account</h3>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Sign In with Google</h3>
                 </div>
-                <button onClick={() => setShowGooglePicker(false)} style={{ color: 'var(--text-muted)' }}>Back</button>
+                <button onClick={() => setShowGooglePicker(false)} style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Back</button>
               </div>
 
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                Select an account logged into this browser/phone or enter your details:
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px', lineHeight: 1.5 }}>
+                Enter your Google Account details to sign in or create your academic profile:
               </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                {defaultGoogleAccounts.map((acc, i) => (
-                  <div
-                    key={i}
-                    onClick={() => handleGoogleAccountSelect(acc)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '12px 14px',
-                      borderRadius: '12px',
-                      backgroundColor: 'var(--bg-main, #0b1329)',
-                      border: '1px solid var(--border-color, #1e293b)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary, #38bdf8)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
-                      {acc.name[0]}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{acc.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{acc.email}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ borderTop: '1px solid var(--border-color, #1e293b)', paddingTop: '16px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px' }}>Use Another Google Account</div>
-                <form onSubmit={handleCustomGoogleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <form onSubmit={handleCustomGoogleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Full Name *</label>
                   <input
                     type="text"
                     required
-                    placeholder="Full Name (e.g. John Doe)"
+                    placeholder="e.g. John Doe"
                     value={customGoogleName}
                     onChange={(e) => setCustomGoogleName(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #1e293b)', backgroundColor: 'var(--bg-main, #0b1329)', fontSize: '0.85rem' }}
+                    style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid var(--border-color, #1a3325)', backgroundColor: 'var(--bg-main, #050807)', fontSize: '0.9rem' }}
                   />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Google Email Address *</label>
                   <input
                     type="email"
                     required
-                    placeholder="Google Email (e.g. name@example.com)"
+                    placeholder="e.g. user@gmail.com"
                     value={customGoogleEmail}
                     onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #1e293b)', backgroundColor: 'var(--bg-main, #0b1329)', fontSize: '0.85rem' }}
+                    style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid var(--border-color, #1a3325)', backgroundColor: 'var(--bg-main, #050807)', fontSize: '0.9rem' }}
                   />
-                  <button type="submit" className="btn-primary" style={{ width: '100%' }}>
-                    Sign In with Google Account
-                  </button>
-                </form>
-              </div>
+                </div>
+                <button type="submit" className="btn-primary" style={{ width: '100%', padding: '12px', marginTop: '6px' }}>
+                  Continue with Google Account
+                </button>
+              </form>
             </div>
           ) : (
             <>
