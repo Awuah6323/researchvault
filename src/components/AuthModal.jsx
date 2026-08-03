@@ -86,6 +86,51 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
   };
 
   const handleGoogleSignIn = () => {
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (googleClientId && typeof window !== 'undefined') {
+      if (window.google?.accounts?.oauth2) {
+        try {
+          const tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: googleClientId,
+            scope: 'email profile',
+            callback: async (tokenResponse) => {
+              if (tokenResponse && tokenResponse.access_token) {
+                try {
+                  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                  });
+                  const profile = await res.json();
+                  if (profile && profile.email) {
+                    handleGoogleAccountSelect({
+                      name: profile.name || profile.given_name || 'Google User',
+                      email: profile.email,
+                      institution: 'Google Verified Account'
+                    });
+                    return;
+                  }
+                } catch (err) {
+                  console.error('Error fetching Google profile:', err);
+                }
+              }
+              setShowGooglePicker(true);
+            }
+          });
+          tokenClient.requestAccessToken({ prompt: 'select_account' });
+          return;
+        } catch (e) {
+          console.warn('OAuth2 TokenClient init error:', e);
+        }
+      }
+
+      try {
+        const redirectUri = window.location.origin;
+        const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(googleClientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&prompt=select_account`;
+        const popup = window.open(oauthUrl, 'GoogleAccountChooser', 'width=520,height=620,top=100,left=100');
+        if (popup) return;
+      } catch (e) {
+        console.warn('Popup window error:', e);
+      }
+    }
     setShowGooglePicker(true);
   };
 

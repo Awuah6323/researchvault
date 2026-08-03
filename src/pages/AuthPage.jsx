@@ -96,44 +96,54 @@ export default function AuthPage({ onLoginSuccess }) {
 
   const handleGoogleSignIn = () => {
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (googleClientId && window.google?.accounts?.id) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: (response) => {
-            if (response?.credential) {
-              const payload = parseGoogleCredential(response.credential);
-              if (payload) {
-                handleGoogleAccountSelect({
-                  name: payload.name || payload.given_name || 'Google User',
-                  email: payload.email,
-                  institution: 'Google Verified Account'
-                });
-                return;
-              }
-            }
-            setShowGooglePicker(true);
-          }
-        });
 
-        // Trigger Google One-Tap Account Chooser Popup
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            const container = document.getElementById('googleGsiButtonContainer');
-            const googleBtn = container?.querySelector('div[role="button"]') || container?.querySelector('iframe');
-            if (googleBtn) {
-              googleBtn.click();
-            } else {
+    if (googleClientId && typeof window !== 'undefined') {
+      if (window.google?.accounts?.oauth2) {
+        try {
+          const tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: googleClientId,
+            scope: 'email profile',
+            callback: async (tokenResponse) => {
+              if (tokenResponse && tokenResponse.access_token) {
+                try {
+                  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                  });
+                  const profile = await res.json();
+                  if (profile && profile.email) {
+                    handleGoogleAccountSelect({
+                      name: profile.name || profile.given_name || 'Google User',
+                      email: profile.email,
+                      institution: 'Google Verified Account'
+                    });
+                    return;
+                  }
+                } catch (err) {
+                  console.error('Error fetching Google userinfo:', err);
+                }
+              }
               setShowGooglePicker(true);
             }
-          }
-        });
-      } catch (e) {
-        setShowGooglePicker(true);
+          });
+          tokenClient.requestAccessToken({ prompt: 'select_account' });
+          return;
+        } catch (e) {
+          console.warn('OAuth2 TokenClient init error:', e);
+        }
       }
-    } else {
-      setShowGooglePicker(true);
+
+      // Fallback: Open Google OAuth 2.0 Account Chooser popup window directly
+      try {
+        const redirectUri = window.location.origin;
+        const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(googleClientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&prompt=select_account`;
+        const popup = window.open(oauthUrl, 'GoogleAccountChooser', 'width=520,height=620,top=100,left=100');
+        if (popup) return;
+      } catch (e) {
+        console.warn('Popup window error:', e);
+      }
     }
+
+    setShowGooglePicker(true);
   };
 
   const handleCustomGoogleSubmit = (e) => {
