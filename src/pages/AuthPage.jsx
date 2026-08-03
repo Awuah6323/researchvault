@@ -20,6 +20,22 @@ export default function AuthPage({ onLoginSuccess }) {
   const [customGoogleName, setCustomGoogleName] = useState('');
   const [customGoogleEmail, setCustomGoogleEmail] = useState('');
 
+  const parseGoogleCredential = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      return null;
+    }
+  };
+
   const handleGoogleAccountSelect = (acc) => {
     try {
       const user = storage.loginWithGoogle(acc.email, acc.name, acc.institution);
@@ -32,23 +48,70 @@ export default function AuthPage({ onLoginSuccess }) {
     }
   };
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+      const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      if (googleClientId) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: (response) => {
+              if (response?.credential) {
+                const payload = parseGoogleCredential(response.credential);
+                if (payload) {
+                  handleGoogleAccountSelect({
+                    name: payload.name || payload.given_name || 'Google User',
+                    email: payload.email,
+                    institution: 'Google Verified Account'
+                  });
+                }
+              }
+            }
+          });
+          const container = document.getElementById('googleGsiButtonContainer');
+          if (container) {
+            window.google.accounts.id.renderButton(container, {
+              theme: 'outline',
+              size: 'large',
+              width: '100%',
+              text: 'continue_with',
+              shape: 'pill'
+            });
+          }
+        } catch (e) {
+          console.warn("GSI init warning", e);
+        }
+      }
+    }
+  }, []);
+
   const handleGoogleSignIn = () => {
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const isValidClientId = googleClientId && !googleClientId.includes('placeholder') && googleClientId.includes('.apps.googleusercontent.com');
 
-    if (isValidClientId && window.google?.accounts?.id) {
+    if (window.google?.accounts?.id && googleClientId) {
       try {
         window.google.accounts.id.initialize({
           client_id: googleClientId,
           callback: (response) => {
-            handleGoogleAccountSelect({
-              name: "Google Account User",
-              email: "user@gmail.com",
-              institution: "Academic Institution"
-            });
+            if (response?.credential) {
+              const payload = parseGoogleCredential(response.credential);
+              if (payload) {
+                handleGoogleAccountSelect({
+                  name: payload.name || payload.given_name || 'Google User',
+                  email: payload.email,
+                  institution: 'Google Verified Account'
+                });
+                return;
+              }
+            }
+            setShowGooglePicker(true);
           }
         });
-        window.google.accounts.id.prompt();
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            setShowGooglePicker(true);
+          }
+        });
       } catch (e) {
         setShowGooglePicker(true);
       }
@@ -272,7 +335,10 @@ export default function AuthPage({ onLoginSuccess }) {
                 </button>
               </div>
 
-              {/* Continue with Google */}
+              {/* Official Google Sign-In Button Container */}
+              <div id="googleGsiButtonContainer" style={{ width: '100%', marginBottom: '12px', display: 'flex', justifyContent: 'center' }} />
+
+              {/* Fallback Continue with Google Button */}
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
@@ -280,9 +346,9 @@ export default function AuthPage({ onLoginSuccess }) {
                   width: '100%',
                   padding: '12px',
                   borderRadius: '12px',
-                  border: '1px solid var(--border-color, #1e293b)',
+                  border: '1px solid var(--border-color, #1a3325)',
                   backgroundColor: '#ffffff',
-                  color: '#333333',
+                  color: '#111111',
                   fontWeight: 700,
                   fontSize: '0.9rem',
                   display: 'flex',
@@ -290,10 +356,11 @@ export default function AuthPage({ onLoginSuccess }) {
                   justifyContent: 'center',
                   gap: '10px',
                   cursor: 'pointer',
-                  marginBottom: '16px'
+                  marginBottom: '16px',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24">
+                <svg width="20" height="20" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
