@@ -181,13 +181,13 @@ function generateScholarlyFallbackResponse(
 
   if (isGreeting(query)) {
     const greetings = [
-      `Hey **${userName}**! 😊 It's great to hear from you. How can I help you with your research today?`,
+      `Hey ${userName}! 😊 It's great to hear from you. How can I help you with your research today?`,
 
-      `Hello **${userName}**! 👋 I hope you're doing well. What are we working on today?`,
+      `Hello ${userName}! 👋 I hope you're doing well. What are we working on today?`,
 
       `Hey there! 😊 I'm ready when you are. Whether it's a research paper, literature review, or just a question that's been bothering you, let's figure it out together.`,
 
-      `Good to see you, **${userName}**! 🌟 What would you like to explore today?`,
+      `Good to see you, ${userName}! 🌟 What would you like to explore today?`,
     ];
 
     return greetings[
@@ -203,13 +203,13 @@ function generateScholarlyFallbackResponse(
 
   if (isCallingAI(query)) {
     const responses = [
-      `Hey **${userName}**! 😊 I'm right here. What can I help you with?`,
+      `Hey ${userName}! 😊 I'm right here. What can I help you with?`,
 
-      `Yes, **${userName}**! 👋 I'm listening. What's on your mind?`,
+      `Yes, ${userName}! 👋 I'm listening. What's on your mind?`,
 
       `Hey! 😊 I'm ready. Tell me what you need help with and we'll work through it together.`,
 
-      `I'm here, **${userName}**! 🌟 What are we working on today?`,
+      `I'm here, ${userName}! 🌟 What are we working on today?`,
     ];
 
     return responses[
@@ -227,7 +227,7 @@ function generateScholarlyFallbackResponse(
     query.includes("transformer") ||
     query.includes("attention")
   ) {
-    return `Hey **${userName}**! 😊 Absolutely, let's break this down in a simple way.
+    return `Hey ${userName}! 😊 Absolutely, let's break this down in a simple way.
 
 ### 🤖 Transformer Architecture & Attention Mechanisms
 
@@ -266,7 +266,7 @@ If you'd like, I can also explain **self-attention using a simple real-world exa
     query.includes("literature review") ||
     query.includes("methodology")
   ) {
-    return `Hey **${userName}**! 😊 That's an important part of academic research. Let's make it easier to approach.
+    return `Hey ${userName}! 😊 That's an important part of academic research. Let's make it easier to approach.
 
 ### 📚 A Simple Literature Review Framework
 
@@ -310,7 +310,7 @@ If you tell me your research topic, I can help you build the literature review s
     query.includes("research topic") ||
     query.includes("research title")
   ) {
-    return `Hey **${userName}**! 😊 I'd be happy to help you with that.
+    return `Hey ${userName}! 😊 I'd be happy to help you with that.
 
 Choosing a good research topic usually starts with three things:
 
@@ -331,7 +331,7 @@ Tell me the area you're interested in, and I'll help you develop some strong res
     query.includes("research gap") ||
     query.includes("gap in research")
   ) {
-    return `That's a great question, **${userName}**! 😊 Finding a research gap is one of the most important parts of developing a strong research project.
+    return `That's a great question, ${userName}! 😊 Finding a research gap is one of the most important parts of developing a strong research project.
 
 A **research gap** is an area where existing studies have not fully answered a question, solved a problem, or explored a particular situation.
 
@@ -350,7 +350,7 @@ If you give me your research topic, I can help you identify possible research ga
   // GENERAL FALLBACK
   // -----------------------------------------
 
-  return `Hey **${userName}**! 😊 I'm here and ready to help.
+  return `Hey ${userName}! 😊 I'm here and ready to help.
 
 I can help you with things like:
 
