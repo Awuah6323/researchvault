@@ -93,7 +93,7 @@ export default function AuthPage({ onLoginSuccess }) {
 
       setError(
         err.message ||
-          'Google Sign-In failed. Please try again.'
+        'Google Sign-In failed. Please try again.'
       );
     } finally {
       setGoogleLoading(false);
@@ -282,9 +282,9 @@ export default function AuthPage({ onLoginSuccess }) {
           email.trim(),
           password.trim(),
           institution.trim() ||
-            'University / Institution',
+          'University / Institution',
           fieldOfStudy.trim() ||
-            'Computer Science'
+          'Computer Science'
         );
 
         setSuccess(
@@ -303,7 +303,7 @@ export default function AuthPage({ onLoginSuccess }) {
 
       setError(
         err.message ||
-          'Authentication failed. Please check your credentials.'
+        'Authentication failed. Please check your credentials.'
       );
     }
   };

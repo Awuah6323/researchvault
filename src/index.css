@@ -64,33 +64,6 @@
   --gradient-glow: linear-gradient(135deg, #00ff88 0%, #00e5ff 100%);
 }
 
-/* Theme: Dark Vault */
-[data-theme="dark-vault"] {
-  --bg-main: #0b1329;
-  --bg-card: #131f3d;
-  --bg-card-hover: #1a294d;
-  --bg-sidebar: #070d1f;
-  --text-sidebar: #64748b;
-  --text-sidebar-active: #38bdf8;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --primary: #38bdf8;
-  --primary-hover: #0284c7;
-  --primary-light: #0c4a6e;
-  --primary-text: #e0f2fe;
-  --secondary: #14b8a6;
-  --accent-gold: #fbbf24;
-  --accent-gold-light: #451a03;
-  --border-color: #1e293b;
-  --border-focus: #38bdf8;
-  --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
-  --header-bg: rgba(19, 31, 61, 0.85);
-  --badge-bg: #1e3a8a;
-  --badge-text: #93c5fd;
-  --reader-bg: #0f172a;
-  --reader-text: #f1f5f9;
-}
-
 /* Theme: Warm Sepia */
 [data-theme="warm-sepia"] {
   --bg-main: #f5efe6;

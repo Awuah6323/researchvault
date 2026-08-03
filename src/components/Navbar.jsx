@@ -13,7 +13,6 @@ export default function Navbar({
 }) {
   const themes = [
     { id: 'cyber-emerald', label: '⚡ Cyber Emerald (Green/Black)' },
-    { id: 'dark-vault', label: 'Dark Vault' },
     { id: 'scholarly-light', label: 'Scholarly Light' },
     { id: 'warm-sepia', label: 'Warm Sepia' },
     { id: 'midnight-oled', label: 'Midnight OLED' }

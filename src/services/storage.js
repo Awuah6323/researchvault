@@ -132,7 +132,9 @@ export const storage = {
   },
 
   getTheme() {
-    return localStorage.getItem(KEYS.THEME) || 'cyber-emerald';
+    const saved = localStorage.getItem(KEYS.THEME);
+    if (!saved || saved === 'dark-vault') return 'cyber-emerald';
+    return saved;
   },
 
   saveTheme(theme) {
