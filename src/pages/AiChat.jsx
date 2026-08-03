@@ -61,7 +61,7 @@ export default function AiChat({ onSaveNote }) {
       const errorMsg = {
         id: Date.now() + 1,
         sender: 'ai',
-        text: "Sorry, I encountered an error querying the Gemini AI model. Please verify your internet connection or API key.",
+        text: err.message || "Gemini API error. Please ensure VITE_GEMINI_API_KEY is configured in your Vercel project environment variables.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, errorMsg]);
