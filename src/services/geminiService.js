@@ -78,7 +78,8 @@ function isGreeting(message) {
  */
 async function callGeminiApi(
   promptText,
-  userName = "Scholar"
+  userName = "Scholar",
+  rawUserMessage = ""
 ) {
   // 1. Try secure backend serverless API route (/api/gemini)
   try {
@@ -155,7 +156,8 @@ async function callGeminiApi(
   // 3. Fallback to ResearchVault Academic Engine
   return generateScholarlyFallbackResponse(
     promptText,
-    userName
+    userName,
+    rawUserMessage
   );
 }
 
@@ -166,9 +168,10 @@ async function callGeminiApi(
  */
 function generateScholarlyFallbackResponse(
   prompt,
-  userName = "Scholar"
+  userName = "Scholar",
+  rawUserMessage = ""
 ) {
-  const query = String(prompt || "")
+  const query = String(rawUserMessage || prompt || "")
     .toLowerCase()
     .trim();
 
@@ -626,7 +629,8 @@ Remember:
 
   return callGeminiApi(
     prompt,
-    safeUserName
+    safeUserName,
+    safeMsg
   );
 }
 
