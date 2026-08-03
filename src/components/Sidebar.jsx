@@ -51,20 +51,7 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal }) {
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '10px 14px',
-                borderRadius: '12px',
-                fontSize: '0.9rem',
-                fontWeight: isActive ? 700 : 500,
-                color: isActive ? 'var(--text-sidebar-active)' : 'var(--text-sidebar)',
-                backgroundColor: isActive ? 'var(--primary)' : 'transparent',
-                textAlign: 'left',
-                transition: 'all 0.2s ease',
-                cursor: 'pointer'
-              }}
+              className={`sidebar-btn ${isActive ? 'active' : ''}`}
             >
               <Icon size={18} />
               <span>{item.label}</span>

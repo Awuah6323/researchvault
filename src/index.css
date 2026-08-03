@@ -98,31 +98,31 @@
 /* Theme: Midnight OLED */
 [data-theme="midnight-oled"] {
   --bg-main: #000000;
-  --bg-card: #0d0d14;
-  --bg-card-hover: #171724;
+  --bg-card: #0a0a0f;
+  --bg-card-hover: #12121a;
   --bg-sidebar: #050508;
-  --text-sidebar: #8b8ba7;
-  --text-sidebar-active: #a855f7;
+  --text-sidebar: #8888a0;
+  --text-sidebar-active: #00e5ff;
   --text-main: #ffffff;
-  --text-muted: #a3a3c2;
-  --primary: #a855f7;
-  --primary-hover: #9333ea;
-  --primary-light: #211038;
-  --primary-text: #e9d5ff;
-  --secondary: #00e5ff;
+  --text-muted: #9e9eb8;
+  --primary: #00e5ff;
+  --primary-hover: #00b8d4;
+  --primary-light: #002b30;
+  --primary-text: #00e5ff;
+  --secondary: #a855f7;
   --accent-gold: #f59e0b;
   --accent-gold-light: #332b00;
-  --border-color: #261b40;
-  --border-focus: #a855f7;
-  --card-shadow: 0 8px 30px rgba(168, 85, 247, 0.15);
-  --header-bg: rgba(13, 13, 20, 0.9);
-  --badge-bg: #2e1065;
-  --badge-text: #d8b4fe;
+  --border-color: #1e1e2d;
+  --border-focus: #00e5ff;
+  --card-shadow: 0 8px 30px rgba(0, 229, 255, 0.12);
+  --header-bg: rgba(10, 10, 15, 0.9);
+  --badge-bg: rgba(0, 229, 255, 0.15);
+  --badge-text: #00e5ff;
   --reader-bg: #000000;
-  --reader-text: #f3e8ff;
-  --gradient-primary: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
-  --gradient-glow: linear-gradient(135deg, #a855f7 0%, #00e5ff 100%);
-  --gradient-card: linear-gradient(145deg, #0d0d14 0%, #171724 100%);
+  --reader-text: #ffffff;
+  --gradient-primary: linear-gradient(135deg, #00e5ff 0%, #0099ff 100%);
+  --gradient-glow: linear-gradient(135deg, #00e5ff 0%, #a855f7 100%);
+  --gradient-card: linear-gradient(145deg, #0a0a0f 0%, #12121a 100%);
 }
 
 /* Theme: Scholarly Light */
@@ -300,6 +300,34 @@ input, textarea, select {
 
 .btn-secondary:hover {
   background-color: var(--border-color);
+}
+
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-sidebar);
+  background-color: transparent;
+  text-align: left;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  width: 100%;
+}
+
+.sidebar-btn:hover {
+  color: var(--text-sidebar-active);
+  background-color: var(--bg-card-hover);
+}
+
+.sidebar-btn.active {
+  color: #ffffff;
+  background: var(--gradient-primary);
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 
 /* ==========================================================================
