@@ -38,15 +38,18 @@ export default function AuthPage({ onLoginSuccess }) {
   };
 
   const handleGoogleSignIn = () => {
-    if (window.google?.accounts?.id) {
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const isValidClientId = googleClientId && !googleClientId.includes('placeholder') && googleClientId.includes('.apps.googleusercontent.com');
+
+    if (isValidClientId && window.google?.accounts?.id) {
       try {
         window.google.accounts.id.initialize({
-          client_id: "1056488791018-placeholder.apps.googleusercontent.com",
-          callback: () => {
+          client_id: googleClientId,
+          callback: (response) => {
             handleGoogleAccountSelect({
-              name: "Google Verified User",
+              name: "Google Account User",
               email: "user@gmail.com",
-              institution: "Google Scholar"
+              institution: "Academic Institution"
             });
           }
         });
