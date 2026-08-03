@@ -71,9 +71,9 @@ Welcome to **ResearchVault AI Chat Assistant**. How can I assist you with your r
   }
 
   if (query.includes("transformer") || query.includes("attention")) {
-    return `### 🤖 Transformer Architecture & Attention Mechanisms
+    return `Hello **${userName}**! 👋
 
-Hello **${userName}**! Here is a breakdown of the Transformer architecture:
+### 🤖 Transformer Architecture & Attention Mechanisms
 
 The **Transformer** architecture replaces recurrent neural networks (RNNs) with **Self-Attention Mechanisms**:
 
@@ -84,9 +84,11 @@ The **Transformer** architecture replaces recurrent neural networks (RNNs) with 
   }
 
   if (query.includes("literature review") || query.includes("methodology")) {
-    return `### 📚 Structured Literature Review Framework
+    return `Hello **${userName}**! 👋
 
-Great question, **${userName}**! When conducting a systematic academic literature review:
+### 📚 Structured Literature Review Framework
+
+When conducting a systematic academic literature review:
 
 - **1. Define Scope & Research Gaps**: Clearly state theoretical boundaries and unresolved empirical questions.
 - **2. Taxonomic Classification**: Group literature by methodology (e.g., qualitative vs. quantitative), framework models, and publication year.
@@ -94,9 +96,11 @@ Great question, **${userName}**! When conducting a systematic academic literatur
 - **4. Future Scope & Contribution**: Conclude with how your current work addresses identified gaps in existing literature.`;
   }
 
-  return `### 🔬 Academic Research Insights & Analysis
+  return `Hello **${userName}**! 👋
 
-Thank you for your inquiry, **${userName}**. Based on scholarly literature analysis:
+### 🔬 Academic Research Insights & Analysis
+
+Based on scholarly literature analysis:
 
 - **Theoretical Framework**: Academic rigor requires establishing testable hypotheses grounded in validated empirical methodologies.
 - **Data & Experimental Validity**: Ensure robust sample sizes, cross-validation metrics, and bias reduction controls.
@@ -152,9 +156,8 @@ export async function chatWithGemini(userMessage, chatHistory = [], userName = "
 You are ResearchVault AI Chat Engine, an expert academic advisor and friendly AI assistant.
 The researcher you are conversing with is named "${safeUserName}".
 
-IMPORTANT INSTRUCTION FOR GREETINGS AND INTERACTION:
-- If the user says "hi", "hello", "hey", "greetings", or asks how you are, respond with a warm, personalized greeting addressing them by their name "${safeUserName}" (e.g. "Hello ${safeUserName}! 👋 How can I help with your research today?").
-- Be helpful, conversational, encouraging, and clear.
+MANDATORY RESPONSE FORMATTING RULE:
+- You MUST ALWAYS start your response with a friendly greeting directly addressing the user by their name "${safeUserName}" (e.g. "Hello **${safeUserName}**! 👋") as the very first sentence, before continuing with your answer or explanation.
 
 Conversation History:
 ${historyText}

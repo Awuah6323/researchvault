@@ -100,7 +100,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                   <div>
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
                       <span className="badge">{item.resourceType}</span>
-                      {item.openAccess && <span className="badge" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>Open Access</span>}
+                      {item.openAccess && <span className="badge">Open Access</span>}
                     </div>
                     <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.15rem', fontWeight: 700 }}>{item.title}</h3>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>

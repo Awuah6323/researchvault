@@ -19,12 +19,12 @@ export default function ResourceCard({
               {resource.resourceType || 'Research Paper'}
             </span>
             {resource.openAccess && (
-              <span className="badge" style={{ backgroundColor: 'rgba(0, 255, 136, 0.15)', color: '#00ff88', borderColor: 'rgba(0, 255, 136, 0.3)' }}>
+              <span className="badge">
                 Open Access
               </span>
             )}
             {resource.pdfFileName && (
-              <span className="badge" style={{ backgroundColor: 'rgba(0, 229, 255, 0.15)', color: '#00e5ff', borderColor: 'rgba(0, 229, 255, 0.3)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span className="badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <FileCode size={12} /> PDF Attached
               </span>
             )}

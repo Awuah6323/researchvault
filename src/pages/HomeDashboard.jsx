@@ -20,21 +20,18 @@ export default function HomeDashboard({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       {/* Welcome Banner */}
-      <div style={{
+      <div className="glass-card-accent" style={{
         padding: '36px',
         borderRadius: '24px',
-        background: 'linear-gradient(135deg, rgba(16, 28, 21, 0.95) 0%, rgba(9, 16, 12, 0.98) 100%)',
-        border: '1px solid rgba(0, 255, 136, 0.25)',
-        color: '#ffffff',
+        color: 'var(--text-main)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        boxShadow: '0 12px 40px rgba(0, 255, 136, 0.1), 0 4px 16px rgba(0, 0, 0, 0.6)',
         position: 'relative',
         overflow: 'hidden'
       }}>
         <div style={{ maxWidth: '640px', zIndex: 10 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', backgroundColor: 'rgba(0, 255, 136, 0.12)', border: '1px solid rgba(0, 255, 136, 0.3)', fontSize: '0.8rem', fontWeight: 700, color: '#00ff88', marginBottom: '16px' }}>
+          <div className="badge" style={{ marginBottom: '16px' }}>
             <Sparkles size={14} /> Gemini 2.0 AI Research Vault
           </div>
           <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.4rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '12px' }}>
@@ -49,7 +46,7 @@ export default function HomeDashboard({
               <Plus size={18} />
               <span>Import Paper</span>
             </button>
-            <button onClick={() => onNavigate('search')} className="btn-secondary" style={{ backgroundColor: 'rgba(0, 255, 136, 0.08)', color: '#00ff88', borderColor: 'rgba(0, 255, 136, 0.3)' }}>
+            <button onClick={() => onNavigate('search')} className="btn-secondary">
               <Search size={18} />
               <span>Search Academic Sources</span>
             </button>
@@ -57,7 +54,7 @@ export default function HomeDashboard({
         </div>
 
         {/* Decorative badge */}
-        <div style={{ opacity: 0.08, color: '#00ff88', position: 'absolute', right: '-20px', bottom: '-30px' }}>
+        <div style={{ opacity: 0.08, color: 'var(--primary)', position: 'absolute', right: '-20px', bottom: '-30px' }}>
           <BookOpen size={260} />
         </div>
       </div>
