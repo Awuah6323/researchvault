@@ -16,7 +16,7 @@ import LiteratureSynthesis from './pages/LiteratureSynthesis';
 import ProfileSettings from './pages/ProfileSettings';
 import NotesManager from './pages/NotesManager';
 import AiChat from './pages/AiChat';
-import AuthGate from './pages/AuthGate';
+import AuthPage from './pages/AuthPage';
 
 import { storage } from './services/storage';
 
@@ -25,7 +25,7 @@ export default function App() {
   const [resources, setResources] = useState([]);
   const [categories, setCategories] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
-  const [theme, setTheme] = useState('dark-vault');
+  const [theme, setTheme] = useState('cyber-emerald');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals & Reader Active State
@@ -93,14 +93,20 @@ export default function App() {
   // Mandatory Authentication Gate Check
   if (!userProfile || !userProfile.isAuthenticated) {
     return (
-      <AuthGate
+      <AuthPage
         onLoginSuccess={(profile) => setUserProfile(profile)}
       />
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)' }}>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: 'var(--bg-main)',
+      color: 'var(--text-main)',
+      backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(0, 255, 136, 0.07) 0%, transparent 60%)',
+      backgroundAttachment: 'fixed'
+    }}>
       <Navbar
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}

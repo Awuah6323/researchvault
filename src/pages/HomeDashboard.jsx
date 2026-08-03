@@ -21,34 +21,35 @@ export default function HomeDashboard({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       {/* Welcome Banner */}
       <div style={{
-        padding: '32px',
+        padding: '36px',
         borderRadius: '24px',
-        background: 'linear-gradient(135deg, var(--primary), #1e1b4b)',
+        background: 'linear-gradient(135deg, rgba(16, 28, 21, 0.95) 0%, rgba(9, 16, 12, 0.98) 100%)',
+        border: '1px solid rgba(0, 255, 136, 0.25)',
         color: '#ffffff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        boxShadow: '0 10px 30px rgba(37, 99, 235, 0.25)',
+        boxShadow: '0 12px 40px rgba(0, 255, 136, 0.1), 0 4px 16px rgba(0, 0, 0, 0.6)',
         position: 'relative',
         overflow: 'hidden'
       }}>
-        <div style={{ maxWidth: '600px', zIndex: 10 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', backgroundColor: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(8px)', fontSize: '0.8rem', fontWeight: 600, marginBottom: '14px' }}>
+        <div style={{ maxWidth: '640px', zIndex: 10 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', backgroundColor: 'rgba(0, 255, 136, 0.12)', border: '1px solid rgba(0, 255, 136, 0.3)', fontSize: '0.8rem', fontWeight: 700, color: '#00ff88', marginBottom: '16px' }}>
             <Sparkles size={14} /> Gemini 2.0 AI Research Vault
           </div>
-          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '10px' }}>
-            Welcome back, {userProfile?.name || 'Researcher'}
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.4rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '12px' }}>
+            Welcome back, <span className="text-gradient-emerald">{userProfile?.name || 'Researcher'}</span>
           </h1>
-          <p style={{ fontSize: '0.95rem', opacity: 0.9, lineHeight: 1.5, marginBottom: '20px' }}>
+          <p style={{ fontSize: '0.98rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '22px' }}>
             {userProfile?.institution || 'Stanford University'} • {userProfile?.fieldOfStudy || 'Computer Science'}. Access your literature library, synthesize papers with Gemini AI, and format instant citations.
           </p>
 
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <button onClick={onOpenAddModal} className="btn-primary" style={{ backgroundColor: '#ffffff', color: 'var(--primary)', border: 'none' }}>
+          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+            <button onClick={onOpenAddModal} className="btn-primary">
               <Plus size={18} />
               <span>Import Paper</span>
             </button>
-            <button onClick={() => onNavigate('search')} className="btn-secondary" style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#fff', borderColor: 'rgba(255, 255, 255, 0.3)' }}>
+            <button onClick={() => onNavigate('search')} className="btn-secondary" style={{ backgroundColor: 'rgba(0, 255, 136, 0.08)', color: '#00ff88', borderColor: 'rgba(0, 255, 136, 0.3)' }}>
               <Search size={18} />
               <span>Search Academic Sources</span>
             </button>
@@ -56,8 +57,8 @@ export default function HomeDashboard({
         </div>
 
         {/* Decorative badge */}
-        <div style={{ opacity: 0.15, position: 'absolute', right: '-20px', bottom: '-30px' }}>
-          <BookOpen size={240} />
+        <div style={{ opacity: 0.08, color: '#00ff88', position: 'absolute', right: '-20px', bottom: '-30px' }}>
+          <BookOpen size={260} />
         </div>
       </div>
 

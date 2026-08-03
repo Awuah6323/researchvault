@@ -12,11 +12,11 @@ export default function Navbar({
   onLogout
 }) {
   const themes = [
-    { id: 'scholarly-light', label: 'Scholarly Light' },
+    { id: 'cyber-emerald', label: '⚡ Cyber Emerald (Green/Black)' },
     { id: 'dark-vault', label: 'Dark Vault' },
+    { id: 'scholarly-light', label: 'Scholarly Light' },
     { id: 'warm-sepia', label: 'Warm Sepia' },
-    { id: 'midnight-oled', label: 'Midnight OLED' },
-    { id: 'emerald-academic', label: 'Emerald Academic' }
+    { id: 'midnight-oled', label: 'Midnight OLED' }
   ];
 
   return (
@@ -25,12 +25,12 @@ export default function Navbar({
       top: 0,
       zIndex: 40,
       backgroundColor: 'var(--header-bg)',
-      backdropFilter: 'blur(12px)',
+      backdropFilter: 'blur(16px)',
       borderBottom: '1px solid var(--border-color)',
       padding: '12px 24px'
     }}>
       <div style={{
-        maxContent: '1280px',
+        maxWidth: '1440px',
         margin: '0 auto',
         display: 'flex',
         alignItems: 'center',
@@ -43,24 +43,24 @@ export default function Navbar({
           style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
         >
           <div style={{
-            width: '40px',
-            height: '40px',
+            width: '42px',
+            height: '42px',
             borderRadius: '12px',
-            background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
+            background: 'linear-gradient(135deg, #00ff88 0%, #10b981 50%, #059669 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#fff',
-            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+            color: '#03140a',
+            boxShadow: '0 0 20px rgba(0, 255, 136, 0.4)'
           }}>
-            <BookOpen size={22} />
+            <BookOpen size={24} />
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.5px', color: 'var(--text-main)' }}>
-              Research<span style={{ color: 'var(--primary)' }}>Vault</span>
+            <div style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.5px', color: 'var(--text-main)' }}>
+              Research<span className="text-gradient-emerald">Vault</span>
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-              Academic Literature Engine
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.5px' }}>
+              ACADEMIC LITERATURE ENGINE
             </div>
           </div>
         </div>
