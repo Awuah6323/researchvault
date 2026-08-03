@@ -16,6 +16,7 @@ import LiteratureSynthesis from './pages/LiteratureSynthesis';
 import ProfileSettings from './pages/ProfileSettings';
 import NotesManager from './pages/NotesManager';
 import AiChat from './pages/AiChat';
+import AuthGate from './pages/AuthGate';
 
 import { storage } from './services/storage';
 
@@ -23,13 +24,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [resources, setResources] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [userProfile, setUserProfile] = useState({
-    name: "Scholar User",
-    email: "user@researchvault.app",
-    institution: "Academic Institution",
-    fieldOfStudy: "Research & Development",
-    researchInterests: "Literature Review, Data Analysis"
-  });
+  const [userProfile, setUserProfile] = useState(null);
   const [theme, setTheme] = useState('dark-vault');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -43,7 +38,8 @@ export default function App() {
   useEffect(() => {
     setResources(storage.getResources());
     setCategories(storage.getCategories());
-    setUserProfile(storage.getProfile());
+    const session = storage.getSession();
+    setUserProfile(session);
     const savedTheme = storage.getTheme();
     setTheme(savedTheme);
     document.documentElement.setAttribute('data-theme', savedTheme);
@@ -90,9 +86,18 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    const defaultProf = storage.logoutUser();
-    setUserProfile(defaultProf);
+    storage.logoutUser();
+    setUserProfile(null);
   };
+
+  // Mandatory Authentication Gate Check
+  if (!userProfile || !userProfile.isAuthenticated) {
+    return (
+      <AuthGate
+        onLoginSuccess={(profile) => setUserProfile(profile)}
+      />
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)' }}>
@@ -184,6 +189,7 @@ export default function App() {
               onSaveProfile={handleSaveProfile}
               resources={resources}
               onImportBackup={handleImportBackup}
+              onLogout={handleLogout}
             />
           )}
         </main>

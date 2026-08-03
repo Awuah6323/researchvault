@@ -215,6 +215,19 @@ export const storage = {
     return user;
   },
 
+  loginWithGoogle(email = 'alex.rivera@stanford.edu', name = 'Alex Rivera', institution = 'Stanford University') {
+    const googleUser = {
+      id: Date.now(),
+      name,
+      email,
+      institution,
+      fieldOfStudy: 'Computer Science & AI',
+      researchInterests: 'Deep Learning, Neural Networks'
+    };
+    this.saveSession(googleUser);
+    return googleUser;
+  },
+
   saveSession(user) {
     const profile = {
       name: user.name,
@@ -222,6 +235,7 @@ export const storage = {
       institution: user.institution || 'Academic Institution',
       fieldOfStudy: user.fieldOfStudy || 'General Research',
       researchInterests: user.researchInterests || 'Literature Review',
+      isAuthenticated: true,
       isGuest: false
     };
     localStorage.setItem(KEYS.SESSION, JSON.stringify(profile));
@@ -232,7 +246,8 @@ export const storage = {
     const data = localStorage.getItem(KEYS.SESSION);
     if (data) {
       try {
-        return JSON.parse(data);
+        const parsed = JSON.parse(data);
+        return parsed && parsed.isAuthenticated ? parsed : null;
       } catch (e) {
         return null;
       }
@@ -242,8 +257,8 @@ export const storage = {
 
   logoutUser() {
     localStorage.removeItem(KEYS.SESSION);
-    this.saveProfile(DEFAULT_PROFILE);
-    return DEFAULT_PROFILE;
+    localStorage.removeItem(KEYS.PROFILE);
+    return null;
   }
 };
 
