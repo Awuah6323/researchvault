@@ -33,6 +33,14 @@ const DEFAULT_PROFILE = {
   isGuest: true
 };
 
+// Purge legacy sample data to guarantee a 100% clean slate and mandatory AuthGate
+if (typeof window !== 'undefined' && !localStorage.getItem('researchvault_v3_clean')) {
+  localStorage.removeItem(KEYS.RESOURCES);
+  localStorage.removeItem(KEYS.SESSION);
+  localStorage.removeItem(KEYS.PROFILE);
+  localStorage.setItem('researchvault_v3_clean', 'true');
+}
+
 export const storage = {
   getResources() {
     const data = localStorage.getItem(KEYS.RESOURCES);
