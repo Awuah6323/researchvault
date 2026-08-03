@@ -24,13 +24,13 @@ export default function App() {
   const [resources, setResources] = useState([]);
   const [categories, setCategories] = useState([]);
   const [userProfile, setUserProfile] = useState({
-    name: "Alex Rivera",
-    email: "alex.rivera@stanford.edu",
-    institution: "Stanford University",
-    fieldOfStudy: "Computer Science & AI",
-    researchInterests: "Deep Learning, Natural Language Processing, Neural Networks"
+    name: "Scholar User",
+    email: "user@researchvault.app",
+    institution: "Academic Institution",
+    fieldOfStudy: "Research & Development",
+    researchInterests: "Literature Review, Data Analysis"
   });
-  const [theme, setTheme] = useState('scholarly-light');
+  const [theme, setTheme] = useState('dark-vault');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals & Reader Active State

@@ -124,22 +124,47 @@ export default function HomeDashboard({
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Recently Added Papers</h2>
-          <button onClick={() => onNavigate('library')} style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            View Library <ArrowRight size={14} />
-          </button>
+          {resources.length > 0 && (
+            <button onClick={() => onNavigate('library')} style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              View Library <ArrowRight size={14} />
+            </button>
+          )}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-          {recentlyAdded.map(r => (
-            <ResourceCard
-              key={r.id}
-              resource={r}
-              onOpenReader={onOpenReader}
-              onToggleFavorite={onToggleFavorite}
-              onShowCitation={onShowCitation}
-              onOpenAiSummarizer={onOpenAiSummarizer}
-            />
-          ))}
-        </div>
+
+        {resources.length === 0 ? (
+          <div className="glass-card" style={{ padding: '40px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <BookOpen size={28} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '6px' }}>Your Vault is Empty</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '420px', margin: '0 auto 16px' }}>
+                Search over 250M+ open-access papers, import DOIs, or attach local PDF files to build your personalized research library.
+              </p>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button onClick={() => onNavigate('search')} className="btn-primary" style={{ padding: '8px 18px', fontSize: '0.85rem' }}>
+                  <Search size={16} /> Search Papers
+                </button>
+                <button onClick={onOpenAddModal} className="btn-secondary" style={{ padding: '8px 18px', fontSize: '0.85rem' }}>
+                  <Plus size={16} /> Import Paper
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+            {recentlyAdded.map(r => (
+              <ResourceCard
+                key={r.id}
+                resource={r}
+                onOpenReader={onOpenReader}
+                onToggleFavorite={onToggleFavorite}
+                onShowCitation={onShowCitation}
+                onOpenAiSummarizer={onOpenAiSummarizer}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
