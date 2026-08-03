@@ -112,7 +112,7 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      <div style={{ display: 'flex', maxWidth: '1440px', margin: '0 auto' }}>
+      <div className="app-layout" style={{ display: 'flex', maxWidth: '1440px', margin: '0 auto' }}>
         <Sidebar
           activeTab={activeTab}
           onNavigate={(tab) => setActiveTab(tab)}
