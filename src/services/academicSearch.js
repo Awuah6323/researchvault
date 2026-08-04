@@ -1,5 +1,4 @@
-// Google Scholar Style Academic Search Engine (OpenAlex & Crossref API Integration)
-
+// Sample Local Catalog for Offline Fallback
 const SAMPLE_PAPERS = [
   {
     title: "Attention Is All You Need: Transformers in Modern AI",
@@ -49,25 +48,52 @@ export async function searchAcademicSources(query) {
   if (!query || !query.trim()) return [];
   const clean = query.trim();
 
-  // Determine publication date range (Default: last 10 years = 2016 to 2026, unless explicit year is in query)
-  const currentYear = new Date().getFullYear(); // 2026
-  const defaultStartYear = currentYear - 10; // 2016
+  // Determine publication date range (Default: last 10 years)
+  const currentYear = new Date().getFullYear();
+  const defaultStartYear = currentYear - 10;
   
-  // Detect if query contains an explicit historical 4-digit year (e.g. 1998, 2004, 2012)
+  // Detect custom year in query (e.g., 2018)
   const yearMatch = clean.match(/\b(19\d{2}|20[0-2]\d)\b/);
   const customYear = yearMatch ? parseInt(yearMatch[1], 10) : null;
 
   const startYear = customYear ? Math.min(customYear, defaultStartYear) : defaultStartYear;
   const endYear = customYear ? Math.max(customYear, currentYear) : currentYear;
 
-  try {
-    const isDoi = /^10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/.test(clean);
-    
-    // 1. OpenAlex API Query (Google Scholar style: English papers, 2016-2026 10-year window, sort by citations)
-    const openAlexUrl = isDoi
-      ? `https://api.openalex.org/works/https://doi.org/${clean}`
-      : `https://api.openalex.org/works?search=${encodeURIComponent(clean)}&filter=publication_year:${startYear}-${endYear},language:en&per_page=25&sort=cited_by_count:desc`;
+  // Google Scholar Style Parsing
+  const isDoi = /^10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/.test(clean);
+  
+  // Detect explicitly declared author search syntax (e.g. author:"Yoshua Bengio" or author:Bengio)
+  const authorMatch = clean.match(/^author:(?:"([^"]+)"|([^\s]+))/i);
+  const explicitAuthor = authorMatch ? (authorMatch[1] || authorMatch[2]) : null;
 
+  // Detect explicit title search syntax (e.g. title:"Deep Learning")
+  const titleMatch = clean.match(/^title:(?:"([^"]+)"|([^\s]+))/i);
+  const explicitTitle = titleMatch ? (titleMatch[1] || titleMatch[2]) : null;
+
+  // Clean pure text search string
+  let searchPhrase = clean;
+  if (explicitAuthor) searchPhrase = explicitAuthor;
+  if (explicitTitle) searchPhrase = explicitTitle;
+
+  // Wrap multi-word general queries in double quotes for phrase-matching precision
+  const formattedQuery = searchPhrase.includes(' ') && !searchPhrase.includes('"') 
+    ? `"${searchPhrase}"` 
+    : searchPhrase;
+
+  try {
+    let openAlexUrl = '';
+
+    if (isDoi) {
+      openAlexUrl = `https://api.openalex.org/works/https://doi.org/${clean}`;
+    } else if (explicitAuthor) {
+      // Use OpenAlex raw author byline filter for explicit author queries
+      openAlexUrl = `https://api.openalex.org/works?filter=raw_author_name.search:"${encodeURIComponent(explicitAuthor)}",publication_year:${startYear}-${endYear},language:en&per_page=25&sort=cited_by_count:desc`;
+    } else {
+      // General full-text/title query
+      openAlexUrl = `https://api.openalex.org/works?search=${encodeURIComponent(formattedQuery)}&filter=publication_year:${startYear}-${endYear},language:en&per_page=25&sort=cited_by_count:desc`;
+    }
+
+    // 1. Primary Query: OpenAlex API
     const res = await fetch(openAlexUrl);
     if (res.ok) {
       const data = await res.json();
@@ -84,8 +110,16 @@ export async function searchAcademicSources(query) {
       }
     }
 
-    // 2. Crossref API Fallback (Filtered to 10-year date range and English works)
-    const crossrefUrl = `https://api.crossref.org/works?query=${encodeURIComponent(clean)}&filter=from-pub-date:${startYear}-01-01,until-pub-date:${endYear}-12-31&rows=25`;
+    // 2. Fallback Query: Crossref API
+    let crossrefUrl = '';
+    if (explicitAuthor) {
+      crossrefUrl = `https://api.crossref.org/works?query.author=${encodeURIComponent(explicitAuthor)}&filter=from-pub-date:${startYear}-01-01,until-pub-date:${endYear}-12-31&rows=25`;
+    } else if (explicitTitle) {
+      crossrefUrl = `https://api.crossref.org/works?query.title=${encodeURIComponent(explicitTitle)}&filter=from-pub-date:${startYear}-01-01,until-pub-date:${endYear}-12-31&rows=25`;
+    } else {
+      crossrefUrl = `https://api.crossref.org/works?query=${encodeURIComponent(formattedQuery)}&filter=from-pub-date:${startYear}-01-01,until-pub-date:${endYear}-12-31&rows=25`;
+    }
+
     const crRes = await fetch(crossrefUrl);
     if (crRes.ok) {
       const crData = await crRes.json();
@@ -95,11 +129,11 @@ export async function searchAcademicSources(query) {
       }
     }
   } catch (err) {
-    console.warn("Academic API live query error, using enhanced local catalog.", err);
+    console.warn("Academic API live query error, using local fallback dataset.", err);
   }
 
-  // 3. Fallback to curated catalog matching title, author names, or category
-  const lower = clean.toLowerCase();
+  // 3. Fallback: Local Curated Catalog
+  const lower = searchPhrase.toLowerCase();
   return SAMPLE_PAPERS.filter(p => 
     (customYear ? true : p.publicationYear >= startYear) &&
     (p.title.toLowerCase().includes(lower) || 
@@ -108,6 +142,8 @@ export async function searchAcademicSources(query) {
      clean.length < 3)
   );
 }
+
+// Helper Utilities & Parsing Methods
 
 function extractDomain(urlStr) {
   if (!urlStr) return '';
@@ -137,7 +173,9 @@ function parseOpenAlexItem(item, queryClean) {
     authors,
     publicationYear: item.publication_year || 2024,
     journalOrVenue: journal,
-    abstractText: item.abstract_inverted_index ? reconstructAbstract(item.abstract_inverted_index) : `Research publication by ${authors} published in ${journal} (${item.publication_year || 2024}).`,
+    abstractText: item.abstract_inverted_index 
+      ? reconstructAbstract(item.abstract_inverted_index) 
+      : `Research publication by ${authors} published in ${journal} (${item.publication_year || 2024}).`,
     doi: doi || queryClean,
     sourceUrl: primaryLoc.landing_page_url || (doi ? `https://doi.org/${doi}` : 'https://openalex.org'),
     downloadUrl: pdfUrl,
@@ -168,7 +206,9 @@ function parseCrossrefItem(item, queryClean) {
     authors,
     publicationYear: year,
     journalOrVenue: journal,
-    abstractText: item.abstract ? item.abstract.replace(/<[^>]*>?/gm, '') : `Academic paper authored by ${authors} in ${journal} (${year}).`,
+    abstractText: item.abstract 
+      ? item.abstract.replace(/<[^>]*>?/gm, '') 
+      : `Academic paper authored by ${authors} in ${journal} (${year}).`,
     doi,
     sourceUrl: item.URL || `https://doi.org/${doi}`,
     downloadUrl: pdfUrl,
@@ -198,5 +238,6 @@ function suggestCategory(title) {
   if (t.includes('security') || t.includes('crypto') || t.includes('privacy')) return 'Cybersecurity';
   if (t.includes('data') || t.includes('stat') || t.includes('graph')) return 'Data Science';
   if (t.includes('cloud') || t.includes('distributed') || t.includes('network')) return 'Cloud Computing';
+  if (t.includes('human') || t.includes('interface') || t.includes('interaction') || t.includes('hci')) return 'Human-Computer Interaction';
   return 'Computer Science';
 }
