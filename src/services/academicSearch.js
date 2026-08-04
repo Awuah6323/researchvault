@@ -1,4 +1,5 @@
-// Sample Local Catalog for Offline Fallback
+// Academic Search Engine Service (OpenAlex & Crossref API Integration)
+
 const SAMPLE_PAPERS = [
   {
     title: "Attention Is All You Need: Transformers in Modern AI",
@@ -52,17 +53,17 @@ export async function searchAcademicSources(query) {
   const currentYear = new Date().getFullYear();
   const defaultStartYear = currentYear - 10;
   
-  // Detect custom year in query (e.g., 2018)
+  // Detect custom year in query (e.g. 2018)
   const yearMatch = clean.match(/\b(19\d{2}|20[0-2]\d)\b/);
   const customYear = yearMatch ? parseInt(yearMatch[1], 10) : null;
 
   const startYear = customYear ? Math.min(customYear, defaultStartYear) : defaultStartYear;
   const endYear = customYear ? Math.max(customYear, currentYear) : currentYear;
 
-  // Google Scholar Style Parsing
+  // Check DOI pattern
   const isDoi = /^10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/.test(clean);
   
-  // Detect explicitly declared author search syntax (e.g. author:"Yoshua Bengio" or author:Bengio)
+  // Detect explicit author search syntax (e.g. author:"Yoshua Bengio" or author:Bengio)
   const authorMatch = clean.match(/^author:(?:"([^"]+)"|([^\s]+))/i);
   const explicitAuthor = authorMatch ? (authorMatch[1] || authorMatch[2]) : null;
 
@@ -70,12 +71,10 @@ export async function searchAcademicSources(query) {
   const titleMatch = clean.match(/^title:(?:"([^"]+)"|([^\s]+))/i);
   const explicitTitle = titleMatch ? (titleMatch[1] || titleMatch[2]) : null;
 
-  // Clean pure text search string
   let searchPhrase = clean;
   if (explicitAuthor) searchPhrase = explicitAuthor;
   if (explicitTitle) searchPhrase = explicitTitle;
 
-  // Wrap multi-word general queries in double quotes for phrase-matching precision
   const formattedQuery = searchPhrase.includes(' ') && !searchPhrase.includes('"') 
     ? `"${searchPhrase}"` 
     : searchPhrase;
@@ -86,14 +85,12 @@ export async function searchAcademicSources(query) {
     if (isDoi) {
       openAlexUrl = `https://api.openalex.org/works/https://doi.org/${clean}`;
     } else if (explicitAuthor) {
-      // Use OpenAlex raw author byline filter for explicit author queries
       openAlexUrl = `https://api.openalex.org/works?filter=raw_author_name.search:"${encodeURIComponent(explicitAuthor)}",publication_year:${startYear}-${endYear},language:en&per_page=25&sort=cited_by_count:desc`;
     } else {
-      // General full-text/title query
       openAlexUrl = `https://api.openalex.org/works?search=${encodeURIComponent(formattedQuery)}&filter=publication_year:${startYear}-${endYear},language:en&per_page=25&sort=cited_by_count:desc`;
     }
 
-    // 1. Primary Query: OpenAlex API
+    // 1. OpenAlex Query
     const res = await fetch(openAlexUrl);
     if (res.ok) {
       const data = await res.json();
@@ -110,7 +107,7 @@ export async function searchAcademicSources(query) {
       }
     }
 
-    // 2. Fallback Query: Crossref API
+    // 2. Crossref Query
     let crossrefUrl = '';
     if (explicitAuthor) {
       crossrefUrl = `https://api.crossref.org/works?query.author=${encodeURIComponent(explicitAuthor)}&filter=from-pub-date:${startYear}-01-01,until-pub-date:${endYear}-12-31&rows=25`;
@@ -142,8 +139,6 @@ export async function searchAcademicSources(query) {
      clean.length < 3)
   );
 }
-
-// Helper Utilities & Parsing Methods
 
 function extractDomain(urlStr) {
   if (!urlStr) return '';
