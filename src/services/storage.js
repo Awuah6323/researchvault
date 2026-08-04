@@ -147,7 +147,7 @@ export const storage = {
 
   getTheme() {
     const saved = localStorage.getItem(KEYS.THEME);
-    if (!saved || saved === 'dark-vault') return 'cyber-emerald';
+    if (!saved || saved === 'dark-vault') return 'warm-sepia';
     return saved;
   },
 

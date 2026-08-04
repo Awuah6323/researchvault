@@ -3,33 +3,33 @@
    ========================================================================== */
 
 :root {
-  /* Default Theme: Cyber Emerald (Green & Onyx Black) */
-  --bg-main: #050807;
-  --bg-card: #0d1510;
-  --bg-card-hover: #14221a;
-  --bg-sidebar: #09100c;
-  --text-sidebar: #759a85;
-  --text-sidebar-active: #00ff88;
-  --text-main: #f0fdf4;
-  --text-muted: #82a493;
-  --primary: #00ff88;
-  --primary-hover: #10b981;
-  --primary-light: #06271b;
-  --primary-text: #00ff88;
-  --secondary: #00e5ff;
-  --accent-gold: #34d399;
-  --accent-gold-light: #062d1f;
-  --border-color: #1a3325;
-  --border-focus: #00ff88;
-  --card-shadow: 0 8px 32px 0 rgba(0, 255, 136, 0.12), 0 2px 10px rgba(0, 0, 0, 0.7);
-  --header-bg: rgba(9, 16, 12, 0.85);
-  --badge-bg: rgba(0, 255, 136, 0.12);
-  --badge-text: #00ff88;
-  --reader-bg: #09100c;
-  --reader-text: #ecfdf5;
-  --gradient-primary: linear-gradient(135deg, #00ff88 0%, #10b981 100%);
-  --gradient-glow: linear-gradient(135deg, #00ff88 0%, #00e5ff 100%);
-  --gradient-card: linear-gradient(145deg, rgba(16, 28, 21, 0.9) 0%, rgba(9, 16, 12, 0.95) 100%);
+  /* Default Theme: Warm Sepia */
+  --bg-main: #f5efe6;
+  --bg-card: #fffcf7;
+  --bg-card-hover: #eae3d2;
+  --bg-sidebar: #2c221e;
+  --text-sidebar: #a89f91;
+  --text-sidebar-active: #f5efe6;
+  --text-main: #2c1d11;
+  --text-muted: #78665c;
+  --primary: #c25e00;
+  --primary-hover: #9e4900;
+  --primary-light: #fdf5e6;
+  --primary-text: #5c2c0c;
+  --secondary: #a0522d;
+  --accent-gold: #b8860b;
+  --accent-gold-light: #fdf5e6;
+  --border-color: #e6dac8;
+  --border-focus: #c25e00;
+  --card-shadow: 0 4px 18px rgba(139, 69, 19, 0.1);
+  --header-bg: rgba(255, 252, 247, 0.9);
+  --badge-bg: #e8d8c8;
+  --badge-text: #5c2c0c;
+  --reader-bg: #faf0e6;
+  --reader-text: #2c1d11;
+  --gradient-primary: linear-gradient(135deg, #c25e00 0%, #8b4513 100%);
+  --gradient-glow: linear-gradient(135deg, #c25e00 0%, #b8860b 100%);
+  --gradient-card: linear-gradient(145deg, #fffcf7 0%, #f5efe6 100%);
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-serif: 'Playfair Display', Georgia, serif;
   --font-mono: 'JetBrains Mono', monospace;

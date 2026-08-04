@@ -25,7 +25,7 @@ export default function App() {
   const [resources, setResources] = useState([]);
   const [categories, setCategories] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
-  const [theme, setTheme] = useState('cyber-emerald');
+  const [theme, setTheme] = useState('warm-sepia');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals & Reader Active State
