@@ -39,7 +39,7 @@ export default function Navbar({
         {/* Brand Logo */}
         <div 
           onClick={() => onNavigate('home')}
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', flexShrink: 0 }}
         >
           <div style={{
             width: '42px',
@@ -50,15 +50,16 @@ export default function Navbar({
             alignItems: 'center',
             justifyContent: 'center',
             color: '#03140a',
-            boxShadow: '0 0 20px rgba(0, 255, 136, 0.4)'
+            boxShadow: '0 0 20px rgba(0, 255, 136, 0.4)',
+            flexShrink: 0
           }}>
             <BookOpen size={24} />
           </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.5px', color: 'var(--text-main)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.5px', color: 'var(--text-main)', lineHeight: 1.1 }}>
               Research<span className="text-gradient-emerald">Vault</span>
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.5px' }}>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.8px', marginTop: '3px' }}>
               ACADEMIC LITERATURE ENGINE
             </div>
           </div>
