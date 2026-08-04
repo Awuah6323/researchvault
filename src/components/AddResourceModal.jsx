@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Link2, FileText, Search, Loader2, UploadCloud, Check } from 'lucide-react';
 import { searchAcademicSources } from '../services/academicSearch';
+import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 
 export default function AddResourceModal({ onClose, onAdd, categories, onNavigateSearch }) {
   const [activeTab, setActiveTab] = useState('upload'); // upload, doi, manual
@@ -18,16 +19,34 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
   const [pdfFileName, setPdfFileName] = useState('');
   const [pdfFileData, setPdfFileData] = useState('');
   const [readingFile, setReadingFile] = useState(false);
+  const [extractionStatus, setExtractionStatus] = useState('');
 
-  const handlePdfChange = (e) => {
+  const handlePdfChange = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
       setPdfFileName(file.name);
       setReadingFile(true);
+      setExtractionStatus('Extracting text content from PDF...');
+
       if (!title) {
         const cleanName = file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ');
         setTitle(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
       }
+
+      // Extract real text from the PDF file for Gemini AI
+      try {
+        const extractedText = await extractTextFromPdfFile(file);
+        if (extractedText && extractedText.trim()) {
+          setAbstractText(extractedText.trim());
+          setExtractionStatus('Extracted text content from PDF successfully!');
+        } else {
+          setExtractionStatus('PDF attached.');
+        }
+      } catch (err) {
+        console.warn("PDF extraction warning:", err);
+        setExtractionStatus('PDF attached.');
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
         setPdfFileData(event.target.result);
@@ -196,8 +215,8 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '4px' }}>
                 {pdfFileName ? `Selected: ${pdfFileName}` : 'Tap or Click to Select PDF file'}
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                {pdfFileName ? 'File attached successfully! Adjust title or category below.' : 'Supports PDF documents from your Phone, Tablet, Laptop, or Cloud Storage.'}
+              <div style={{ fontSize: '0.75rem', color: extractionStatus.includes('successfully') ? '#10b981' : 'var(--text-muted)' }}>
+                {extractionStatus || (pdfFileName ? 'File attached! Text extracted for AI analysis below.' : 'Supports PDF documents from your Phone, Tablet, Laptop, or Cloud Storage.')}
               </div>
             </label>
 
