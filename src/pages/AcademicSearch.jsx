@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Plus, ExternalLink, Sparkles, Check } from 'lucide-react';
+import { Search, Loader2, Plus, ExternalLink, Sparkles, Check, Download } from 'lucide-react';
 import { searchAcademicSources } from '../services/academicSearch';
 
 export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSummarizer }) {
@@ -129,6 +129,17 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                     <button onClick={() => onOpenAiSummarizer(item)} style={{ color: 'var(--primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                       <Sparkles size={14} /> AI Summary
                     </button>
+                    {(item.downloadUrl || item.sourceUrl) && (
+                      <a 
+                        href={item.downloadUrl || item.sourceUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{ color: '#10b981', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
+                        title="Download or View PDF Document"
+                      >
+                        <Download size={14} /> Download PDF
+                      </a>
+                    )}
                     {item.sourceUrl && (
                       <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
                         Source Link <ExternalLink size={14} />

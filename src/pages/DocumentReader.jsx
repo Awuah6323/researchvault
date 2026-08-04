@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Sparkles, Bookmark, FileText, ChevronLeft, ChevronRight, Plus, Send } from 'lucide-react';
+import { ArrowLeft, Sparkles, Bookmark, FileText, ChevronLeft, ChevronRight, Plus, Send, Download } from 'lucide-react';
 import { storage } from '../services/storage';
 
 export default function DocumentReader({ resource, onClose, onOpenAiSummarizer }) {
@@ -70,6 +70,19 @@ export default function DocumentReader({ resource, onClose, onOpenAiSummarizer }
             <Sparkles size={16} />
             <span>AI Assistant</span>
           </button>
+
+          {(resource.pdfFileData || resource.downloadUrl || resource.sourceUrl) && (
+            <a
+              href={resource.pdfFileData || resource.downloadUrl || resource.sourceUrl}
+              download={resource.pdfFileData ? (resource.pdfFileName || `${resource.title}.pdf`) : undefined}
+              target={resource.pdfFileData ? undefined : "_blank"}
+              rel={resource.pdfFileData ? undefined : "noopener noreferrer"}
+              title="Download PDF Document"
+              style={{ padding: '8px', color: '#10b981', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Download size={18} />
+            </a>
+          )}
 
           <button onClick={() => setShowNotesDrawer(!showNotesDrawer)} style={{ padding: '8px', color: 'inherit' }}>
             <FileText size={18} />

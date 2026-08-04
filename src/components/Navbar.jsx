@@ -151,7 +151,7 @@ export default function Navbar({
               className="btn-primary"
               style={{ padding: '6px 12px', fontSize: '0.8rem' }}
             >
-              Sign In / Switch
+              {userProfile?.isAuthenticated ? 'Switch Account' : 'Sign In'}
             </button>
           </div>
         </div>

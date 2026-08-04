@@ -127,6 +127,20 @@ export default function ResourceCard({
               <Sparkles size={16} />
             </button>
 
+            {/* Download PDF Button */}
+            {(resource.pdfFileData || resource.downloadUrl || resource.sourceUrl) && (
+              <a
+                href={resource.pdfFileData || resource.downloadUrl || resource.sourceUrl}
+                download={resource.pdfFileData ? (resource.pdfFileName || `${resource.title}.pdf`) : undefined}
+                target={resource.pdfFileData ? undefined : "_blank"}
+                rel={resource.pdfFileData ? undefined : "noopener noreferrer"}
+                title="Download PDF File"
+                style={{ padding: '6px', borderRadius: '8px', color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+              >
+                <Download size={16} />
+              </a>
+            )}
+
             {/* Citation Format */}
             <button 
               onClick={() => onShowCitation(resource)}
