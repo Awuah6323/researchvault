@@ -17,11 +17,13 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
   const [abstractText, setAbstractText] = useState('');
   const [pdfFileName, setPdfFileName] = useState('');
   const [pdfFileData, setPdfFileData] = useState('');
+  const [readingFile, setReadingFile] = useState(false);
 
   const handlePdfChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
       setPdfFileName(file.name);
+      setReadingFile(true);
       if (!title) {
         const cleanName = file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ');
         setTitle(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
@@ -29,6 +31,10 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
       const reader = new FileReader();
       reader.onload = (event) => {
         setPdfFileData(event.target.result);
+        setReadingFile(false);
+      };
+      reader.onerror = () => {
+        setReadingFile(false);
       };
       reader.readAsDataURL(file);
     }

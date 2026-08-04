@@ -34,6 +34,38 @@ export default function DocumentReader({ resource, onClose, onOpenAiSummarizer }
 
   const themeColors = getReaderColors();
 
+  const [pdfBlobUrl, setPdfBlobUrl] = useState('');
+
+  useEffect(() => {
+    let createdUrl = null;
+    if (resource.pdfFileData) {
+      if (resource.pdfFileData.startsWith('data:')) {
+        try {
+          const parts = resource.pdfFileData.split(';base64,');
+          const contentType = parts[0].split(':')[1] || 'application/pdf';
+          const raw = window.atob(parts[1]);
+          const uInt8Array = new Uint8Array(raw.length);
+          for (let i = 0; i < raw.length; i++) {
+            uInt8Array[i] = raw.charCodeAt(i);
+          }
+          const blob = new Blob([uInt8Array], { type: contentType });
+          createdUrl = URL.createObjectURL(blob);
+          setPdfBlobUrl(createdUrl);
+        } catch (err) {
+          console.error("Base64 PDF conversion error:", err);
+          setPdfBlobUrl(resource.pdfFileData);
+        }
+      } else {
+        setPdfBlobUrl(resource.pdfFileData);
+      }
+    } else if (resource.downloadUrl) {
+      setPdfBlobUrl(resource.downloadUrl);
+    }
+    return () => {
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [resource.pdfFileData, resource.downloadUrl]);
+
   return (
     <div style={{
       position: 'fixed',
@@ -71,12 +103,12 @@ export default function DocumentReader({ resource, onClose, onOpenAiSummarizer }
             <span>AI Assistant</span>
           </button>
 
-          {(resource.pdfFileData || resource.downloadUrl || resource.sourceUrl) && (
+          {(pdfBlobUrl || resource.pdfFileData || resource.downloadUrl || resource.sourceUrl) && (
             <a
-              href={resource.pdfFileData || resource.downloadUrl || resource.sourceUrl}
-              download={resource.pdfFileData ? (resource.pdfFileName || `${resource.title}.pdf`) : undefined}
-              target={resource.pdfFileData ? undefined : "_blank"}
-              rel={resource.pdfFileData ? undefined : "noopener noreferrer"}
+              href={pdfBlobUrl || resource.pdfFileData || resource.downloadUrl || resource.sourceUrl}
+              download={resource.pdfFileName || `${resource.title}.pdf`}
+              target={pdfBlobUrl ? undefined : "_blank"}
+              rel={pdfBlobUrl ? undefined : "noopener noreferrer"}
               title="Download PDF Document"
               style={{ padding: '8px', color: '#10b981', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             >
@@ -107,15 +139,23 @@ export default function DocumentReader({ resource, onClose, onOpenAiSummarizer }
         <div style={{ fontSize: '0.95rem', fontWeight: 600, opacity: 0.8, marginBottom: '16px' }}>{resource.authors} ({resource.publicationYear})</div>
         <div style={{ fontSize: '0.85rem', color: 'var(--primary)', marginBottom: '24px' }}>Published in: {resource.journal || 'Academic Repository'}</div>
 
-        {resource.pdfFileData ? (
-          <div style={{ height: '650px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', marginBottom: '24px' }}>
-            <iframe
-              src={resource.pdfFileData}
-              title={resource.title}
+        {(pdfBlobUrl || resource.pdfFileData || resource.downloadUrl) ? (
+          <div style={{ height: '700px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', marginBottom: '24px', backgroundColor: '#1e293b' }}>
+            <object
+              data={pdfBlobUrl || resource.pdfFileData || resource.downloadUrl}
+              type="application/pdf"
               width="100%"
               height="100%"
               style={{ border: 'none' }}
-            />
+            >
+              <iframe
+                src={pdfBlobUrl || resource.pdfFileData || resource.downloadUrl}
+                title={resource.title}
+                width="100%"
+                height="100%"
+                style={{ border: 'none' }}
+              />
+            </object>
           </div>
         ) : (
           <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: '20px', marginBottom: '24px', fontFamily: 'var(--font-serif)', fontSize: `${fontSize}px`, lineHeight: 1.7 }}>

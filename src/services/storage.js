@@ -58,7 +58,21 @@ export const storage = {
   },
 
   saveResources(resources) {
-    localStorage.setItem(KEYS.RESOURCES, JSON.stringify(resources));
+    try {
+      localStorage.setItem(KEYS.RESOURCES, JSON.stringify(resources));
+    } catch (e) {
+      console.warn("LocalStorage quota limit reached. Saving lightweight paper metadata.", e);
+      // Fallback for large PDF files (> 2-3MB) to prevent quota crashes
+      const lightResources = resources.map(r => ({
+        ...r,
+        pdfFileData: (r.pdfFileData && r.pdfFileData.length > 500000) ? '' : r.pdfFileData
+      }));
+      try {
+        localStorage.setItem(KEYS.RESOURCES, JSON.stringify(lightResources));
+      } catch (err) {
+        console.error("Unable to save to localStorage:", err);
+      }
+    }
   },
 
   addResource(resource) {
