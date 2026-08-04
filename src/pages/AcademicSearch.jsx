@@ -157,38 +157,61 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
           {sortedResults.map((item, idx) => {
             const isSaved = savedMap[item.doi || item.title];
             return (
-              <div key={idx} className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
-                  <div style={{ flex: 1, minWidth: '220px' }}>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                      <span className="badge">{item.resourceType}</span>
-                      {item.openAccess && <span className="badge" style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>Open Access</span>}
-                      {item.citationCount > 0 && (
-                        <span className="badge" style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary-text)' }}>
-                          <Award size={12} style={{ display: 'inline', marginRight: '3px' }} />
-                          {item.citationCount.toLocaleString()} Citations
-                        </span>
-                      )}
-                    </div>
-                    <h3 
-                      onClick={() => setPreviewPaper(item)}
-                      style={{ fontFamily: 'var(--font-serif)', fontSize: '1.15rem', fontWeight: 700, cursor: 'pointer', color: 'var(--text-main)' }}
-                    >
-                      {item.title}
-                    </h3>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      <strong>{item.authors}</strong> • {item.publicationYear} • <span style={{ color: 'var(--primary)' }}>{item.journalOrVenue}</span>
-                    </div>
+              <div key={idx} className="glass-card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '12px', borderLeft: '4px solid var(--primary)' }}>
+                {/* Google Scholar Style Header Line: [PDF] domain badge + Paper Title */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                    {(item.downloadUrl || item.openAccess) && (
+                      <a 
+                        href={item.downloadUrl || item.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="badge"
+                        style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700, textDecoration: 'none' }}
+                      >
+                        [PDF] {item.pdfDomain || 'scholar.org'}
+                      </a>
+                    )}
+                    <span className="badge">{item.resourceType}</span>
+                    <span className="badge" style={{ backgroundColor: 'var(--bg-main)' }}>{item.suggestedCategory}</span>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                  <h3 
+                    onClick={() => setPreviewPaper(item)}
+                    style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', fontWeight: 800, cursor: 'pointer', color: 'var(--text-main)', lineHeight: 1.35 }}
+                  >
+                    {item.title}
+                  </h3>
+
+                  {/* Google Scholar Author & Venue Line */}
+                  <div style={{ fontSize: '0.86rem', color: '#10b981', marginTop: '6px', fontWeight: 600 }}>
+                    <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{item.authors}</span> — <span style={{ color: 'var(--text-muted)' }}>{item.journalOrVenue}, {item.publicationYear}</span> — <span style={{ color: 'var(--primary)' }}>{item.pdfDomain || 'openalex.org'}</span>
+                  </div>
+                </div>
+
+                {/* Content Abstract Snippet */}
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {item.abstractText}
+                </p>
+
+                {/* Google Scholar Action Footer: Citation Counter, DOI, Preview, Save, AI Summary & Download */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Award size={14} />
+                      Cited by {item.citationCount.toLocaleString()}
+                    </span>
+                    <span style={{ color: 'var(--text-muted)' }}>DOI: {item.doi || 'N/A'}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <button
                       onClick={() => setPreviewPaper(item)}
                       className="btn-secondary"
-                      style={{ padding: '8px 14px', fontSize: '0.85rem' }}
-                      title="Preview paper details and document summary before saving"
+                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                      title="Preview paper details and document summary"
                     >
-                      <Eye size={16} />
+                      <Eye size={14} />
                       <span>Preview</span>
                     </button>
 
@@ -196,38 +219,27 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                       onClick={() => handleSave(item)}
                       className={isSaved ? "btn-secondary" : "btn-primary"}
                       disabled={isSaved}
-                      style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                      style={{ padding: '6px 14px', fontSize: '0.8rem' }}
                     >
-                      {isSaved ? <Check size={16} /> : <Plus size={16} />}
-                      <span>{isSaved ? 'Saved' : 'Save to Library'}</span>
+                      {isSaved ? <Check size={14} /> : <Plus size={14} />}
+                      <span>{isSaved ? 'Saved' : 'Save to Vault'}</span>
                     </button>
-                  </div>
-                </div>
 
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                  {item.abstractText}
-                </p>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--border-color)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  <div>DOI: {item.doi || 'N/A'}</div>
-                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                    <button onClick={() => onOpenAiSummarizer(item)} style={{ color: 'var(--primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                      <Sparkles size={14} /> AI Summary
+                    <button onClick={() => onOpenAiSummarizer(item)} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>
+                      <Sparkles size={14} />
+                      <span>AI Summary</span>
                     </button>
+
                     {(item.downloadUrl || item.sourceUrl) && (
                       <a 
                         href={item.downloadUrl || item.sourceUrl} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        style={{ color: '#10b981', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
-                        title="Download or View PDF Document"
+                        className="btn-primary"
+                        style={{ padding: '6px 14px', fontSize: '0.8rem', textDecoration: 'none', backgroundColor: '#10b981', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                       >
-                        <Download size={14} /> Download PDF
-                      </a>
-                    )}
-                    {item.sourceUrl && (
-                      <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
-                        Source Link <ExternalLink size={14} />
+                        <Download size={14} />
+                        <span>Download PDF</span>
                       </a>
                     )}
                   </div>
