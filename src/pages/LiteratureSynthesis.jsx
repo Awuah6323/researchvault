@@ -97,7 +97,7 @@ export default function LiteratureSynthesis({ resources }) {
       </div>
 
       {/* Mode Switcher Tabs */}
-      <div style={{ display: 'flex', gap: '10px', backgroundColor: 'var(--bg-card)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)', width: 'fit-content' }}>
+      <div className="ai-toolbar" style={{ display: 'flex', gap: '10px', backgroundColor: 'var(--bg-card)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)', width: 'fit-content' }}>
         <button
           onClick={() => { setMode('synthesis'); setSelectedIds([]); setReviewResult(''); }}
           style={{
@@ -133,9 +133,9 @@ export default function LiteratureSynthesis({ resources }) {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+      <div className="synthesis-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
         {/* Left Column: Paper Selection */}
-        <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div className="glass-card ai-review-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
@@ -189,13 +189,13 @@ export default function LiteratureSynthesis({ resources }) {
         </div>
 
         {/* Right Column: Generated Report */}
-        <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div className="glass-card synthesis-output" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
               {mode === 'synthesis' ? 'Generated Synthesis Review' : 'Peer Review Report Output'}
             </h3>
             {reviewResult && (
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="action-button-group" style={{ display: 'flex', gap: '8px' }}>
                 <button 
                   onClick={() => {
                     navigator.clipboard.writeText(reviewResult);
@@ -240,7 +240,7 @@ export default function LiteratureSynthesis({ resources }) {
               </div>
             </div>
           ) : reviewResult ? (
-            <div style={{
+            <div className="synthesis-output-content" style={{
               flex: 1,
               padding: '16px',
               borderRadius: '12px',

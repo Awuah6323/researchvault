@@ -654,6 +654,53 @@ input, textarea, select {
   main {
     padding-bottom: 84px !important;
   }
+
+  /* Stack grid layouts vertically */
+  .synthesis-grid,
+  .comparison-container,
+  .ai-review-layout {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+
+  /* Prevent text and code blocks from expanding past screen edges */
+  .ai-review-card,
+  .synthesis-output {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+  }
+
+  /* Wrap control toolbars cleanly */
+  .ai-toolbar,
+  .action-button-group {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  /* Make action buttons take full width for easier tapping */
+  .ai-toolbar button,
+  .action-button-group button {
+    flex: 1 1 100% !important;
+    justify-content: center !important;
+  }
+
+  .synthesis-output-content {
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+    padding: 12px !important;
+  }
 }
+
+.synthesis-output-content {
+  white-space: pre-wrap !important; /* Ensures AI text wraps naturally */
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
 
 
