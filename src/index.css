@@ -702,5 +702,66 @@ input, textarea, select {
   overflow-wrap: break-word !important;
 }
 
+/* ==========================================================================
+   MOBILE SLIDING NAVIGATION DRAWER STYLES
+   ========================================================================== */
+.mobile-nav-toggle-btn {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-nav-toggle-btn {
+    display: flex !important;
+  }
+}
+
+.mobile-drawer-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  display: flex;
+}
+
+.mobile-drawer-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+.mobile-drawer-panel {
+  position: relative;
+  z-index: 210;
+  width: 280px;
+  max-width: 82vw;
+  height: 100%;
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.35);
+  animation: slideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+
 
 

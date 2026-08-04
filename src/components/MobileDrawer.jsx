@@ -1,0 +1,138 @@
+import React from 'react';
+import { X, Home, Search, Library, FolderKanban, MessageSquare, FileText, Sparkles, User, PlusCircle, BookOpen } from 'lucide-react';
+
+export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, onOpenAddModal }) {
+  if (!isOpen) return null;
+
+  const menuItems = [
+    { id: 'home', label: 'Dashboard', icon: Home },
+    { id: 'search', label: 'Academic Search', icon: Search },
+    { id: 'library', label: 'My Library', icon: Library },
+    { id: 'categories', label: 'Categories & Folders', icon: FolderKanban },
+    { id: 'aichat', label: 'AI Chat Assistant', icon: MessageSquare },
+    { id: 'notes', label: 'Research Notes', icon: FileText },
+    { id: 'synthesis', label: 'AI Literature Review', icon: Sparkles },
+    { id: 'profile', label: 'Profile & Settings', icon: User }
+  ];
+
+  return (
+    <div className="mobile-drawer-wrapper">
+      {/* Dark backdrop overlay */}
+      <div className="mobile-drawer-backdrop" onClick={onClose} />
+
+      {/* Sliding Sidebar Panel */}
+      <div className="mobile-drawer-panel">
+        {/* Drawer Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #00ff88 0%, #10b981 50%, #059669 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#03140a'
+            }}>
+              <BookOpen size={18} />
+            </div>
+            <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-main)' }}>
+              Research<span className="text-gradient-emerald">Vault</span>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
+              padding: '6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <X size={22} />
+          </button>
+        </div>
+
+        {/* Add Paper Action */}
+        <button
+          onClick={() => {
+            onOpenAddModal();
+            onClose();
+          }}
+          className="btn-primary"
+          style={{
+            width: '100%',
+            marginBottom: '16px',
+            boxShadow: '0 4px 14px rgba(0, 255, 136, 0.25)',
+            justifyContent: 'center'
+          }}
+        >
+          <PlusCircle size={18} />
+          <span>Add Paper</span>
+        </button>
+
+        <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-sidebar)', marginBottom: '8px', paddingLeft: '4px' }}>
+          All Navigation
+        </div>
+
+        {/* Nav Items List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  onNavigate(item.id);
+                  onClose();
+                }}
+                className={`sidebar-btn ${isActive ? 'active' : ''}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  backgroundColor: isActive ? 'var(--primary-light)' : 'transparent',
+                  color: isActive ? 'var(--primary-text)' : 'var(--text-main)',
+                  fontWeight: isActive ? 700 : 500,
+                  fontSize: '0.9rem',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Icon size={19} style={{ color: isActive ? 'var(--primary)' : 'var(--text-muted)' }} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Footer Info */}
+        <div style={{
+          marginTop: '16px',
+          padding: '12px',
+          borderRadius: '12px',
+          backgroundColor: 'var(--bg-main)',
+          border: '1px solid var(--border-color)',
+          fontSize: '0.75rem',
+          color: 'var(--text-muted)',
+          lineHeight: 1.4
+        }}>
+          <div style={{ fontWeight: 700, color: 'var(--primary)' }}>ResearchVault v2.0</div>
+          <div>Mobile Sliding Navigation</div>
+        </div>
+      </div>
+    </div>
+  );
+}

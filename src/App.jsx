@@ -7,6 +7,7 @@ import AiSummarizerModal from './components/AiSummarizerModal';
 import AddResourceModal from './components/AddResourceModal';
 import AuthModal from './components/AuthModal';
 import BottomNav from './components/BottomNav';
+import MobileDrawer from './components/MobileDrawer';
 
 import HomeDashboard from './pages/HomeDashboard';
 import AcademicSearch from './pages/AcademicSearch';
@@ -35,6 +36,7 @@ export default function App() {
   const [aiModalResource, setAiModalResource] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setResources(storage.getResources());
@@ -117,6 +119,7 @@ export default function App() {
         onNavigate={(tab) => setActiveTab(tab)}
         onOpenAuthModal={() => setShowAuthModal(true)}
         onLogout={handleLogout}
+        onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
       />
 
       <div className="app-layout" style={{ display: 'flex', maxWidth: '1440px', margin: '0 auto' }}>
@@ -206,6 +209,15 @@ export default function App() {
       <BottomNav 
         activeTab={activeTab} 
         onNavigate={(tab) => setActiveTab(tab)} 
+        onOpenMenu={() => setIsMobileMenuOpen(true)}
+      />
+
+      <MobileDrawer
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        activeTab={activeTab}
+        onNavigate={(tab) => setActiveTab(tab)}
+        onOpenAddModal={() => setShowAddModal(true)}
       />
 
       {/* Reader Full Screen Overlay */}

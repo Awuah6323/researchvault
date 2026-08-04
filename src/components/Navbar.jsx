@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, BookOpen, Moon, Sun, Sparkles, User, Palette } from 'lucide-react';
+import { Search, BookOpen, Moon, Sun, Sparkles, User, Palette, Menu } from 'lucide-react';
 
 export default function Navbar({ 
   searchQuery, 
@@ -9,7 +9,8 @@ export default function Navbar({
   userProfile, 
   onNavigate,
   onOpenAuthModal,
-  onLogout
+  onLogout,
+  onOpenMobileMenu
 }) {
   const themes = [
     { id: 'warm-sepia', label: '☕ Warm Sepia' },
@@ -37,31 +38,51 @@ export default function Navbar({
         gap: '12px',
         flexWrap: 'nowrap'
       }}>
-        {/* Brand Logo */}
-        <div 
-          onClick={() => onNavigate('home')}
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexShrink: 0 }}
-        >
-          <div style={{
-            width: '38px',
-            height: '38px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #00ff88 0%, #10b981 50%, #059669 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#03140a',
-            boxShadow: '0 0 20px rgba(0, 255, 136, 0.4)',
-            flexShrink: 0
-          }}>
-            <BookOpen size={22} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div style={{ fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.5px', color: 'var(--text-main)', lineHeight: 1.1 }}>
-              Research<span className="text-gradient-emerald">Vault</span>
+        {/* Brand Logo & Mobile Menu Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          {onOpenMobileMenu && (
+            <button
+              onClick={onOpenMobileMenu}
+              className="mobile-nav-toggle-btn"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-main)',
+                padding: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Menu size={24} />
+            </button>
+          )}
+          <div 
+            onClick={() => onNavigate('home')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+          >
+            <div style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #00ff88 0%, #10b981 50%, #059669 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#03140a',
+              boxShadow: '0 0 20px rgba(0, 255, 136, 0.4)',
+              flexShrink: 0
+            }}>
+              <BookOpen size={22} />
             </div>
-            <div className="mobile-hide" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.8px', marginTop: '2px' }}>
-              ACADEMIC LITERATURE ENGINE
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div style={{ fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.5px', color: 'var(--text-main)', lineHeight: 1.1 }}>
+                Research<span className="text-gradient-emerald">Vault</span>
+              </div>
+              <div className="mobile-hide" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.8px', marginTop: '2px' }}>
+                ACADEMIC LITERATURE ENGINE
+              </div>
             </div>
           </div>
         </div>
