@@ -46,7 +46,67 @@ export default function App() {
     const savedTheme = storage.getTheme();
     setTheme(savedTheme);
     document.documentElement.setAttribute('data-theme', savedTheme);
+
+    // Initialize history state on app startup
+    if (!window.history.state) {
+      window.history.replaceState({ tab: 'home' }, '', '#home');
+    }
   }, []);
+
+  // Close all open modals & drawers
+  const closeAllModals = () => {
+    setIsMobileMenuOpen(false);
+    setActiveReaderResource(null);
+    setCitationModalResource(null);
+    setAiModalResource(null);
+    setShowAddModal(false);
+    setShowAuthModal(false);
+  };
+
+  // Hardware Back Button & Browser Popstate Integration
+  useEffect(() => {
+    const handlePopState = (event) => {
+      const hasOpenModal = 
+        isMobileMenuOpen || 
+        !!activeReaderResource || 
+        !!citationModalResource || 
+        !!aiModalResource || 
+        showAddModal || 
+        showAuthModal;
+
+      if (hasOpenModal) {
+        closeAllModals();
+        return;
+      }
+
+      if (event.state && event.state.tab) {
+        setActiveTab(event.state.tab);
+      } else if (window.location.hash) {
+        const hashTab = window.location.hash.replace('#', '');
+        if (hashTab) setActiveTab(hashTab);
+      } else {
+        setActiveTab('home');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isMobileMenuOpen, activeReaderResource, citationModalResource, aiModalResource, showAddModal, showAuthModal]);
+
+  // Tab navigation with history pushState
+  const handleNavigate = (tabName) => {
+    if (tabName !== activeTab) {
+      window.history.pushState({ tab: tabName }, '', `#${tabName}`);
+      setActiveTab(tabName);
+    }
+    closeAllModals();
+  };
+
+  // Open modal with history pushState
+  const handleOpenModal = (setter, value = true) => {
+    window.history.pushState({ tab: activeTab, isModal: true }, '');
+    setter(value);
+  };
 
   const handleSetTheme = (newTheme) => {
     setTheme(newTheme);
@@ -116,17 +176,17 @@ export default function App() {
         currentTheme={theme}
         setTheme={handleSetTheme}
         userProfile={userProfile}
-        onNavigate={(tab) => setActiveTab(tab)}
-        onOpenAuthModal={() => setShowAuthModal(true)}
+        onNavigate={handleNavigate}
+        onOpenAuthModal={() => handleOpenModal(setShowAuthModal, true)}
         onLogout={handleLogout}
-        onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+        onOpenMobileMenu={() => handleOpenModal(setIsMobileMenuOpen, true)}
       />
 
       <div className="app-layout" style={{ display: 'flex', maxWidth: '1440px', margin: '0 auto' }}>
         <Sidebar
           activeTab={activeTab}
-          onNavigate={(tab) => setActiveTab(tab)}
-          onOpenAddModal={() => setShowAddModal(true)}
+          onNavigate={handleNavigate}
+          onOpenAddModal={() => handleOpenModal(setShowAddModal, true)}
         />
 
         <main style={{ flex: 1, padding: '28px 36px', overflowX: 'hidden' }}>
@@ -135,12 +195,12 @@ export default function App() {
               resources={resources}
               categories={categories}
               userProfile={userProfile}
-              onNavigate={(tab) => setActiveTab(tab)}
-              onOpenReader={(r) => setActiveReaderResource(r)}
+              onNavigate={handleNavigate}
+              onOpenReader={(r) => handleOpenModal(setActiveReaderResource, r)}
               onToggleFavorite={handleToggleFavorite}
-              onShowCitation={(r) => setCitationModalResource(r)}
-              onOpenAiSummarizer={(r) => setAiModalResource(r)}
-              onOpenAddModal={() => setShowAddModal(true)}
+              onShowCitation={(r) => handleOpenModal(setCitationModalResource, r)}
+              onOpenAiSummarizer={(r) => handleOpenModal(setAiModalResource, r)}
+              onOpenAddModal={() => handleOpenModal(setShowAddModal, true)}
             />
           )}
 
@@ -148,7 +208,7 @@ export default function App() {
             <AcademicSearch
               initialQuery={searchQuery}
               onAddResource={handleAddResource}
-              onOpenAiSummarizer={(r) => setAiModalResource(r)}
+              onOpenAiSummarizer={(r) => handleOpenModal(setAiModalResource, r)}
             />
           )}
 
@@ -156,12 +216,12 @@ export default function App() {
             <MyLibrary
               resources={resources}
               categories={categories}
-              onOpenReader={(r) => setActiveReaderResource(r)}
+              onOpenReader={(r) => handleOpenModal(setActiveReaderResource, r)}
               onToggleFavorite={handleToggleFavorite}
-              onShowCitation={(r) => setCitationModalResource(r)}
-              onOpenAiSummarizer={(r) => setAiModalResource(r)}
+              onShowCitation={(r) => handleOpenModal(setCitationModalResource, r)}
+              onOpenAiSummarizer={(r) => handleOpenModal(setAiModalResource, r)}
               onDeleteResource={handleDeleteResource}
-              onOpenAddModal={() => setShowAddModal(true)}
+              onOpenAddModal={() => handleOpenModal(setShowAddModal, true)}
             />
           )}
 
@@ -170,7 +230,7 @@ export default function App() {
               categories={categories}
               onAddCategory={handleAddCategory}
               onSelectCategory={(catName) => {
-                setActiveTab('library');
+                handleNavigate('library');
               }}
             />
           )}
@@ -184,7 +244,7 @@ export default function App() {
           {activeTab === 'notes' && (
             <NotesManager
               resources={resources}
-              onOpenReader={(r) => setActiveReaderResource(r)}
+              onOpenReader={(r) => handleOpenModal(setActiveReaderResource, r)}
             />
           )}
 
@@ -208,16 +268,16 @@ export default function App() {
 
       <BottomNav 
         activeTab={activeTab} 
-        onNavigate={(tab) => setActiveTab(tab)} 
-        onOpenMenu={() => setIsMobileMenuOpen(true)}
+        onNavigate={handleNavigate} 
+        onOpenMenu={() => handleOpenModal(setIsMobileMenuOpen, true)}
       />
 
       <MobileDrawer
         isOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
+        onClose={() => window.history.back()}
         activeTab={activeTab}
-        onNavigate={(tab) => setActiveTab(tab)}
-        onOpenAddModal={() => setShowAddModal(true)}
+        onNavigate={handleNavigate}
+        onOpenAddModal={() => handleOpenModal(setShowAddModal, true)}
       />
 
       {/* Reader Full Screen Overlay */}
