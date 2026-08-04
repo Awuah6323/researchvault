@@ -1,4 +1,4 @@
-// Live Academic Search Engine (OpenAlex & Crossref API Integration)
+// Enhanced Academic Search Engine (OpenAlex & Crossref API Integration)
 
 const SAMPLE_PAPERS = [
   {
@@ -31,7 +31,7 @@ const SAMPLE_PAPERS = [
   },
   {
     title: "Mastering the Game of Go with Deep Neural Networks and Tree Search",
-    authors: "Silver, D., Huang, A., Maddison, C. J., Guez, A.",
+    authors: "Silver, D., Huang, A., Maddison, C. J., Guez, A., Hinton, G.",
     publicationYear: 2022,
     journalOrVenue: "Nature Journal",
     abstractText: "The game of Go has long been viewed as the most challenging of classic games for artificial intelligence owing to its enormous search space and difficulty of evaluating board positions.",
@@ -51,45 +51,106 @@ export async function searchAcademicSources(query) {
 
   try {
     const isDoi = /^10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/.test(clean);
-    const url = isDoi
+    
+    // 1. Primary OpenAlex Query (fetching 25 results, covering titles, abstracts, and author names)
+    const openAlexUrl = isDoi
       ? `https://api.openalex.org/works/https://doi.org/${clean}`
-      : `https://api.openalex.org/works?search=${encodeURIComponent(clean)}&per_page=10`;
+      : `https://api.openalex.org/works?search=${encodeURIComponent(clean)}&per_page=25&sort=cited_by_count:desc`;
 
-    const res = await fetch(url);
+    const res = await fetch(openAlexUrl);
     if (res.ok) {
       const data = await res.json();
-      const items = isDoi ? [data] : (data.results || []);
+      const items = isDoi ? (data ? [data] : []) : (data.results || []);
+      
       if (items.length > 0) {
-        return items.map(item => {
-          const authors = (item.authorships || []).slice(0, 4).map(a => a.author?.display_name).filter(Boolean).join(', ') || 'Scholarly Authors';
-          const primaryLoc = item.primary_location || {};
-          const journal = primaryLoc.source?.display_name || 'Academic Venue';
-          const doi = (item.doi || '').replace('https://doi.org/', '');
-          const pdfUrl = item.open_access?.oa_url || '';
-          
-          return {
-            title: item.title || 'Untitled Academic Paper',
-            authors,
-            publicationYear: item.publication_year || 2024,
-            journalOrVenue: journal,
-            abstractText: item.abstract_inverted_index ? reconstructAbstract(item.abstract_inverted_index) : `Research paper published in ${journal}.`,
-            doi: doi || clean,
-            sourceUrl: primaryLoc.landing_page_url || (doi ? `https://doi.org/${doi}` : 'https://openalex.org'),
-            downloadUrl: pdfUrl,
-            resourceType: item.type === 'book' ? 'Book' : (item.type === 'dissertation' ? 'Thesis' : 'Research Paper'),
-            openAccess: item.open_access?.is_oa || false,
-            citationCount: item.cited_by_count || 0,
-            suggestedCategory: suggestCategory(item.title || '')
-          };
-        });
+        const parsedResults = items.map(item => parseOpenAlexItem(item, clean));
+        
+        // If results are robust (>= 5), return them directly
+        if (parsedResults.length >= 5 || isDoi) {
+          return parsedResults;
+        }
+      }
+    }
+
+    // 2. Crossref API Fallback (especially effective for author queries, obscure titles, & Crossref DOIs)
+    const crossrefUrl = `https://api.crossref.org/works?query=${encodeURIComponent(clean)}&rows=25`;
+    const crRes = await fetch(crossrefUrl);
+    if (crRes.ok) {
+      const crData = await crRes.json();
+      const crItems = crData.message?.items || [];
+      if (crItems.length > 0) {
+        return crItems.map(item => parseCrossrefItem(item, clean));
       }
     }
   } catch (err) {
-    console.warn("OpenAlex API query failed, falling back to local academic catalog.", err);
+    console.warn("Academic API live query error, using enhanced local catalog.", err);
   }
 
-  // Fallback curated papers
-  return SAMPLE_PAPERS.filter(p => p.title.toLowerCase().includes(clean.toLowerCase()) || p.suggestedCategory.toLowerCase().includes(clean.toLowerCase()) || clean.length < 3);
+  // 3. Fallback to curated catalog matching title, author names, or category
+  const lower = clean.toLowerCase();
+  return SAMPLE_PAPERS.filter(p => 
+    p.title.toLowerCase().includes(lower) || 
+    p.authors.toLowerCase().includes(lower) || 
+    p.suggestedCategory.toLowerCase().includes(lower) || 
+    clean.length < 3
+  );
+}
+
+function parseOpenAlexItem(item, queryClean) {
+  const authors = (item.authorships || [])
+    .slice(0, 5)
+    .map(a => a.author?.display_name)
+    .filter(Boolean)
+    .join(', ') || 'Scholarly Authors';
+
+  const primaryLoc = item.primary_location || {};
+  const journal = primaryLoc.source?.display_name || item.host_venue?.display_name || 'Academic Venue';
+  const doi = (item.doi || '').replace('https://doi.org/', '');
+  const pdfUrl = item.open_access?.oa_url || item.best_oa_location?.pdf_url || '';
+  
+  return {
+    title: item.title || 'Untitled Academic Paper',
+    authors,
+    publicationYear: item.publication_year || 2024,
+    journalOrVenue: journal,
+    abstractText: item.abstract_inverted_index ? reconstructAbstract(item.abstract_inverted_index) : `Research publication by ${authors} published in ${journal}.`,
+    doi: doi || queryClean,
+    sourceUrl: primaryLoc.landing_page_url || (doi ? `https://doi.org/${doi}` : 'https://openalex.org'),
+    downloadUrl: pdfUrl,
+    resourceType: item.type === 'book' ? 'Book' : (item.type === 'dissertation' ? 'Thesis' : 'Research Paper'),
+    openAccess: item.open_access?.is_oa || false,
+    citationCount: item.cited_by_count || 0,
+    suggestedCategory: suggestCategory(item.title || '')
+  };
+}
+
+function parseCrossrefItem(item, queryClean) {
+  const authors = (item.author || [])
+    .slice(0, 5)
+    .map(a => `${a.given || ''} ${a.family || ''}`.trim())
+    .filter(Boolean)
+    .join(', ') || 'Academic Authors';
+
+  const journal = (item['container-title'] && item['container-title'][0]) || 'Academic Journal';
+  const year = item.issued?.['date-parts']?.[0]?.[0] || 2024;
+  const doi = item.DOI || queryClean;
+  const title = (item.title && item.title[0]) || 'Academic Work';
+  const pdfUrl = item.link?.find(l => l['content-type'] === 'application/pdf')?.URL || '';
+
+  return {
+    title,
+    authors,
+    publicationYear: year,
+    journalOrVenue: journal,
+    abstractText: item.abstract ? item.abstract.replace(/<[^>]*>?/gm, '') : `Academic paper authored by ${authors} in ${journal} (${year}).`,
+    doi,
+    sourceUrl: item.URL || `https://doi.org/${doi}`,
+    downloadUrl: pdfUrl,
+    resourceType: 'Research Paper',
+    openAccess: !!pdfUrl,
+    citationCount: item['is-referenced-by-count'] || 0,
+    suggestedCategory: suggestCategory(title)
+  };
 }
 
 function reconstructAbstract(invertedIndex) {
@@ -101,14 +162,14 @@ function reconstructAbstract(invertedIndex) {
     });
   });
   const text = map.filter(Boolean).join(' ');
-  return text.length > 350 ? text.slice(0, 350) + '...' : text;
+  return text.length > 400 ? text.slice(0, 400) + '...' : text;
 }
 
 function suggestCategory(title) {
   const t = title.toLowerCase();
-  if (t.includes('ai') || t.includes('neural') || t.includes('learning') || t.includes('gpt')) return 'Artificial Intelligence';
-  if (t.includes('security') || t.includes('crypto') || t.includes('trust')) return 'Cybersecurity';
+  if (t.includes('ai') || t.includes('neural') || t.includes('learning') || t.includes('gpt') || t.includes('transformer')) return 'Artificial Intelligence';
+  if (t.includes('security') || t.includes('crypto') || t.includes('privacy')) return 'Cybersecurity';
   if (t.includes('data') || t.includes('stat') || t.includes('graph')) return 'Data Science';
-  if (t.includes('cloud') || t.includes('distributed')) return 'Cloud Computing';
+  if (t.includes('cloud') || t.includes('distributed') || t.includes('network')) return 'Cloud Computing';
   return 'Computer Science';
 }

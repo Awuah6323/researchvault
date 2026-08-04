@@ -91,28 +91,54 @@ export default function Navbar({
         </div>
 
         {/* Global Search Bar */}
-        <div className="nav-search-bar" style={{ flex: 1, maxWidth: '560px', position: 'relative' }}>
-          <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (searchQuery.trim()) {
+              onNavigate('search');
+            }
+          }} 
+          className="nav-search-bar" 
+          style={{ flex: 1, maxWidth: '560px', position: 'relative' }}
+        >
+          <button
+            type="submit"
+            aria-label="Execute Academic Search"
+            style={{
+              position: 'absolute',
+              left: '10px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '4px'
+            }}
+          >
+            <Search size={18} />
+          </button>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') onNavigate('search');
-            }}
-            placeholder="Search papers, DOI, authors..."
+            placeholder="Search papers, DOI, authors (e.g. Hinton, Vaswani)..."
             style={{
               width: '100%',
               padding: '10px 16px 10px 42px',
               borderRadius: '24px',
               border: '1px solid var(--border-color)',
               backgroundColor: 'var(--bg-main)',
+              color: 'var(--text-main)',
               fontSize: '0.88rem',
               outline: 'none',
               transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
             }}
           />
-        </div>
+        </form>
 
         {/* Action Controls: Theme Switcher & Profile */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
