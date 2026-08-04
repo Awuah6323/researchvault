@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, CheckSquare, Square, Loader2, Copy, Check, Download, FileText, Layers, CheckCircle } from 'lucide-react';
 import { synthesizeLiteratureReview, generatePeerReview } from '../services/geminiService';
 import { exportReviewToPdf } from '../utils/exportReviewToPdf';
+import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 
 export default function LiteratureSynthesis({ resources }) {
   const [mode, setMode] = useState('synthesis'); // 'synthesis', 'peer_review'
@@ -20,6 +21,31 @@ export default function LiteratureSynthesis({ resources }) {
 
   const selectedPaper = mode === 'peer_review' ? resources.find(r => r.id === selectedIds[0]) : null;
 
+  const getPaperContent = async (paper) => {
+    let content = paper.abstractText;
+    const isPlaceholder = !content || content.includes('Imported paper document in ResearchVault');
+
+    if (isPlaceholder && paper.pdfFileData && paper.pdfFileData.startsWith('data:')) {
+      try {
+        const parts = paper.pdfFileData.split(';base64,');
+        if (parts[1]) {
+          const raw = window.atob(parts[1]);
+          const u8 = new Uint8Array(raw.length);
+          for (let i = 0; i < raw.length; i++) u8[i] = raw.charCodeAt(i);
+          const file = new File([u8], paper.pdfFileName || 'paper.pdf', { type: 'application/pdf' });
+          const extracted = await extractTextFromPdfFile(file);
+          if (extracted && extracted.trim().length > 30) {
+            content = extracted;
+          }
+        }
+      } catch (err) {
+        console.warn("On-the-fly extraction error:", err);
+      }
+    }
+
+    return content || paper.title;
+  };
+
   const handleGenerate = async () => {
     if (selectedIds.length === 0 || loading) return;
     setLoading(true);
@@ -28,16 +54,22 @@ export default function LiteratureSynthesis({ resources }) {
     try {
       if (mode === 'synthesis') {
         const selectedPapers = resources.filter(r => selectedIds.includes(r.id));
-        const result = await synthesizeLiteratureReview(selectedPapers);
+        // Ensure each paper has extracted content
+        const processedPapers = await Promise.all(selectedPapers.map(async p => ({
+          ...p,
+          abstractText: await getPaperContent(p)
+        })));
+        const result = await synthesizeLiteratureReview(processedPapers);
         setReviewResult(result);
       } else {
         const paper = selectedPaper;
         if (paper) {
+          const content = await getPaperContent(paper);
           const result = await generatePeerReview(
             paper.title,
             paper.authors,
             `${paper.journal || ''}, ${paper.publicationYear || ''}`,
-            paper.abstractText
+            content
           );
           setReviewResult(result);
         }
@@ -190,10 +222,21 @@ export default function LiteratureSynthesis({ resources }) {
           </div>
 
           {loading ? (
-            <div style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--primary)' }}>
-              <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 12px' }} />
-              <div style={{ fontWeight: 700 }}>
-                {mode === 'synthesis' ? 'Gemini AI is synthesizing methodologies & research gaps...' : 'Gemini AI is generating formal Peer Review Report...'}
+            <div style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--primary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                border: '4px solid var(--border-color)',
+                borderTopColor: 'var(--primary)',
+                animation: 'spin 0.9s linear infinite',
+                boxShadow: '0 0 20px rgba(0, 255, 136, 0.3)'
+              }} />
+              <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)' }}>
+                {mode === 'synthesis' ? 'Gemini AI is synthesizing methodologies & research gaps...' : 'Gemini AI is drafting formal Peer Review Report...'}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Parsing document text content & running academic evaluation...
               </div>
             </div>
           ) : reviewResult ? (
