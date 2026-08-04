@@ -1,3 +1,4 @@
+// src/pages/AcademicSearch.jsx
 import React, { useState, useEffect } from 'react';
 import { Search, Loader2, Plus, ExternalLink, Sparkles, Check, Download, Eye, X, BookOpen, Award, FileText, ArrowUpDown, AlertCircle } from 'lucide-react';
 import { searchAcademicSources } from '../services/academicSearch';
@@ -7,7 +8,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [savedMap, setSavedMap] = useState({});
-  const [sortBy, setSortBy] = useState('citations'); // 'citations', 'newest', 'relevance', 'openaccess'
+  const [sortBy, setSortBy] = useState('citations'); // Options: 'citations', 'newest', 'relevance', 'openaccess'
   const [previewPaper, setPreviewPaper] = useState(null);
 
   const executeSearch = async (searchStr) => {
@@ -59,7 +60,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
     setSavedMap(prev => ({ ...prev, [item.doi || item.title]: true }));
   };
 
-  // Process and sort search results
+  // Filter and sort search results
   const sortedResults = [...results].filter(item => {
     if (sortBy === 'openaccess') return item.openAccess;
     return true;
@@ -76,7 +77,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
         <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Search over 250M academic works, authors, DOIs, and journals via OpenAlex and Crossref repositories.</p>
       </div>
 
-      {/* Search Input & Sort Bar */}
+      {/* Search Input & Controls */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '260px', position: 'relative' }}>
@@ -104,7 +105,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
           </button>
         </form>
 
-        {/* Filter & Sort Controls */}
+        {/* Sorting Bar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>
             {loading ? 'Searching...' : `Found ${sortedResults.length} paper${sortedResults.length === 1 ? '' : 's'}`}
@@ -141,7 +142,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
         </div>
       </div>
 
-      {/* Search Results List */}
+      {/* Results Listing */}
       {loading ? (
         <div style={{ padding: '60px', textAlign: 'center', color: 'var(--primary)' }}>
           <Loader2 size={36} className="animate-spin" style={{ margin: '0 auto 12px' }} />
@@ -158,7 +159,6 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
             const isSaved = savedMap[item.doi || item.title];
             return (
               <div key={idx} className="glass-card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '12px', borderLeft: '4px solid var(--primary)' }}>
-                {/* Google Scholar Style Header Line */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
                     {(item.downloadUrl || item.openAccess) && (
@@ -183,18 +183,16 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                     {item.title}
                   </h3>
 
-                  {/* Google Scholar Author & Venue Line */}
                   <div style={{ fontSize: '0.86rem', color: '#10b981', marginTop: '6px', fontWeight: 600 }}>
                     <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{item.authors}</span> — <span style={{ color: 'var(--text-muted)' }}>{item.journalOrVenue}, {item.publicationYear}</span> — <span style={{ color: 'var(--primary)' }}>{item.pdfDomain || 'openalex.org'}</span>
                   </div>
                 </div>
 
-                {/* Content Abstract Snippet */}
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                   {item.abstractText}
                 </p>
 
-                {/* Action Controls */}
+                {/* Card Action Controls */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
                     <span style={{ color: 'var(--primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -209,7 +207,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                       onClick={() => setPreviewPaper(item)}
                       className="btn-secondary"
                       style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                      title="Read continuous paper contents or full document stream"
+                      title="Read paper contents and document stream"
                     >
                       <Eye size={14} />
                       <span>Read Paper</span>
@@ -250,7 +248,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
         </div>
       )}
 
-      {/* DYNAMIC PAPER CONTENT & FULL DOCUMENT READER MODAL */}
+      {/* PAPER PREVIEW MODAL (OPTION 3 FALLBACK IMPLEMENTATION) */}
       {previewPaper && (
         <div style={{
           position: 'fixed',
@@ -300,10 +298,10 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                 </div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)' }}>
-                    {previewPaper.downloadUrl ? 'Full Document Reader Stream' : 'Paper Extract & Structural Reader'}
+                    {previewPaper.downloadUrl ? 'Interactive Document Reader' : 'Paper Extract & Structural Overview'}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {previewPaper.downloadUrl ? 'Interactive full document PDF viewer' : 'Half-paper executive content extract'}
+                    {previewPaper.downloadUrl ? 'Embedded PDF Stream & Source Viewer' : 'Publisher restricted document fallback'}
                   </div>
                 </div>
               </div>
@@ -327,7 +325,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
               </button>
             </div>
 
-            {/* Modal Body: Full PDF Viewer or 50% Paper Content Extract */}
+            {/* Modal Content Body */}
             <div style={{ 
               flex: 1, 
               overflowY: 'auto', 
@@ -338,7 +336,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
               gap: '16px',
               WebkitOverflowScrolling: 'touch'
             }}>
-              {/* Paper Information Header */}
+              {/* Paper Information Banner */}
               <div style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
                   <span className="badge">{previewPaper.resourceType}</span>
@@ -361,55 +359,74 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                 </div>
               </div>
 
-              {/* RENDER MODE 1: Complete Full PDF Stream */}
+              {/* RENDER PATH 1: Embed Open Access PDF via Google Docs Proxy */}
               {previewPaper.downloadUrl ? (
-                <div style={{ flex: 1, minHeight: '520px', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                <div style={{ flex: 1, minHeight: '500px', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--border-color)', position: 'relative' }}>
                   <iframe
-                    src={previewPaper.downloadUrl}
+                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewPaper.downloadUrl)}&embedded=true`}
                     title="Full Document Reader Stream"
                     style={{ width: '100%', height: '100%', border: 'none', backgroundColor: '#ffffff' }}
                   />
                 </div>
               ) : (
-                /* RENDER MODE 2: 50% Half-Paper Content Extract */
+                /* RENDER PATH 2: Fallback Reader Card for Restricted / Paywalled Publisher Content */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* Notice Banner */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.3)', padding: '12px 16px', borderRadius: '12px', color: 'var(--text-main)', fontSize: '0.85rem' }}>
-                    <AlertCircle size={18} style={{ color: '#eab308', flexShrink: 0 }} />
-                    <div>
-                      <strong>Half-Paper Content View:</strong> Direct PDF download link is restricted by publisher paywall. Displaying core structural sections and author abstract.
-                    </div>
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '32px 20px',
+                    textAlign: 'center',
+                    backgroundColor: 'var(--bg-card)',
+                    borderRadius: '14px',
+                    border: '1px solid var(--border-color)'
+                  }}>
+                    <BookOpen size={44} style={{ color: 'var(--primary)', marginBottom: '12px' }} />
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
+                      Publisher Frame Restrictions Active
+                    </h3>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', maxWidth: '480px', marginBottom: '18px', lineHeight: 1.5 }}>
+                      This journal provider restricts direct iframe embedding. You can view the full paper and download the official PDF directly at the publisher site.
+                    </p>
+                    <a
+                      href={previewPaper.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-primary"
+                      style={{ padding: '10px 22px', fontSize: '0.88rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                    >
+                      <span>Read Full Document at Publisher</span>
+                      <ExternalLink size={16} />
+                    </a>
                   </div>
 
-                  {/* Section A: Comprehensive Abstract */}
+                  {/* Extract Section 1: Abstract */}
                   <div style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--primary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <FileText size={16} /> Section 1: Abstract & Core Problem Statement
+                      <FileText size={16} /> Section 1: Comprehensive Abstract & Problem Statement
                     </div>
-                    <p style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                    <p style={{ fontSize: '0.94rem', color: 'var(--text-main)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
                       {previewPaper.abstractText}
                     </p>
                   </div>
 
-                  {/* Section B: Structural Metadata & Citation Index */}
+                  {/* Extract Section 2: Metadata */}
                   <div style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--secondary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <BookOpen size={16} /> Section 2: Venue Metadata & DOI Reference
                     </div>
-                    <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.65 }}>
-                      <p><strong>Published Field:</strong> {previewPaper.suggestedCategory}</p>
+                    <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', lineHeight: 1.6 }}>
+                      <p><strong>Field Classification:</strong> {previewPaper.suggestedCategory}</p>
                       <p style={{ marginTop: '4px' }}><strong>Source Index:</strong> {previewPaper.journalOrVenue}</p>
                       <p style={{ marginTop: '4px' }}><strong>DOI Accession:</strong> {previewPaper.doi || 'N/A'}</p>
-                      <p style={{ marginTop: '8px', color: 'var(--text-muted)' }}>
-                        To read the remaining methods, data tables, and conclusions, access the publisher portal via the original DOI source link below.
-                      </p>
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Modal Bottom Action Footer */}
+            {/* Modal Bottom Action Toolbar */}
             <div style={{
               padding: '14px 20px',
               borderTop: '1px solid var(--border-color)',
@@ -428,7 +445,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                   style={{ padding: '8px 16px', fontSize: '0.84rem' }}
                 >
                   {savedMap[previewPaper.doi || previewPaper.title] ? <Check size={16} /> : <Plus size={16} />}
-                  <span>{savedMap[previewPaper.doi || previewPaper.title] ? 'Saved to Vault' : 'Save to Vault'}</span>
+                  <span>{savedMap[previewPaper.doi || previewPaper.title] ? 'Saved to Library' : 'Save to Library'}</span>
                 </button>
 
                 <button
