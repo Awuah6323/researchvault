@@ -44,18 +44,21 @@ export default function Navbar({
             <button
               onClick={onOpenMobileMenu}
               className="mobile-nav-toggle-btn"
+              aria-label="Open mobile menu"
               style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-main)',
-                padding: '4px',
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '10px',
+                color: 'var(--primary)',
+                padding: '6px 8px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
               }}
             >
-              <Menu size={24} />
+              <Menu size={22} />
             </button>
           )}
           <div 

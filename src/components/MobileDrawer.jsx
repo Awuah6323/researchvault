@@ -37,17 +37,19 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
             }}>
               <BookOpen size={18} />
             </div>
-            <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-main)' }}>
+            <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-sidebar-active)' }}>
               Research<span className="text-gradient-emerald">Vault</span>
             </div>
           </div>
 
           <button
             onClick={onClose}
+            aria-label="Close navigation menu"
             style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '8px',
+              color: 'var(--text-sidebar-active)',
               padding: '6px',
               cursor: 'pointer',
               display: 'flex',
@@ -55,7 +57,7 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
               justifyContent: 'center'
             }}
           >
-            <X size={22} />
+            <X size={20} />
           </button>
         </div>
 
@@ -68,7 +70,7 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
           className="btn-primary"
           style={{
             width: '100%',
-            marginBottom: '16px',
+            marginBottom: '18px',
             boxShadow: '0 4px 14px rgba(0, 255, 136, 0.25)',
             justifyContent: 'center'
           }}
@@ -77,8 +79,8 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
           <span>Add Paper</span>
         </button>
 
-        <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-sidebar)', marginBottom: '8px', paddingLeft: '4px' }}>
-          All Navigation
+        <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-sidebar)', marginBottom: '10px', paddingLeft: '4px' }}>
+          Navigation
         </div>
 
         {/* Nav Items List */}
@@ -94,7 +96,6 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
                   onNavigate(item.id);
                   onClose();
                 }}
-                className={`sidebar-btn ${isActive ? 'active' : ''}`}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -102,8 +103,8 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
                   padding: '12px 14px',
                   borderRadius: '10px',
                   border: 'none',
-                  backgroundColor: isActive ? 'var(--primary-light)' : 'transparent',
-                  color: isActive ? 'var(--primary-text)' : 'var(--text-main)',
+                  backgroundColor: isActive ? 'var(--primary)' : 'transparent',
+                  color: isActive ? '#ffffff' : 'var(--text-sidebar)',
                   fontWeight: isActive ? 700 : 500,
                   fontSize: '0.9rem',
                   textAlign: 'left',
@@ -111,7 +112,7 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
                   transition: 'all 0.2s ease'
                 }}
               >
-                <Icon size={19} style={{ color: isActive ? 'var(--primary)' : 'var(--text-muted)' }} />
+                <Icon size={19} style={{ color: isActive ? '#ffffff' : 'var(--text-sidebar)' }} />
                 <span>{item.label}</span>
               </button>
             );
@@ -123,13 +124,13 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
           marginTop: '16px',
           padding: '12px',
           borderRadius: '12px',
-          backgroundColor: 'var(--bg-main)',
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
           border: '1px solid var(--border-color)',
           fontSize: '0.75rem',
-          color: 'var(--text-muted)',
+          color: 'var(--text-sidebar)',
           lineHeight: 1.4
         }}>
-          <div style={{ fontWeight: 700, color: 'var(--primary)' }}>ResearchVault v2.0</div>
+          <div style={{ fontWeight: 700, color: 'var(--text-sidebar-active)' }}>ResearchVault v2.0</div>
           <div>Mobile Sliding Navigation</div>
         </div>
       </div>
