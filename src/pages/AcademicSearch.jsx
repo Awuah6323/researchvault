@@ -96,9 +96,9 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
             const isSaved = savedMap[item.doi || item.title];
             return (
               <div key={idx} className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
-                  <div>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
+                  <div style={{ flex: 1, minWidth: '220px' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
                       <span className="badge">{item.resourceType}</span>
                       {item.openAccess && <span className="badge">Open Access</span>}
                     </div>
@@ -112,7 +112,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                     onClick={() => handleSave(item)}
                     className={isSaved ? "btn-secondary" : "btn-primary"}
                     disabled={isSaved}
-                    style={{ shrink: 0, padding: '8px 16px', fontSize: '0.85rem' }}
+                    style={{ flexShrink: 0, padding: '8px 16px', fontSize: '0.85rem' }}
                   >
                     {isSaved ? <Check size={16} /> : <Plus size={16} />}
                     <span>{isSaved ? 'Saved' : 'Save to Library'}</span>
@@ -123,9 +123,9 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                   {item.abstractText}
                 </p>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--border-color)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--border-color)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   <div>DOI: {item.doi || 'N/A'} • Citations: {item.citationCount}</div>
-                  <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <button onClick={() => onOpenAiSummarizer(item)} style={{ color: 'var(--primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                       <Sparkles size={14} /> AI Summary
                     </button>

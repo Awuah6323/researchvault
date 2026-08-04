@@ -25,21 +25,21 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal }) {
       borderRight: '1px solid var(--border-color)',
       transition: 'background-color 0.3s ease'
     }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div className="sidebar-nav-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <button
           onClick={onOpenAddModal}
           className="btn-primary"
           style={{
             width: '100%',
-            marginBottom: '16px',
+            marginBottom: '8px',
             boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)'
           }}
         >
           <PlusCircle size={18} />
-          <span>Add Resource</span>
+          <span>Add Paper</span>
         </button>
 
-        <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-sidebar)', padding: '0 12px 6px' }}>
+        <div className="mobile-hide" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-sidebar)', padding: '0 12px 6px' }}>
           Navigation
         </div>
 

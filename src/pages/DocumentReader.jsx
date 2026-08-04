@@ -264,7 +264,7 @@ export default function DocumentReader({ resource, onClose, onOpenAiSummarizer }
 
       {/* Notes Drawer */}
       {showNotesDrawer && (
-        <div style={{
+        <div className="notes-drawer-mobile" style={{
           position: 'fixed',
           right: 0,
           top: '60px',
@@ -275,7 +275,8 @@ export default function DocumentReader({ resource, onClose, onOpenAiSummarizer }
           padding: '20px',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '-4px 0 20px rgba(0,0,0,0.1)'
+          boxShadow: '-4px 0 20px rgba(0,0,0,0.1)',
+          zIndex: 110
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Notes for Page {currentPage}</h3>

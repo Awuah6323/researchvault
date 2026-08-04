@@ -130,12 +130,12 @@ export default function MyLibrary({
 
       {/* Grid of Resource Cards */}
       {filtered.length === 0 ? (
-        <div className="glass-card" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
+        <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
           <div style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px' }}>No research papers found</div>
           <div style={{ fontSize: '0.85rem' }}>Try clearing your filters or search query.</div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        <div className="paper-card-grid">
           {filtered.map(r => (
             <ResourceCard
               key={r.id}
