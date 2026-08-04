@@ -24,14 +24,15 @@ const DEFAULT_CATEGORIES = [
 
 const DEFAULT_RESOURCES = [];
 
-const DEFAULT_PROFILE = {
-  name: "Scholar User",
-  email: "user@researchvault.app",
-  institution: "Academic Institution",
-  fieldOfStudy: "Research & Development",
-  researchInterests: "Literature Review, Data Analysis",
-  isGuest: true
-};
+// Mandatory AuthGate: No unauthenticated default profiles permitted
+const DEFAULT_PROFILE = null;
+
+// Purge legacy guest data to guarantee mandatory AuthGate check for all visitors
+if (typeof window !== 'undefined' && !localStorage.getItem('researchvault_v4_auth_strict')) {
+  localStorage.removeItem(BASE_KEYS.SESSION);
+  localStorage.removeItem(BASE_KEYS.PROFILE);
+  localStorage.setItem('researchvault_v4_auth_strict', 'true');
+}
 
 // Cloud Vault API endpoint for cross-device synchronization
 const CLOUD_VAULT_URL = "https://kvdb.io/8E3qMhR9Y6pT4x7V1w5K9Z";
