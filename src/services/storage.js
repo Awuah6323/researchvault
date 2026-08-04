@@ -295,17 +295,18 @@ export const storage = {
     return user;
   },
 
-  loginWithGoogle(email = 'alex.rivera@stanford.edu', name = 'Alex Rivera', institution = 'Stanford University') {
+  loginWithGoogle(email, name, institution = 'Google Verified Account', fieldOfStudy = 'Academic Research') {
+    if (!email) throw new Error("Google login requires a valid email address.");
     const googleUser = {
       id: Date.now(),
-      name,
-      email,
+      name: name || email.split('@')[0],
+      email: email.toLowerCase().trim(),
       institution,
-      fieldOfStudy: 'Computer Science & AI',
-      researchInterests: 'Deep Learning, Neural Networks'
+      fieldOfStudy,
+      researchInterests: 'Academic Literature, Data Analysis'
     };
     this.saveSession(googleUser);
-    this.pullCloudVault(email);
+    this.pullCloudVault(googleUser.email);
     return googleUser;
   },
 

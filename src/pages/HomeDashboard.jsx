@@ -35,10 +35,10 @@ export default function HomeDashboard({
             <Sparkles size={14} /> Gemini 2.5 AI Research Vault
           </div>
           <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '12px' }}>
-            Welcome back, <span className="text-gradient-emerald">{userProfile?.name || 'Researcher'}</span>
+            Welcome back, <span className="text-gradient-emerald">{userProfile?.name || (userProfile?.email ? userProfile.email.split('@')[0] : 'Researcher')}</span>
           </h1>
           <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '20px' }}>
-            {userProfile?.institution || 'Stanford University'} • {userProfile?.fieldOfStudy || 'Computer Science'}. Organize your literature library, synthesize research papers with Gemini AI, and export instant citations.
+            {userProfile?.institution || 'Academic Workspace'} • {userProfile?.fieldOfStudy || 'Literature Research'}. Organize your literature library, synthesize research papers with Gemini AI, and export instant citations.
           </p>
 
           <div className="hero-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>

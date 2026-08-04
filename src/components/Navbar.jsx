@@ -232,10 +232,10 @@ export default function Navbar({
                 fontWeight: 700,
                 fontSize: '0.75rem'
               }}>
-                {userProfile?.name ? userProfile.name.split(' ').map(n => n[0]).join('') : 'AR'}
+                {userProfile?.name ? userProfile.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : (userProfile?.email ? userProfile.email[0].toUpperCase() : 'RV')}
               </div>
               <div className="mobile-hide" style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                {userProfile?.name || 'Alex Rivera'}
+                {userProfile?.name || userProfile?.email || 'Scholar'}
               </div>
             </div>
 
