@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Sparkles, CheckSquare, Square, Loader2, Copy, Check } from 'lucide-react';
+import { Sparkles, CheckSquare, Square, Loader2, Copy, Check, Download } from 'lucide-react';
 import { synthesizeLiteratureReview } from '../services/geminiService';
+import { exportReviewToPdf } from '../utils/exportReviewToPdf';
 
 export default function LiteratureSynthesis({ resources }) {
   const [selectedIds, setSelectedIds] = useState([]);
@@ -87,18 +88,29 @@ export default function LiteratureSynthesis({ resources }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Generated Review Draft</h3>
             {reviewResult && (
-              <button 
-                onClick={() => {
-                  navigator.clipboard.writeText(reviewResult);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-                className="btn-secondary"
-                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-              >
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-                <span>{copied ? 'Copied!' : 'Copy Review'}</span>
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(reviewResult);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="btn-secondary"
+                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  <span>{copied ? 'Copied!' : 'Copy Review'}</span>
+                </button>
+
+                <button 
+                  onClick={() => exportReviewToPdf(reviewResult, "Systematic Literature Review")}
+                  className="btn-primary"
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <Download size={14} />
+                  <span>Download PDF</span>
+                </button>
+              </div>
             )}
           </div>
 

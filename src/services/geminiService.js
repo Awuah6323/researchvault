@@ -3,6 +3,12 @@
 
 const BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
+// NOTE: gemini-2.0-flash was retired by Google, and gemini-2.5-flash is now
+// closed to new users too ("no longer available to new users" 404) — Google
+// has been deprecating Gemini models fast in 2026. gemini-3.6-flash is the
+// current GA flash model as of Aug 2026. If this one also 404s down the
+// line, check https://ai.google.dev/gemini-api/docs/models for whatever the
+// newest GA flash model is and swap the name here — same request shape.
 
 /**
  * Sanitizes input text to reduce control characters,
@@ -126,26 +132,37 @@ async function callGeminiApi(
         ],
       };
 
+      // Google's current docs authenticate via the x-goog-api-key header
+      // rather than a ?key= query param. This matters especially for the
+      // newer "AQ." auth-style keys AI Studio now issues by default.
       const response = await fetch(
         BASE_URL,
         {
           method: "POST",
+
           headers: {
             "Content-Type": "application/json",
             "x-goog-api-key": apiKey,
           },
+
           body: JSON.stringify(payload),
         }
       );
 
       if (response.ok) {
         const data = await response.json();
-        const candidate = data.candidates?.[0];
-        const generatedText = candidate?.content?.parts?.[0]?.text;
+
+        const candidate =
+          data.candidates?.[0];
+
+        const generatedText =
+          candidate?.content?.parts?.[0]?.text;
+
         if (generatedText) {
           return generatedText;
         }
       } else {
+        // Surface the real reason in dev tools instead of failing silently
         const errBody = await response.text().catch(() => "");
         console.warn(
           `Gemini API responded with ${response.status}: ${errBody}`
@@ -673,7 +690,7 @@ Abstract: ${sanitizeInput(
   const prompt = `
 You are ResearchVault AI Literature Review Synthesis Engine.
 
-You are helping a researcher synthesize multiple academic papers into a cohesive literature review.
+You are helping a researcher synthesize multiple academic papers into a cohesive, professional-grade literature review — the kind that would meet the standards expected in a thesis, dissertation, or journal submission.
 
 Be academically rigorous but explain ideas clearly and naturally.
 
@@ -693,6 +710,18 @@ Identify the major themes and common ideas across the papers.
 
 Compare how the studies approached their research problems.
 
+## Quality & Standards Assessment
+
+For each paper, evaluate it against professional academic research standards, covering:
+- Methodological rigor (research design, sample size/data adequacy, controls, reproducibility)
+- Evidence quality (is the data/argumentation sufficient to support the conclusions drawn?)
+- Clarity and structure of argumentation
+- Citation and referencing practices (as far as can be judged from the provided abstract/content)
+- Disclosed limitations and whether they are adequately acknowledged
+- Overall alignment with standard academic publishing conventions for the field
+
+Be constructive and specific — note genuine strengths as well as weaknesses. Do not fabricate details not supported by the provided abstract/content; if something can't be judged from what's given, say so explicitly rather than guessing.
+
 ## Identified Gaps in Current Literature
 
 Identify gaps, limitations, contradictions, or areas that require further investigation.
@@ -708,6 +737,7 @@ Important:
 - Highlight agreements and disagreements.
 - Identify meaningful relationships between studies.
 - Do not invent findings that are not supported by the provided paper information.
+- Keep the Quality & Standards Assessment fair and evidence-based — this is a rigorous academic evaluation, not a rejection or endorsement.
 `;
 
   return callGeminiApi(
