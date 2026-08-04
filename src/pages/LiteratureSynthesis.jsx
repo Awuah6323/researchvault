@@ -1,54 +1,127 @@
 import React, { useState } from 'react';
-import { Sparkles, CheckSquare, Square, Loader2, Copy, Check, Download } from 'lucide-react';
-import { synthesizeLiteratureReview } from '../services/geminiService';
+import { Sparkles, CheckSquare, Square, Loader2, Copy, Check, Download, FileText, Layers, CheckCircle } from 'lucide-react';
+import { synthesizeLiteratureReview, generatePeerReview } from '../services/geminiService';
 import { exportReviewToPdf } from '../utils/exportReviewToPdf';
 
 export default function LiteratureSynthesis({ resources }) {
+  const [mode, setMode] = useState('synthesis'); // 'synthesis', 'peer_review'
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [reviewResult, setReviewResult] = useState('');
   const [copied, setCopied] = useState(false);
 
   const toggleSelect = (id) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    if (mode === 'peer_review') {
+      setSelectedIds(prev => prev.includes(id) ? [] : [id]);
+    } else {
+      setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    }
   };
 
-  const handleSynthesize = async () => {
+  const selectedPaper = mode === 'peer_review' ? resources.find(r => r.id === selectedIds[0]) : null;
+
+  const handleGenerate = async () => {
     if (selectedIds.length === 0 || loading) return;
-    const selectedPapers = resources.filter(r => selectedIds.includes(r.id));
     setLoading(true);
     setReviewResult('');
 
     try {
-      const result = await synthesizeLiteratureReview(selectedPapers);
-      setReviewResult(result);
+      if (mode === 'synthesis') {
+        const selectedPapers = resources.filter(r => selectedIds.includes(r.id));
+        const result = await synthesizeLiteratureReview(selectedPapers);
+        setReviewResult(result);
+      } else {
+        const paper = selectedPaper;
+        if (paper) {
+          const result = await generatePeerReview(
+            paper.title,
+            paper.authors,
+            `${paper.journal || ''}, ${paper.publicationYear || ''}`,
+            paper.abstractText
+          );
+          setReviewResult(result);
+        }
+      }
     } catch (err) {
-      setReviewResult("Failed to generate literature review. Please verify Gemini API connectivity.");
+      setReviewResult("Failed to generate evaluation. Please verify Gemini API connectivity.");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleExportPdf = () => {
+    if (!reviewResult) return;
+    const title = mode === 'peer_review' 
+      ? `Peer Review Report - ${selectedPaper?.title || 'Paper'}` 
+      : 'Systematic Literature Review';
+    exportReviewToPdf(reviewResult, title);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div>
-        <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 800 }}>AI Literature Review Synthesizer</h1>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Select multiple research papers from your library and let Gemini AI draft a systematic literature review.</p>
+        <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 800 }}>AI Literature Review & Peer Review Engine</h1>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Synthesize multi-paper literature reviews or generate single-paper formal academic peer review reports.</p>
+      </div>
+
+      {/* Mode Switcher Tabs */}
+      <div style={{ display: 'flex', gap: '10px', backgroundColor: 'var(--bg-card)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)', width: 'fit-content' }}>
+        <button
+          onClick={() => { setMode('synthesis'); setSelectedIds([]); setReviewResult(''); }}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            backgroundColor: mode === 'synthesis' ? 'var(--primary)' : 'transparent',
+            color: mode === 'synthesis' ? '#ffffff' : 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <Layers size={16} /> Literature Synthesis (Multi-Paper)
+        </button>
+
+        <button
+          onClick={() => { setMode('peer_review'); setSelectedIds([]); setReviewResult(''); }}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            backgroundColor: mode === 'peer_review' ? 'var(--primary)' : 'transparent',
+            color: mode === 'peer_review' ? '#ffffff' : 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <FileText size={16} /> Professional Peer Review (Single Paper)
+        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-        {/* Left Column: Select Papers */}
+        {/* Left Column: Paper Selection */}
         <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Select Papers ({selectedIds.length} Selected)</h3>
+            <div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+                {mode === 'synthesis' ? `Select Papers (${selectedIds.length} Selected)` : `Select 1 Paper to Review (${selectedIds.length} Selected)`}
+              </h3>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {mode === 'synthesis' ? 'Choose 2 or more papers to compare' : 'Choose 1 paper for a full Peer Review Report'}
+              </div>
+            </div>
+
             <button
-              onClick={handleSynthesize}
+              onClick={handleGenerate}
               className="btn-primary"
               disabled={selectedIds.length === 0 || loading}
               style={{ opacity: selectedIds.length === 0 ? 0.5 : 1 }}
             >
               {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-              <span>Synthesize Review</span>
+              <span>{mode === 'synthesis' ? 'Synthesize Review' : 'Generate Peer Review'}</span>
             </button>
           </div>
 
@@ -71,7 +144,7 @@ export default function LiteratureSynthesis({ resources }) {
                   }}
                 >
                   <div style={{ color: isSelected ? 'var(--primary)' : 'var(--text-muted)' }}>
-                    {isSelected ? <CheckSquare size={20} /> : <Square size={20} />}
+                    {isSelected ? (mode === 'peer_review' ? <CheckCircle size={20} /> : <CheckSquare size={20} />) : <Square size={20} />}
                   </div>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{r.title}</div>
@@ -83,10 +156,12 @@ export default function LiteratureSynthesis({ resources }) {
           </div>
         </div>
 
-        {/* Right Column: Output Draft */}
+        {/* Right Column: Generated Report */}
         <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Generated Review Draft</h3>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+              {mode === 'synthesis' ? 'Generated Synthesis Review' : 'Peer Review Report Output'}
+            </h3>
             {reviewResult && (
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
@@ -99,11 +174,11 @@ export default function LiteratureSynthesis({ resources }) {
                   style={{ padding: '6px 12px', fontSize: '0.8rem' }}
                 >
                   {copied ? <Check size={14} /> : <Copy size={14} />}
-                  <span>{copied ? 'Copied!' : 'Copy Review'}</span>
+                  <span>{copied ? 'Copied!' : 'Copy'}</span>
                 </button>
 
                 <button 
-                  onClick={() => exportReviewToPdf(reviewResult, "Systematic Literature Review")}
+                  onClick={handleExportPdf}
                   className="btn-primary"
                   style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                 >
@@ -117,7 +192,9 @@ export default function LiteratureSynthesis({ resources }) {
           {loading ? (
             <div style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--primary)' }}>
               <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 12px' }} />
-              <div style={{ fontWeight: 700 }}>Gemini AI is synthesizing methodologies & research gaps...</div>
+              <div style={{ fontWeight: 700 }}>
+                {mode === 'synthesis' ? 'Gemini AI is synthesizing methodologies & research gaps...' : 'Gemini AI is generating formal Peer Review Report...'}
+              </div>
             </div>
           ) : reviewResult ? (
             <div style={{
@@ -135,7 +212,9 @@ export default function LiteratureSynthesis({ resources }) {
             </div>
           ) : (
             <div style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              Select 2 or more papers on the left and click "Synthesize Review" to generate a systematic review.
+              {mode === 'synthesis' 
+                ? 'Select 2 or more papers on the left and click "Synthesize Review" to generate a comparative synthesis.'
+                : 'Select 1 paper on the left and click "Generate Peer Review" to produce a formal academic Peer Review Report.'}
             </div>
           )}
         </div>

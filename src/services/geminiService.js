@@ -710,18 +710,6 @@ Identify the major themes and common ideas across the papers.
 
 Compare how the studies approached their research problems.
 
-## Quality & Standards Assessment
-
-For each paper, evaluate it against professional academic research standards, covering:
-- Methodological rigor (research design, sample size/data adequacy, controls, reproducibility)
-- Evidence quality (is the data/argumentation sufficient to support the conclusions drawn?)
-- Clarity and structure of argumentation
-- Citation and referencing practices (as far as can be judged from the provided abstract/content)
-- Disclosed limitations and whether they are adequately acknowledged
-- Overall alignment with standard academic publishing conventions for the field
-
-Be constructive and specific — note genuine strengths as well as weaknesses. Do not fabricate details not supported by the provided abstract/content; if something can't be judged from what's given, say so explicitly rather than guessing.
-
 ## Identified Gaps in Current Literature
 
 Identify gaps, limitations, contradictions, or areas that require further investigation.
@@ -737,11 +725,90 @@ Important:
 - Highlight agreements and disagreements.
 - Identify meaningful relationships between studies.
 - Do not invent findings that are not supported by the provided paper information.
-- Keep the Quality & Standards Assessment fair and evidence-based — this is a rigorous academic evaluation, not a rejection or endorsement.
 `;
 
   return callGeminiApi(
     prompt,
     "Scholar"
+
+  );
+}
+
+/**
+ * Generate a formal, professional Peer Review Report for a SINGLE paper —
+ * structured like a real academic peer review (as used for conference/
+ * journal submissions or thesis committee review), not a loose synthesis.
+ *
+ * This is distinct from synthesizeLiteratureReview, which handles MULTIPLE
+ * papers and produces a comparative literature review instead.
+ */
+export async function generatePeerReview(
+  title,
+  authors,
+  publicationInfo,
+  abstractOrText
+) {
+  const safeTitle = sanitizeInput(title, 300);
+  const safeAuthors = sanitizeInput(authors, 300);
+  const safePubInfo = sanitizeInput(publicationInfo, 300);
+  const safeContent = sanitizeInput(abstractOrText, 6000);
+
+  const prompt = `
+You are ResearchVault AI acting as an expert academic peer reviewer, writing a formal Peer Review Report to a professional publishing/academic standard — the kind submitted to a journal editor or a thesis committee.
+
+Paper under review:
+
+Title: ${safeTitle}
+Authors: ${safeAuthors}
+Publication Info: ${safePubInfo || "Not provided"}
+
+Content / Abstract provided for review:
+${safeContent}
+
+Write a complete Peer Review Report using EXACTLY this Markdown structure and section order:
+
+# Peer Review Report
+
+"${safeTitle}"
+${safeAuthors}
+${safePubInfo}
+
+## Overview
+
+A concise (4-6 sentence) paragraph summarizing what the paper does, its core contributions, its methodology at a high level, and whether it is well suited to its apparent venue/audience.
+
+## 1. Summary of Contribution
+
+A paragraph describing the paper's structure and walking through what each major section accomplishes, similar to how a reviewer would narrate the paper's arc for an editor who has not yet read it.
+
+## 2. Strengths
+
+A numbered list (at least 3-5 items) of genuine strengths. Each item should have a short bolded label followed by 2-4 sentences of substantiation referencing specifics from the provided content (methodology, findings, structure, contribution, etc). Do not invent specifics not supported by the provided content.
+
+## 3. Weaknesses and Points for Clarification
+
+A numbered list (at least 3-5 items) of substantive weaknesses, ambiguities, or open questions a rigorous reviewer would raise. Each item should have a short bolded label followed by 2-4 sentences of explanation. Be constructive and specific, not generic. Do not invent flaws not reasonably inferable from the provided content — if the provided content is too limited (e.g., only an abstract) to assess something (methodology detail, statistical validity, etc.), say so explicitly as a limitation of the review itself rather than asserting a flaw.
+
+## 4. Significance and Contribution to the Field
+
+A paragraph assessing the paper's overall significance, its novelty relative to existing work (as far as can be judged), and its likely influence or usefulness to the field/practitioners.
+
+## 5. Recommendation
+
+A short, direct recommendation paragraph (e.g., in the spirit of Accept / Minor Revisions / Major Revisions / Reject as applicable, or for coursework/thesis context, an assessment of the paper's suitability as an exemplar or its readiness for the next stage), with a one-line justification.
+
+## References
+
+If the provided content includes citations or referenced works, list them in a clean numbered reference list. If no reference information was provided, write: "No reference list was available in the provided content."
+
+Important:
+- Maintain a formal, professional, evidence-based reviewer tone throughout — confident but fair, never dismissive.
+- Every claim about the paper's content must be grounded in the provided title/authors/content — do not fabricate results, statistics, or details that are not present in what was given.
+- If the provided content is limited (e.g. only an abstract rather than full text), explicitly note in the Overview that the review is based on the abstract/available content only, and calibrate the depth of the Weaknesses section accordingly rather than asserting specific methodological flaws you cannot actually verify.
+`;
+
+  return callGeminiApi(
+    prompt,
+    safeAuthors || "Scholar"
   );
 }
