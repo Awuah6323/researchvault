@@ -6,6 +6,7 @@ import CitationModal from './components/CitationModal';
 import AiSummarizerModal from './components/AiSummarizerModal';
 import AddResourceModal from './components/AddResourceModal';
 import AuthModal from './components/AuthModal';
+import BottomNav from './components/BottomNav';
 
 import HomeDashboard from './pages/HomeDashboard';
 import AcademicSearch from './pages/AcademicSearch';
@@ -201,6 +202,11 @@ export default function App() {
           )}
         </main>
       </div>
+
+      <BottomNav 
+        activeTab={activeTab} 
+        onNavigate={(tab) => setActiveTab(tab)} 
+      />
 
       {/* Reader Full Screen Overlay */}
       {activeReaderResource && (

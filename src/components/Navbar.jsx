@@ -34,7 +34,8 @@ export default function Navbar({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '16px'
+        gap: '12px',
+        flexWrap: 'nowrap'
       }}>
         {/* Brand Logo */}
         <div 

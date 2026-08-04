@@ -601,3 +601,59 @@ input, textarea, select {
   animation: spin 1s linear infinite !important;
 }
 
+/* Hidden on desktop screens by default */
+.mobile-bottom-nav {
+  display: none;
+}
+
+/* Mobile Screens (768px and below) */
+@media (max-width: 768px) {
+  /* Hide desktop sidebar on mobile */
+  aside {
+    display: none !important;
+  }
+
+  /* Fixed Bottom Navigation Bar */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background-color: var(--header-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-color);
+    justify-content: space-around;
+    align-items: center;
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-bottom-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    padding: 6px 0;
+    flex: 1;
+  }
+
+  .mobile-bottom-nav-btn.active {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  /* Add bottom padding to main content area to prevent bottom nav overlay */
+  main {
+    padding-bottom: 84px !important;
+  }
+}
+
+
