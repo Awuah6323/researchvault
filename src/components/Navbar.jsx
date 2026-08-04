@@ -1,5 +1,6 @@
-import React from 'react';
-import { Search, BookOpen, Moon, Sun, Sparkles, User, Palette, Menu } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, BookOpen, Moon, Sun, Sparkles, User, Palette, Menu, Cloud, CheckCircle2, RefreshCw } from 'lucide-react';
+import { storage } from '../services/storage';
 
 export default function Navbar({ 
   searchQuery, 
@@ -12,6 +13,17 @@ export default function Navbar({
   onLogout,
   onOpenMobileMenu
 }) {
+  const [syncState, setSyncState] = useState(storage.getSyncState());
+  const [lastSyncTime, setLastSyncTime] = useState(storage.getLastSyncTime());
+
+  useEffect(() => {
+    const unsubscribe = storage.subscribeSyncState((state, timeStr) => {
+      setSyncState(state);
+      setLastSyncTime(timeStr);
+    });
+    return unsubscribe;
+  }, []);
+
   const themes = [
     { id: 'warm-sepia', label: '☕ Warm Sepia' },
     { id: 'cyber-emerald', label: '⚡ Cyber Emerald' },
@@ -140,8 +152,35 @@ export default function Navbar({
           />
         </form>
 
-        {/* Action Controls: Theme Switcher & Profile */}
+        {/* Action Controls: Cloud Sync, Theme Switcher & Profile */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          {/* Cloud Sync Status Badge */}
+          <div 
+            onClick={() => storage.pullCloudVault()}
+            title={`Cross-Device Cloud Vault (${syncState}). Click to sync.`}
+            className="mobile-hide"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '4px 8px',
+              borderRadius: '12px',
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: syncState === 'syncing' ? 'var(--primary)' : '#10b981',
+              cursor: 'pointer'
+            }}
+          >
+            {syncState === 'syncing' ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : (
+              <CheckCircle2 size={14} />
+            )}
+            <span>{syncState === 'syncing' ? 'Syncing...' : 'Cloud Synced'}</span>
+          </div>
+
           {/* Theme Dropdown */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <Palette size={16} style={{ color: 'var(--primary)' }} />
@@ -153,6 +192,7 @@ export default function Navbar({
                 borderRadius: '8px',
                 border: '1px solid var(--border-color)',
                 backgroundColor: 'var(--bg-card)',
+                color: 'var(--text-main)',
                 fontSize: '0.8rem',
                 fontWeight: 600,
                 cursor: 'pointer',

@@ -147,6 +147,36 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
         </form>
       </div>
 
+      {/* Real-time Cloud Vault Synchronization Card */}
+      <div className="glass-card" style={{ padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Cross-Device Cloud Vault Sync</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Automatically syncs papers, notes, reading progress, and folders across PC and phone.</p>
+          </div>
+          <span className="badge" style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+            Active Cloud Sync
+          </span>
+        </div>
+
+        <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <button 
+            type="button" 
+            className="btn-primary"
+            onClick={async () => {
+              const success = await storage.pullCloudVault();
+              setSavedMsg(success ? 'Cloud library updated from server!' : 'Synced local data with Cloud Vault!');
+              setTimeout(() => setSavedMsg(''), 4000);
+            }}
+          >
+            <span>Sync Account Vault Now</span>
+          </button>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Last Synced: <strong>{storage.getLastSyncTime()}</strong>
+          </div>
+        </div>
+      </div>
+
       {/* Data Export & Backup Card */}
       <div className="glass-card" style={{ padding: '24px' }}>
         <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px' }}>Library Data Backup & Export</h3>

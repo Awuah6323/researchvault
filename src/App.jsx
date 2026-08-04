@@ -38,9 +38,13 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
+  const refreshAppData = () => {
     setResources(storage.getResources());
     setCategories(storage.getCategories());
+  };
+
+  useEffect(() => {
+    refreshAppData();
     const session = storage.getSession();
     setUserProfile(session);
     const savedTheme = storage.getTheme();
@@ -51,6 +55,27 @@ export default function App() {
     if (!window.history.state) {
       window.history.replaceState({ tab: 'home' }, '', '#home');
     }
+
+    // Initial Cloud Vault pull for logged-in account
+    if (session && session.email) {
+      storage.pullCloudVault(session.email).then(() => {
+        refreshAppData();
+      });
+    }
+
+    // Auto-refresh from Cloud Vault when switching focus back to phone/PC
+    const handleFocus = () => {
+      refreshAppData();
+      const activeSession = storage.getSession();
+      if (activeSession && activeSession.email) {
+        storage.pullCloudVault(activeSession.email).then(() => {
+          refreshAppData();
+        });
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   // Close all open modals & drawers
