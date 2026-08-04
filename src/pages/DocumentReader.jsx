@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Sparkles, Bookmark, FileText, ChevronLeft, ChevronRight, Plus, Send, Download } from 'lucide-react';
+import { ArrowLeft, Sparkles, Bookmark, FileText, ChevronLeft, ChevronRight, Plus, Send, Download, ExternalLink, FileCode, ShieldCheck } from 'lucide-react';
 import { storage } from '../services/storage';
 
 export default function DocumentReader({ resource, onClose, onOpenAiSummarizer }) {
@@ -139,39 +139,92 @@ export default function DocumentReader({ resource, onClose, onOpenAiSummarizer }
         <div style={{ fontSize: '0.95rem', fontWeight: 600, opacity: 0.8, marginBottom: '16px' }}>{resource.authors} ({resource.publicationYear})</div>
         <div style={{ fontSize: '0.85rem', color: 'var(--primary)', marginBottom: '24px' }}>Published in: {resource.journal || 'Academic Repository'}</div>
 
-        {(pdfBlobUrl || resource.pdfFileData || resource.downloadUrl) ? (
+        {resource.pdfFileData ? (
           <div style={{ height: '700px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', marginBottom: '24px', backgroundColor: '#1e293b' }}>
-            <object
-              data={pdfBlobUrl || resource.pdfFileData || resource.downloadUrl}
-              type="application/pdf"
-              width="100%"
-              height="100%"
-              style={{ border: 'none' }}
-            >
-              <iframe
-                src={pdfBlobUrl || resource.pdfFileData || resource.downloadUrl}
-                title={resource.title}
+            {pdfBlobUrl ? (
+              <object
+                data={pdfBlobUrl}
+                type="application/pdf"
                 width="100%"
                 height="100%"
                 style={{ border: 'none' }}
-              />
-            </object>
+              >
+                <iframe
+                  src={pdfBlobUrl}
+                  title={resource.title}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 'none' }}
+                />
+              </object>
+            ) : (
+              <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                <FileCode size={40} style={{ color: 'var(--primary)' }} />
+                <div style={{ fontWeight: 700 }}>Loading PDF Document...</div>
+              </div>
+            )}
           </div>
         ) : (
-          <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: '20px', marginBottom: '24px', fontFamily: 'var(--font-serif)', fontSize: `${fontSize}px`, lineHeight: 1.7 }}>
-            <h2 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Abstract</h2>
-            <p style={{ marginBottom: '24px' }}>{resource.abstractText}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
+            {/* Publisher PDF Action Bar */}
+            {(resource.downloadUrl || resource.sourceUrl) && (
+              <div style={{
+                padding: '20px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '14px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <ShieldCheck size={28} style={{ color: '#10b981' }} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>
+                      Publisher Paper Document ({resource.openAccess ? 'Open Access' : 'Verified Metadata'})
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      External academic sources (arXiv, IEEE, OpenAlex) protect iframe embedding. Access full PDF directly:
+                    </div>
+                  </div>
+                </div>
 
-            <h2 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Chapter {currentPage}: Research Background & Methodology</h2>
-            <p style={{ marginBottom: '16px' }}>
-              Academic research requires methodical literature synthesis, persistent document storage, and flexible citation management. ResearchVault provides direct access to open-access scholarly materials.
-            </p>
-            <p style={{ marginBottom: '16px' }}>
-              In recent years, scholarly publications have accelerated in volume. Modern researchers require built-in annotation tools, citation formatting engines, and categorized collection managers to streamline their study workflows.
-            </p>
-            <p style={{ marginBottom: '16px' }}>
-              Experimental results confirm a significant reduction in citation assembly time and enhanced literature synthesis when utilizing structured data representation models.
-            </p>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {(resource.downloadUrl || resource.sourceUrl) && (
+                    <a
+                      href={resource.downloadUrl || resource.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-primary"
+                      style={{ padding: '8px 16px', fontSize: '0.85rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <Download size={16} />
+                      <span>Open / Download Full PDF</span>
+                      <ExternalLink size={14} />
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Abstract Text Reader */}
+            <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: '20px', fontFamily: 'var(--font-serif)', fontSize: `${fontSize}px`, lineHeight: 1.7 }}>
+              <h2 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Abstract</h2>
+              <p style={{ marginBottom: '24px' }}>{resource.abstractText}</p>
+
+              <h2 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Chapter {currentPage}: Research Background & Methodology</h2>
+              <p style={{ marginBottom: '16px' }}>
+                Academic research requires methodical literature synthesis, persistent document storage, and flexible citation management. ResearchVault provides direct access to open-access scholarly materials.
+              </p>
+              <p style={{ marginBottom: '16px' }}>
+                In recent years, scholarly publications have accelerated in volume. Modern researchers require built-in annotation tools, citation formatting engines, and categorized collection managers to streamline their study workflows.
+              </p>
+              <p style={{ marginBottom: '16px' }}>
+                Experimental results confirm a significant reduction in citation assembly time and enhanced literature synthesis when utilizing structured data representation models.
+              </p>
+            </div>
           </div>
         )}
       </div>
