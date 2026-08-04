@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { X, Link2, FileText, Search, Loader2 } from 'lucide-react';
+import { X, Link2, FileText, Search, Loader2, UploadCloud, Check } from 'lucide-react';
 import { searchAcademicSources } from '../services/academicSearch';
 
 export default function AddResourceModal({ onClose, onAdd, categories, onNavigateSearch }) {
-  const [activeTab, setActiveTab] = useState('doi'); // doi, manual
+  const [activeTab, setActiveTab] = useState('upload'); // upload, doi, manual
   const [doiUrl, setDoiUrl] = useState('');
   const [fetchingDoi, setFetchingDoi] = useState(false);
   const [doiError, setDoiError] = useState('');
 
-  // Manual Form State
+  // Manual & Upload Form State
   const [title, setTitle] = useState('');
   const [authors, setAuthors] = useState('');
-  const [publicationYear, setPublicationYear] = useState(2024);
+  const [publicationYear, setPublicationYear] = useState(new Date().getFullYear());
   const [category, setCategory] = useState(categories[0]?.name || 'Computer Science');
   const [resourceType, setResourceType] = useState('Research Paper');
   const [abstractText, setAbstractText] = useState('');
@@ -22,6 +22,10 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
     const file = e.target.files?.[0];
     if (file) {
       setPdfFileName(file.name);
+      if (!title) {
+        const cleanName = file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ');
+        setTitle(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
+      }
       const reader = new FileReader();
       reader.onload = (event) => {
         setPdfFileData(event.target.result);
@@ -104,7 +108,25 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
         </div>
 
         {/* Tab Selection */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', overflowX: 'auto' }}>
+          <button
+            onClick={() => setActiveTab('upload')}
+            style={{
+              padding: '8px 14px',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              backgroundColor: activeTab === 'upload' ? 'var(--primary)' : 'var(--bg-main)',
+              color: activeTab === 'upload' ? '#fff' : 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <UploadCloud size={16} /> Upload PDF from Device
+          </button>
+
           <button
             onClick={() => setActiveTab('doi')}
             style={{
@@ -116,10 +138,11 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               color: activeTab === 'doi' ? '#fff' : 'var(--text-muted)',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              whiteSpace: 'nowrap'
             }}
           >
-            <Link2 size={16} /> Add via Link or DOI
+            <Link2 size={16} /> Link or DOI
           </button>
 
           <button
@@ -133,12 +156,87 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               color: activeTab === 'manual' ? '#fff' : 'var(--text-muted)',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              whiteSpace: 'nowrap'
             }}
           >
-            <FileText size={16} /> Import / Manual Metadata
+            <FileText size={16} /> Manual Entry
           </button>
         </div>
+
+        {/* Mode 0: Upload PDF directly from device */}
+        {activeTab === 'upload' && (
+          <form onSubmit={handleSubmitManual} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <label style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px 16px',
+              borderRadius: '12px',
+              border: pdfFileName ? '2px solid #10b981' : '2px dashed var(--primary)',
+              backgroundColor: pdfFileName ? 'rgba(16, 185, 129, 0.05)' : 'var(--bg-main)',
+              cursor: 'pointer',
+              textAlign: 'center',
+              transition: 'all 0.2s ease'
+            }}>
+              <input
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={handlePdfChange}
+                style={{ display: 'none' }}
+              />
+              <UploadCloud size={36} style={{ color: pdfFileName ? '#10b981' : 'var(--primary)', marginBottom: '8px' }} />
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '4px' }}>
+                {pdfFileName ? `Selected: ${pdfFileName}` : 'Tap or Click to Select PDF file'}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {pdfFileName ? 'File attached successfully! Adjust title or category below.' : 'Supports PDF documents from your Phone, Tablet, Laptop, or Cloud Storage.'}
+              </div>
+            </label>
+
+            <div>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Paper Title *</label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Title extracted from PDF or enter title"
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)' }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Category</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)' }}
+                >
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Authors (Optional)</label>
+                <input
+                  type="text"
+                  value={authors}
+                  onChange={(e) => setAuthors(e.target.value)}
+                  placeholder="Author names"
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)' }}
+                />
+              </div>
+            </div>
+
+            <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '6px' }}>
+              <UploadCloud size={18} />
+              <span>Upload PDF to Vault</span>
+            </button>
+          </form>
+        )}
 
         {/* Mode 1: DOI / URL Link */}
         {activeTab === 'doi' && (

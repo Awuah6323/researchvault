@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, ArrowUpDown, Grid, List } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, Grid, List, UploadCloud } from 'lucide-react';
 import ResourceCard from '../components/ResourceCard';
 
 export default function MyLibrary({ 
@@ -9,7 +9,8 @@ export default function MyLibrary({
   onToggleFavorite, 
   onShowCitation, 
   onOpenAiSummarizer,
-  onDeleteResource
+  onDeleteResource,
+  onOpenAddModal
 }) {
   const [activeTabFilter, setActiveTabFilter] = useState('ALL'); // ALL, FAVORITES, COMPLETED
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -58,6 +59,17 @@ export default function MyLibrary({
               Starred ({resources.filter(r => r.isFavorite).length})
             </button>
           </div>
+
+          {onOpenAddModal && (
+            <button
+              onClick={onOpenAddModal}
+              className="btn-primary"
+              style={{ padding: '6px 14px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <UploadCloud size={16} />
+              <span>Upload PDF from Device</span>
+            </button>
+          )}
 
           <button
             onClick={() => {

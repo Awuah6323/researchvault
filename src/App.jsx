@@ -157,6 +157,7 @@ export default function App() {
               onShowCitation={(r) => setCitationModalResource(r)}
               onOpenAiSummarizer={(r) => setAiModalResource(r)}
               onDeleteResource={handleDeleteResource}
+              onOpenAddModal={() => setShowAddModal(true)}
             />
           )}
 
