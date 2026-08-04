@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00ff88" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+  <!-- Book Vault Emblem -->
+  <g transform="translate(64, 64)" fill="none" stroke="#03140a" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M40 80 C 120 40, 192 40, 256 80 C 320 40, 392 40, 472 80 V 400 C 392 360, 320 360, 256 400 C 192 360, 120 360, 40 400 Z" fill="#03140a" fill-opacity="0.15" />
+    <path d="M256 80 V 400" />
+    <path d="M100 160 H 200" stroke="#03140a" stroke-width="20" opacity="0.9"/>
+    <path d="M100 220 H 180" stroke="#03140a" stroke-width="20" opacity="0.9"/>
+    <path d="M312 160 H 412" stroke="#03140a" stroke-width="20" opacity="0.9"/>
+    <path d="M312 220 H 392" stroke="#03140a" stroke-width="20" opacity="0.9"/>
+  </g>
+</svg>
