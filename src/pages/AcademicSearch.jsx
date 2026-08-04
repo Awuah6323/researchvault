@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Plus, ExternalLink, Sparkles, Check, Download, Eye, X, BookOpen, Award, FileText, ArrowUpDown } from 'lucide-react';
+import { Search, Loader2, Plus, ExternalLink, Sparkles, Check, Download, Eye, X, BookOpen, Award, FileText, ArrowUpDown, AlertCircle } from 'lucide-react';
 import { searchAcademicSources } from '../services/academicSearch';
 
 export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSummarizer }) {
@@ -158,7 +158,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
             const isSaved = savedMap[item.doi || item.title];
             return (
               <div key={idx} className="glass-card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '12px', borderLeft: '4px solid var(--primary)' }}>
-                {/* Google Scholar Style Header Line: [PDF] domain badge + Paper Title */}
+                {/* Google Scholar Style Header Line */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
                     {(item.downloadUrl || item.openAccess) && (
@@ -194,7 +194,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                   {item.abstractText}
                 </p>
 
-                {/* Google Scholar Action Footer: Citation Counter, DOI, Preview, Save, AI Summary & Download */}
+                {/* Action Controls */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
                     <span style={{ color: 'var(--primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -209,10 +209,10 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                       onClick={() => setPreviewPaper(item)}
                       className="btn-secondary"
                       style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                      title="Preview paper details and document summary"
+                      title="Read continuous paper contents or full document stream"
                     >
                       <Eye size={14} />
-                      <span>Preview</span>
+                      <span>Read Paper</span>
                     </button>
 
                     <button
@@ -250,7 +250,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
         </div>
       )}
 
-      {/* PAPER PREVIEW MODAL OVERLAY */}
+      {/* DYNAMIC PAPER CONTENT & FULL DOCUMENT READER MODAL */}
       {previewPaper && (
         <div style={{
           position: 'fixed',
@@ -258,27 +258,27 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(6px)',
+          backgroundColor: 'rgba(0, 0, 0, 0.82)',
+          backdropFilter: 'blur(8px)',
           zIndex: 300,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '16px'
+          padding: '12px'
         }}>
           <div className="glass-card" style={{
             width: '100%',
-            maxWidth: '760px',
-            maxHeight: '90vh',
+            maxWidth: '960px',
+            height: '92vh',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
             borderRadius: '20px',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)'
+            boxShadow: '0 24px 60px rgba(0, 0, 0, 0.6)'
           }}>
-            {/* Preview Modal Header */}
+            {/* Modal Header */}
             <div style={{
-              padding: '18px 24px',
+              padding: '16px 20px',
               borderBottom: '1px solid var(--border-color)',
               display: 'flex',
               alignItems: 'center',
@@ -299,14 +299,18 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                   <BookOpen size={20} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)' }}>Scrollable Document Preview</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Scroll continuously to preview full paper contents & pages</div>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)' }}>
+                    {previewPaper.downloadUrl ? 'Full Document Reader Stream' : 'Paper Extract & Structural Reader'}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {previewPaper.downloadUrl ? 'Interactive full document PDF viewer' : 'Half-paper executive content extract'}
+                  </div>
                 </div>
               </div>
 
               <button
                 onClick={() => setPreviewPaper(null)}
-                aria-label="Close Preview Modal"
+                aria-label="Close Reader"
                 style={{
                   background: 'transparent',
                   border: '1px solid var(--border-color)',
@@ -323,102 +327,91 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
               </button>
             </div>
 
-            {/* Continuous Scrollable Preview Body */}
-            <div 
-              style={{ 
-                padding: '24px', 
-                overflowY: 'auto', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '20px', 
-                flex: 1,
-                maxHeight: '65vh',
-                WebkitOverflowScrolling: 'touch'
-              }}
-            >
-              {/* Badges */}
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <span className="badge">{previewPaper.resourceType}</span>
-                {previewPaper.openAccess && <span className="badge" style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>Open Access</span>}
-                {previewPaper.citationCount > 0 && (
+            {/* Modal Body: Full PDF Viewer or 50% Paper Content Extract */}
+            <div style={{ 
+              flex: 1, 
+              overflowY: 'auto', 
+              padding: '20px',
+              backgroundColor: 'var(--bg-main)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              WebkitOverflowScrolling: 'touch'
+            }}>
+              {/* Paper Information Header */}
+              <div style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                  <span className="badge">{previewPaper.resourceType}</span>
+                  {previewPaper.openAccess && (
+                    <span className="badge" style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+                      Open Access
+                    </span>
+                  )}
                   <span className="badge" style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary-text)' }}>
                     {previewPaper.citationCount.toLocaleString()} Citations
                   </span>
-                )}
-                <span className="badge" style={{ backgroundColor: 'var(--bg-main)' }}>
-                  Category: {previewPaper.suggestedCategory}
-                </span>
-              </div>
+                </div>
 
-              {/* Title & Metadata */}
-              <div>
-                <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px', lineHeight: 1.3 }}>
+                <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px', lineHeight: 1.3 }}>
                   {previewPaper.title}
                 </h2>
-                <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                  <strong>Authors:</strong> {previewPaper.authors}
-                </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  <strong>Published in:</strong> {previewPaper.journalOrVenue} ({previewPaper.publicationYear})
-                </div>
-                {previewPaper.doi && (
-                  <div style={{ fontSize: '0.82rem', color: 'var(--primary)', marginTop: '4px', fontWeight: 600 }}>
-                    DOI: {previewPaper.doi}
-                  </div>
-                )}
-              </div>
-
-              {/* Section 1: Executive Abstract & Overview */}
-              <div style={{
-                backgroundColor: 'var(--bg-main)',
-                padding: '18px',
-                borderRadius: '14px',
-                border: '1px solid var(--border-color)'
-              }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <FileText size={16} /> Section 1: Abstract & Executive Overview
-                </div>
-                <p style={{ fontSize: '0.94rem', color: 'var(--text-main)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
-                  {previewPaper.abstractText}
-                </p>
-              </div>
-
-              {/* Section 2: Research Methodology & Core Insights */}
-              <div style={{
-                backgroundColor: 'var(--bg-card)',
-                padding: '18px',
-                borderRadius: '14px',
-                border: '1px solid var(--border-color)'
-              }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <BookOpen size={16} /> Section 2: Methodology & Key Scientific Contributions
-                </div>
-                <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', lineHeight: 1.6 }}>
-                  This research paper introduces novel techniques in <strong>{previewPaper.suggestedCategory}</strong> published in <em>{previewPaper.journalOrVenue}</em>. It presents empirical evaluation protocols, statistical analysis, and algorithmic framework benchmarks cited over {previewPaper.citationCount.toLocaleString()} times across academic literature.
+                
+                <div style={{ fontSize: '0.88rem', color: '#10b981', fontWeight: 600 }}>
+                  <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{previewPaper.authors}</span> — <span style={{ color: 'var(--text-muted)' }}>{previewPaper.journalOrVenue} ({previewPaper.publicationYear})</span>
                 </div>
               </div>
 
-              {/* Section 3: Live Embedded PDF Page Viewer Stream */}
-              {previewPaper.downloadUrl && (
-                <div style={{ border: '1px solid var(--border-color)', borderRadius: '14px', overflow: 'hidden' }}>
-                  <div style={{ padding: '12px 16px', backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#10b981' }}>Live Scrollable PDF Document Stream</span>
-                    <a href={previewPaper.downloadUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}>
-                      Open Full Screen PDF <ExternalLink size={12} />
-                    </a>
-                  </div>
+              {/* RENDER MODE 1: Complete Full PDF Stream */}
+              {previewPaper.downloadUrl ? (
+                <div style={{ flex: 1, minHeight: '520px', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
                   <iframe
                     src={previewPaper.downloadUrl}
-                    title="PDF Document Scrollable Preview"
-                    style={{ width: '100%', height: '480px', border: 'none' }}
+                    title="Full Document Reader Stream"
+                    style={{ width: '100%', height: '100%', border: 'none', backgroundColor: '#ffffff' }}
                   />
+                </div>
+              ) : (
+                /* RENDER MODE 2: 50% Half-Paper Content Extract */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Notice Banner */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.3)', padding: '12px 16px', borderRadius: '12px', color: 'var(--text-main)', fontSize: '0.85rem' }}>
+                    <AlertCircle size={18} style={{ color: '#eab308', flexShrink: 0 }} />
+                    <div>
+                      <strong>Half-Paper Content View:</strong> Direct PDF download link is restricted by publisher paywall. Displaying core structural sections and author abstract.
+                    </div>
+                  </div>
+
+                  {/* Section A: Comprehensive Abstract */}
+                  <div style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--primary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <FileText size={16} /> Section 1: Abstract & Core Problem Statement
+                    </div>
+                    <p style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                      {previewPaper.abstractText}
+                    </p>
+                  </div>
+
+                  {/* Section B: Structural Metadata & Citation Index */}
+                  <div style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--secondary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <BookOpen size={16} /> Section 2: Venue Metadata & DOI Reference
+                    </div>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.65 }}>
+                      <p><strong>Published Field:</strong> {previewPaper.suggestedCategory}</p>
+                      <p style={{ marginTop: '4px' }}><strong>Source Index:</strong> {previewPaper.journalOrVenue}</p>
+                      <p style={{ marginTop: '4px' }}><strong>DOI Accession:</strong> {previewPaper.doi || 'N/A'}</p>
+                      <p style={{ marginTop: '8px', color: 'var(--text-muted)' }}>
+                        To read the remaining methods, data tables, and conclusions, access the publisher portal via the original DOI source link below.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Fixed Bottom Action Toolbar */}
+            {/* Modal Bottom Action Footer */}
             <div style={{
-              padding: '16px 24px',
+              padding: '14px 20px',
               borderTop: '1px solid var(--border-color)',
               backgroundColor: 'var(--header-bg)',
               display: 'flex',
@@ -429,15 +422,13 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
             }}>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button
-                  onClick={() => {
-                    handleSave(previewPaper);
-                  }}
+                  onClick={() => handleSave(previewPaper)}
                   className={savedMap[previewPaper.doi || previewPaper.title] ? "btn-secondary" : "btn-primary"}
                   disabled={savedMap[previewPaper.doi || previewPaper.title]}
-                  style={{ padding: '8px 18px', fontSize: '0.85rem' }}
+                  style={{ padding: '8px 16px', fontSize: '0.84rem' }}
                 >
                   {savedMap[previewPaper.doi || previewPaper.title] ? <Check size={16} /> : <Plus size={16} />}
-                  <span>{savedMap[previewPaper.doi || previewPaper.title] ? 'Saved to Library' : 'Save to Library'}</span>
+                  <span>{savedMap[previewPaper.doi || previewPaper.title] ? 'Saved to Vault' : 'Save to Vault'}</span>
                 </button>
 
                 <button
@@ -447,7 +438,7 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
                     onOpenAiSummarizer(p);
                   }}
                   className="btn-secondary"
-                  style={{ padding: '8px 14px', fontSize: '0.85rem' }}
+                  style={{ padding: '8px 14px', fontSize: '0.84rem' }}
                 >
                   <Sparkles size={16} />
                   <span>AI Summary</span>
@@ -455,18 +446,16 @@ export default function AcademicSearch({ initialQuery, onAddResource, onOpenAiSu
               </div>
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                {(previewPaper.downloadUrl || previewPaper.sourceUrl) && (
-                  <a
-                    href={previewPaper.downloadUrl || previewPaper.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-primary"
-                    style={{ padding: '8px 18px', fontSize: '0.85rem', textDecoration: 'none', backgroundColor: '#10b981', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <Download size={16} />
-                    <span>Download Document</span>
-                  </a>
-                )}
+                <a
+                  href={previewPaper.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary"
+                  style={{ padding: '8px 16px', fontSize: '0.84rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <span>Open Publisher Source</span>
+                  <ExternalLink size={16} />
+                </a>
               </div>
             </div>
           </div>
