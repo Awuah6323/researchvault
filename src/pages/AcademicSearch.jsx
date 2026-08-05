@@ -1,4 +1,3 @@
-// src/pages/AcademicSearch.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
@@ -14,7 +13,11 @@ import {
   Award,
   FileText,
   ArrowUpDown,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 
 import { searchAcademicSources, isDirectPdfUrl } from '../services/academicSearch';
@@ -29,6 +32,13 @@ export default function AcademicSearch({
   const [loading, setLoading] = useState(false);
   const [savedMap, setSavedMap] = useState({});
   const [sortBy, setSortBy] = useState('citations');
+  
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
   const [previewPaper, setPreviewPaper] = useState(null);
   // 'idle' | 'checking' | 'blob' | 'viewer-loading' | 'viewer-loaded' | 'failed'
   const [previewStage, setPreviewStage] = useState('idle');
@@ -36,12 +46,18 @@ export default function AcademicSearch({
   const previewTimeoutRef = useRef(null);
   const previewAbortRef = useRef(null);
   const previewKeyRef = useRef(null);
+  const resultsRef = useRef(null);
 
   // ----------------------------------------
   // SEARCH
   // ----------------------------------------
 
-  const executeSearch = async (searchStr) => {
+  const executeSearch = async (
+    searchStr,
+    targetPage = 1,
+    targetPerPage = perPage,
+    targetSort = sortBy
+  ) => {
     const targetQuery = (
       searchStr !== undefined ? searchStr : query
     ).trim();
@@ -51,11 +67,34 @@ export default function AcademicSearch({
     setLoading(true);
 
     try {
-      const data = await searchAcademicSources(targetQuery);
-      setResults(Array.isArray(data) ? data : []);
+      const data = await searchAcademicSources(
+        targetQuery,
+        targetPage,
+        targetPerPage,
+        targetSort
+      );
+
+      if (data && typeof data === 'object' && Array.isArray(data.results)) {
+        setResults(data.results);
+        setTotalCount(data.totalCount || 0);
+        setPage(data.page || targetPage);
+        setPerPage(data.perPage || targetPerPage);
+        setTotalPages(data.totalPages || 0);
+      } else if (Array.isArray(data)) {
+        setResults(data);
+        setTotalCount(data.length);
+        setPage(1);
+        setTotalPages(1);
+      } else {
+        setResults([]);
+        setTotalCount(0);
+        setTotalPages(0);
+      }
     } catch (err) {
       console.error('Academic search error:', err);
       setResults([]);
+      setTotalCount(0);
+      setTotalPages(0);
     } finally {
       setLoading(false);
     }
@@ -63,16 +102,38 @@ export default function AcademicSearch({
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    executeSearch(query);
+    executeSearch(query, 1, perPage, sortBy);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || (totalPages > 0 && newPage > totalPages) || newPage === page || loading) return;
+    executeSearch(query, newPage, perPage, sortBy);
+    if (resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handlePerPageChange = (newPerPage) => {
+    const size = Number(newPerPage);
+    setPerPage(size);
+    executeSearch(query, 1, size, sortBy);
+    if (resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleSortChange = (newSort) => {
+    setSortBy(newSort);
+    executeSearch(query, 1, perPage, newSort);
   };
 
   useEffect(() => {
     if (initialQuery) {
       setQuery(initialQuery);
-      executeSearch(initialQuery);
+      executeSearch(initialQuery, 1, perPage, sortBy);
     } else {
       setQuery('Transformers AI');
-      executeSearch('Transformers AI');
+      executeSearch('Transformers AI', 1, perPage, sortBy);
     }
   }, [initialQuery]);
 
@@ -261,34 +322,45 @@ export default function AcademicSearch({
   };
 
   // ----------------------------------------
-  // SORT RESULTS
+  // PAGINATION NUMBERS & SORT
   // ----------------------------------------
 
-  const sortedResults = [...results]
-    .filter((item) => {
-      if (sortBy === 'openaccess') {
-        return item.openAccess;
+  const sortedResults = results;
+
+  const getPageNumbers = () => {
+    if (totalPages <= 1) return [1];
+    const maxVisible = 7;
+    const pages = [];
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, page - 2);
+      let end = Math.min(totalPages, page + 2);
+
+      if (page <= 3) {
+        end = 5;
+      } else if (page >= totalPages - 2) {
+        start = totalPages - 4;
       }
 
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'citations') {
-        return (
-          (b.citationCount || 0) -
-          (a.citationCount || 0)
-        );
+      if (start > 1) {
+        pages.push(1);
+        if (start > 2) pages.push('...');
       }
 
-      if (sortBy === 'newest') {
-        return (
-          (b.publicationYear || 0) -
-          (a.publicationYear || 0)
-        );
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
       }
 
-      return 0;
-    });
+      if (end < totalPages) {
+        if (end < totalPages - 1) pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+
+    return pages;
+  };
 
   // ----------------------------------------
   // SAFE VALUES
@@ -436,11 +508,15 @@ export default function AcademicSearch({
               fontWeight: 600
             }}
           >
-            {loading
-              ? 'Searching...'
-              : `Found ${sortedResults.length} paper${
-                  sortedResults.length === 1 ? '' : 's'
-                }`}
+            {loading ? (
+              'Searching global catalogs...'
+            ) : totalCount > 0 ? (
+              <span>
+                Showing <strong style={{ color: 'var(--text-main)' }}>{(page - 1) * perPage + 1}–{Math.min(page * perPage, totalCount)}</strong> of <strong style={{ color: 'var(--text-main)' }}>{totalCount.toLocaleString()}</strong> papers (Page {page} of {totalPages || 1})
+              </span>
+            ) : (
+              `Found ${results.length} papers`
+            )}
           </div>
 
           <div
@@ -485,7 +561,7 @@ export default function AcademicSearch({
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setSortBy(tab.id)}
+                onClick={() => handleSortChange(tab.id)}
                 style={{
                   padding: '5px 10px',
                   borderRadius: '8px',
@@ -560,6 +636,7 @@ export default function AcademicSearch({
         </div>
       ) : (
         <div
+          ref={resultsRef}
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -824,6 +901,240 @@ export default function AcademicSearch({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* GOOGLE SCHOLAR STYLE PAGINATION */}
+      {totalPages > 1 && (
+        <div
+          className="glass-card"
+          style={{
+            padding: '24px 20px',
+            marginTop: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '16px',
+            borderRadius: '16px',
+            border: '1px solid var(--border-color)',
+            backgroundColor: 'var(--bg-card)'
+          }}
+        >
+          {/* GOOGLE SCHOLAR MULTI-O BRANDING GRAPHIC */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              userSelect: 'none',
+              marginBottom: '4px'
+            }}
+          >
+            <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#4285F4', fontFamily: 'var(--font-serif)' }}>G</span>
+            {getPageNumbers().map((pg, idx) => {
+              if (pg === '...') {
+                return (
+                  <span key={`dot-${idx}`} style={{ fontSize: '1.2rem', color: 'var(--text-muted)', padding: '0 2px' }}>
+                    o
+                  </span>
+                );
+              }
+              const isActive = pg === page;
+              return (
+                <span
+                  key={`o-${pg}`}
+                  onClick={() => handlePageChange(pg)}
+                  style={{
+                    fontSize: isActive ? '1.8rem' : '1.3rem',
+                    fontWeight: isActive ? 900 : 700,
+                    color: isActive ? '#EA4335' : idx % 2 === 0 ? '#FBBC05' : '#34A853',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    transform: isActive ? 'scale(1.25)' : 'scale(1)',
+                    display: 'inline-block'
+                  }}
+                  title={`Go to page ${pg}`}
+                >
+                  o
+                </span>
+              );
+            })}
+            <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#4285F4', fontFamily: 'var(--font-serif)', marginLeft: '2px' }}>g l e</span>
+          </div>
+
+          {/* PAGE CONTROLS BAR */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              flexWrap: 'wrap'
+            }}
+          >
+            {/* FIRST PAGE */}
+            <button
+              onClick={() => handlePageChange(1)}
+              disabled={page === 1 || loading}
+              className="btn-secondary"
+              title="First Page"
+              style={{
+                padding: '8px 10px',
+                borderRadius: '10px',
+                opacity: page === 1 ? 0.4 : 1,
+                cursor: page === 1 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <ChevronsLeft size={16} />
+            </button>
+
+            {/* PREVIOUS PAGE */}
+            <button
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1 || loading}
+              className="btn-secondary"
+              style={{
+                padding: '8px 14px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                opacity: page === 1 ? 0.4 : 1,
+                cursor: page === 1 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <ChevronLeft size={16} />
+              <span>Previous</span>
+            </button>
+
+            {/* NUMERIC PAGE BUTTONS */}
+            {getPageNumbers().map((pg, idx) => {
+              if (pg === '...') {
+                return (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    style={{
+                      padding: '6px 10px',
+                      color: 'var(--text-muted)',
+                      fontSize: '0.9rem',
+                      fontWeight: 600
+                    }}
+                  >
+                    ...
+                  </span>
+                );
+              }
+
+              const isActive = pg === page;
+              return (
+                <button
+                  key={`page-btn-${pg}`}
+                  onClick={() => handlePageChange(pg)}
+                  disabled={loading}
+                  style={{
+                    minWidth: '36px',
+                    height: '36px',
+                    padding: '0 8px',
+                    borderRadius: '10px',
+                    border: isActive ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                    backgroundColor: isActive ? 'var(--primary)' : 'var(--bg-card)',
+                    color: isActive ? '#ffffff' : 'var(--text-main)',
+                    fontSize: '0.88rem',
+                    fontWeight: isActive ? 800 : 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isActive ? '0 4px 12px rgba(99, 102, 241, 0.3)' : 'none'
+                  }}
+                >
+                  {pg}
+                </button>
+              );
+            })}
+
+            {/* NEXT PAGE */}
+            <button
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page >= totalPages || loading}
+              className="btn-secondary"
+              style={{
+                padding: '8px 14px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                opacity: page >= totalPages ? 0.4 : 1,
+                cursor: page >= totalPages ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <span>Next</span>
+              <ChevronRight size={16} />
+            </button>
+
+            {/* LAST PAGE */}
+            <button
+              onClick={() => handlePageChange(totalPages)}
+              disabled={page >= totalPages || loading}
+              className="btn-secondary"
+              title="Last Page"
+              style={{
+                padding: '8px 10px',
+                borderRadius: '10px',
+                opacity: page >= totalPages ? 0.4 : 1,
+                cursor: page >= totalPages ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <ChevronsRight size={16} />
+            </button>
+          </div>
+
+          {/* PER PAGE & COUNTER FOOTER */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              flexWrap: 'wrap',
+              gap: '12px',
+              paddingTop: '12px',
+              borderTop: '1px solid var(--border-color)',
+              fontSize: '0.82rem',
+              color: 'var(--text-muted)'
+            }}
+          >
+            <div>
+              Showing page <strong style={{ color: 'var(--text-main)' }}>{page}</strong> of{' '}
+              <strong style={{ color: 'var(--text-main)' }}>{totalPages.toLocaleString()}</strong> ({totalCount.toLocaleString()} papers found)
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Results per page:</span>
+              <select
+                value={perPage}
+                onChange={(e) => handlePerPageChange(e.target.value)}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--text-main)',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value={10}>10 per page</option>
+                <option value={20}>20 per page</option>
+                <option value={50}>50 per page</option>
+              </select>
+            </div>
+          </div>
         </div>
       )}
 

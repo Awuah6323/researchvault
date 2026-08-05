@@ -66,7 +66,8 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
     setDoiError('');
 
     try {
-      const results = await searchAcademicSources(doiUrl.trim());
+      const response = await searchAcademicSources(doiUrl.trim());
+      const results = Array.isArray(response) ? response : (response?.results || []);
       if (results && results.length > 0) {
         const item = results[0];
         onAdd({

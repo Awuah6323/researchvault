@@ -45,20 +45,11 @@ const SAMPLE_PAPERS = [
   }
 ];
 
-export async function searchAcademicSources(query) {
-  if (!query || !query.trim()) return [];
+export async function searchAcademicSources(query, page = 1, perPage = 10, sortBy = 'citations') {
+  if (!query || !query.trim()) {
+    return { results: [], totalCount: 0, page: 1, perPage, totalPages: 0 };
+  }
   const clean = query.trim();
-
-  // Determine publication date range (Default: last 10 years)
-  const currentYear = new Date().getFullYear();
-  const defaultStartYear = currentYear - 10;
-  
-  // Detect custom year in query (e.g. 2018)
-  const yearMatch = clean.match(/\b(19\d{2}|20[0-2]\d)\b/);
-  const customYear = yearMatch ? parseInt(yearMatch[1], 10) : null;
-
-  const startYear = customYear ? Math.min(customYear, defaultStartYear) : defaultStartYear;
-  const endYear = customYear ? Math.max(customYear, currentYear) : currentYear;
 
   // Check DOI pattern
   const isDoi = /^10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/.test(clean);
@@ -75,9 +66,24 @@ export async function searchAcademicSources(query) {
   if (explicitAuthor) searchPhrase = explicitAuthor;
   if (explicitTitle) searchPhrase = explicitTitle;
 
-  const formattedQuery = searchPhrase.includes(' ') && !searchPhrase.includes('"') 
-    ? `"${searchPhrase}"` 
-    : searchPhrase;
+  // Build OpenAlex sort and filter parameters
+  let openAlexSort = 'cited_by_count:desc';
+  if (sortBy === 'newest') openAlexSort = 'publication_year:desc';
+  if (sortBy === 'relevance') openAlexSort = 'relevance_score:desc';
+
+  let openAlexFilters = [];
+  if (sortBy === 'openaccess') {
+    openAlexFilters.push('is_oa:true');
+  }
+
+  // Detect custom year in query if provided (e.g., "2022 computer")
+  const yearMatch = clean.match(/\b(19\d{2}|20[0-2]\d)\b/);
+  if (yearMatch) {
+    const customYear = parseInt(yearMatch[1], 10);
+    openAlexFilters.push(`publication_year:${customYear}`);
+  }
+
+  const filterStr = openAlexFilters.length > 0 ? `&filter=${openAlexFilters.join(',')}` : '';
 
   try {
     let openAlexUrl = '';
@@ -85,9 +91,11 @@ export async function searchAcademicSources(query) {
     if (isDoi) {
       openAlexUrl = `https://api.openalex.org/works/https://doi.org/${clean}`;
     } else if (explicitAuthor) {
-      openAlexUrl = `https://api.openalex.org/works?filter=raw_author_name.search:"${encodeURIComponent(explicitAuthor)}",publication_year:${startYear}-${endYear},language:en&per_page=25&sort=cited_by_count:desc`;
+      const authFilter = `raw_author_name.search:"${encodeURIComponent(explicitAuthor)}"`;
+      const combinedFilter = openAlexFilters.length > 0 ? `${authFilter},${openAlexFilters.join(',')}` : authFilter;
+      openAlexUrl = `https://api.openalex.org/works?filter=${combinedFilter}&page=${page}&per_page=${perPage}&sort=${openAlexSort}`;
     } else {
-      openAlexUrl = `https://api.openalex.org/works?search=${encodeURIComponent(formattedQuery)}&filter=publication_year:${startYear}-${endYear},language:en&per_page=25&sort=cited_by_count:desc`;
+      openAlexUrl = `https://api.openalex.org/works?search=${encodeURIComponent(searchPhrase)}&page=${page}&per_page=${perPage}&sort=${openAlexSort}${filterStr}`;
     }
 
     // 1. OpenAlex Query
@@ -95,34 +103,61 @@ export async function searchAcademicSources(query) {
     if (res.ok) {
       const data = await res.json();
       const items = isDoi ? (data ? [data] : []) : (data.results || []);
-      
+      const totalCount = isDoi ? (data ? 1 : 0) : (data.meta?.count || items.length);
+
       if (items.length > 0) {
-        const parsedResults = items
-          .filter(item => isDoi || (item.publication_year >= startYear && (!item.language || item.language === 'en')))
-          .map(item => parseOpenAlexItem(item, clean));
+        const parsedResults = items.map(item => parseOpenAlexItem(item, clean));
         
-        if (parsedResults.length >= 3 || isDoi) {
-          return parsedResults;
+        let finalResults = parsedResults;
+        if (sortBy === 'openaccess') {
+          finalResults = parsedResults.filter(p => p.openAccess);
         }
+
+        return {
+          results: finalResults,
+          totalCount,
+          page,
+          perPage,
+          totalPages: Math.ceil(totalCount / perPage)
+        };
       }
     }
 
-    // 2. Crossref Query
+    // 2. Crossref Query (Fallback/Secondary API)
+    let crossrefSort = '&sort=is-referenced-by-count&order=desc';
+    if (sortBy === 'newest') crossrefSort = '&sort=published&order=desc';
+    if (sortBy === 'relevance') crossrefSort = '&sort=score&order=desc';
+
+    const offset = (page - 1) * perPage;
     let crossrefUrl = '';
     if (explicitAuthor) {
-      crossrefUrl = `https://api.crossref.org/works?query.author=${encodeURIComponent(explicitAuthor)}&filter=from-pub-date:${startYear}-01-01,until-pub-date:${endYear}-12-31&rows=25`;
+      crossrefUrl = `https://api.crossref.org/works?query.author=${encodeURIComponent(explicitAuthor)}&rows=${perPage}&offset=${offset}${crossrefSort}`;
     } else if (explicitTitle) {
-      crossrefUrl = `https://api.crossref.org/works?query.title=${encodeURIComponent(explicitTitle)}&filter=from-pub-date:${startYear}-01-01,until-pub-date:${endYear}-12-31&rows=25`;
+      crossrefUrl = `https://api.crossref.org/works?query.title=${encodeURIComponent(explicitTitle)}&rows=${perPage}&offset=${offset}${crossrefSort}`;
     } else {
-      crossrefUrl = `https://api.crossref.org/works?query=${encodeURIComponent(formattedQuery)}&filter=from-pub-date:${startYear}-01-01,until-pub-date:${endYear}-12-31&rows=25`;
+      crossrefUrl = `https://api.crossref.org/works?query=${encodeURIComponent(searchPhrase)}&rows=${perPage}&offset=${offset}${crossrefSort}`;
     }
 
     const crRes = await fetch(crossrefUrl);
     if (crRes.ok) {
       const crData = await crRes.json();
       const crItems = crData.message?.items || [];
+      const totalCount = crData.message?.['total-results'] || crItems.length;
+
       if (crItems.length > 0) {
-        return crItems.map(item => parseCrossrefItem(item, clean));
+        const parsed = crItems.map(item => parseCrossrefItem(item, clean));
+        let finalResults = parsed;
+        if (sortBy === 'openaccess') {
+          finalResults = parsed.filter(p => p.openAccess);
+        }
+
+        return {
+          results: finalResults,
+          totalCount,
+          page,
+          perPage,
+          totalPages: Math.ceil(totalCount / perPage)
+        };
       }
     }
   } catch (err) {
@@ -131,13 +166,34 @@ export async function searchAcademicSources(query) {
 
   // 3. Fallback: Local Curated Catalog
   const lower = searchPhrase.toLowerCase();
-  return SAMPLE_PAPERS.filter(p => 
-    (customYear ? true : p.publicationYear >= startYear) &&
-    (p.title.toLowerCase().includes(lower) || 
-     p.authors.toLowerCase().includes(lower) || 
-     p.suggestedCategory.toLowerCase().includes(lower) || 
-     clean.length < 3)
+  const sampleFiltered = SAMPLE_PAPERS.filter(p => 
+    p.title.toLowerCase().includes(lower) || 
+    p.authors.toLowerCase().includes(lower) || 
+    p.suggestedCategory.toLowerCase().includes(lower) || 
+    p.abstractText.toLowerCase().includes(lower) ||
+    lower.length <= 2
   );
+
+  let sortedSample = [...sampleFiltered];
+  if (sortBy === 'citations') {
+    sortedSample.sort((a, b) => (b.citationCount || 0) - (a.citationCount || 0));
+  } else if (sortBy === 'newest') {
+    sortedSample.sort((a, b) => (b.publicationYear || 0) - (a.publicationYear || 0));
+  } else if (sortBy === 'openaccess') {
+    sortedSample = sortedSample.filter(p => p.openAccess);
+  }
+
+  const offset = (page - 1) * perPage;
+  const pageResults = sortedSample.slice(offset, offset + perPage);
+  const totalCount = sortedSample.length;
+
+  return {
+    results: pageResults,
+    totalCount,
+    page,
+    perPage,
+    totalPages: Math.ceil(totalCount / perPage)
+  };
 }
 
 // A URL is only worth trying to preview inline if it looks like it
