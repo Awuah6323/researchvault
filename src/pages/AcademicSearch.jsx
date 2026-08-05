@@ -1,5 +1,5 @@
 // src/pages/AcademicSearch.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   Loader2,
@@ -17,7 +17,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-import { searchAcademicSources } from '../services/academicSearch';
+import { searchAcademicSources, isDirectPdfUrl } from '../services/academicSearch';
 
 export default function AcademicSearch({
   initialQuery,
@@ -31,6 +31,8 @@ export default function AcademicSearch({
   const [sortBy, setSortBy] = useState('citations');
   const [previewPaper, setPreviewPaper] = useState(null);
   const [pdfError, setPdfError] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const previewTimeoutRef = useRef(null);
 
   // ----------------------------------------
   // SEARCH
@@ -75,14 +77,73 @@ export default function AcademicSearch({
   // OPEN PAPER PREVIEW
   // ----------------------------------------
 
+  // How long we wait for the embedded viewer to report success before
+  // assuming it's blocked and switching to the fallback UI. Browsers do
+  // NOT fire an iframe "error" event for X-Frame-Options / CSP blocks —
+  // the frame just silently shows a blocked/blank page — so onError alone
+  // can't detect this. A timeout is the standard workaround.
+  const PREVIEW_LOAD_TIMEOUT_MS = 7000;
+
+  const clearPreviewTimeout = () => {
+    if (previewTimeoutRef.current) {
+      clearTimeout(previewTimeoutRef.current);
+      previewTimeoutRef.current = null;
+    }
+  };
+
   const openPreview = (paper) => {
+    clearPreviewTimeout();
     setPdfError(false);
     setPreviewPaper(paper);
+
+    const canAttemptPreview = isDirectPdfUrl(paper?.downloadUrl);
+
+    if (canAttemptPreview) {
+      setPdfLoading(true);
+      previewTimeoutRef.current = setTimeout(() => {
+        setPdfLoading(false);
+        setPdfError(true);
+      }, PREVIEW_LOAD_TIMEOUT_MS);
+    } else {
+      // Not a direct PDF link (likely a publisher landing page) — don't
+      // even attempt the iframe, go straight to the fallback card.
+      setPdfLoading(false);
+      setPdfError(true);
+    }
   };
 
   const closePreview = () => {
+    clearPreviewTimeout();
     setPreviewPaper(null);
     setPdfError(false);
+    setPdfLoading(false);
+  };
+
+  const handleIframeLoad = () => {
+    clearPreviewTimeout();
+    setPdfLoading(false);
+  };
+
+  const handleIframeError = () => {
+    clearPreviewTimeout();
+    setPdfLoading(false);
+    setPdfError(true);
+  };
+
+  // Clean up any pending timeout if the component unmounts mid-preview.
+  useEffect(() => {
+    return () => clearPreviewTimeout();
+  }, []);
+
+  // Route through Google's PDF viewer instead of framing the publisher
+  // URL directly. Google fetches the PDF server-side and renders it as
+  // an embeddable viewer, which sidesteps most X-Frame-Options/CSP
+  // blocks that the raw publisher URL would hit.
+  const getPreviewViewerUrl = (paper) => {
+    if (!paper?.downloadUrl) return '';
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(
+      paper.downloadUrl
+    )}&embedded=true`;
   };
 
   // ----------------------------------------
@@ -916,20 +977,52 @@ export default function AcademicSearch({
                     overflow: 'hidden',
                     border:
                       '1px solid var(--border-color)',
-                    backgroundColor: '#ffffff'
+                    backgroundColor: '#ffffff',
+                    position: 'relative'
                   }}
                 >
+                  {pdfLoading && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '10px',
+                        backgroundColor: '#ffffff',
+                        zIndex: 1
+                      }}
+                    >
+                      <Loader2
+                        size={28}
+                        className="animate-spin"
+                        style={{ color: 'var(--primary)' }}
+                      />
+                      <div
+                        style={{
+                          fontSize: '0.82rem',
+                          color: 'var(--text-muted)',
+                          fontWeight: 600
+                        }}
+                      >
+                        Loading preview...
+                      </div>
+                    </div>
+                  )}
+
                   <iframe
-                    src={previewPaper.downloadUrl}
+                    key={previewPaper.doi || previewPaper.title}
+                    src={getPreviewViewerUrl(previewPaper)}
                     title="Academic Paper PDF Preview"
                     style={{
                       width: '100%',
                       height: '100%',
                       border: 'none'
                     }}
-                    onError={() => {
-                      setPdfError(true);
-                    }}
+                    onLoad={handleIframeLoad}
+                    onError={handleIframeError}
                   />
                 </div>
               ) : (

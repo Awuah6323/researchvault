@@ -140,6 +140,20 @@ export async function searchAcademicSources(query) {
   );
 }
 
+// A URL is only worth trying to preview inline if it looks like it
+// resolves directly to a PDF file (as opposed to a publisher landing
+// page such as https://doi.org/... or https://journal.example/article/123,
+// which almost always sends X-Frame-Options/CSP headers that block framing).
+export function isDirectPdfUrl(urlStr) {
+  if (!urlStr) return false;
+  try {
+    const { pathname } = new URL(urlStr);
+    return pathname.toLowerCase().endsWith('.pdf');
+  } catch (e) {
+    return false;
+  }
+}
+
 function extractDomain(urlStr) {
   if (!urlStr) return '';
   try {
