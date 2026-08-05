@@ -1053,72 +1053,132 @@ export default function AcademicSearch({
                     height: '65vh',
                     borderRadius: '14px',
                     overflow: 'hidden',
-                    border:
-                      '1px solid var(--border-color)',
+                    border: '1px solid var(--border-color)',
                     backgroundColor: '#ffffff',
-                    position: 'relative'
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column'
                   }}
                 >
-                  {(previewStage === 'checking' ||
-                    previewStage === 'viewer-loading') && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '10px',
-                        backgroundColor: '#ffffff',
-                        zIndex: 1
-                      }}
-                    >
-                      <Loader2
-                        size={28}
-                        className="animate-spin"
-                        style={{ color: 'var(--primary)' }}
-                      />
-                      <div
+                  {/* PREVIEW TOOLBAR FOR BLOCKED IFRAME HANDLING */}
+                  <div
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: 'var(--bg-card, #131f3d)',
+                      borderBottom: '1px solid var(--border-color)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      zIndex: 2
+                    }}
+                  >
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <AlertCircle size={14} style={{ color: 'var(--primary)' }} />
+                      <span>If blocked by publisher security headers, open directly in a new tab:</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {previewPaper.downloadUrl && (
+                        <a
+                          href={previewPaper.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary"
+                          style={{
+                            padding: '5px 12px',
+                            fontSize: '0.75rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            textDecoration: 'none'
+                          }}
+                        >
+                          <ExternalLink size={14} />
+                          <span>Open PDF Direct</span>
+                        </a>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setPreviewStage('failed')}
                         style={{
-                          fontSize: '0.82rem',
+                          padding: '5px 10px',
+                          fontSize: '0.75rem',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-color)',
+                          backgroundColor: 'transparent',
                           color: 'var(--text-muted)',
-                          fontWeight: 600
+                          cursor: 'pointer'
                         }}
                       >
-                        Loading preview...
-                      </div>
+                        Switch to Fallback Card
+                      </button>
                     </div>
-                  )}
+                  </div>
 
-                  {previewStage === 'blob' && blobUrl && (
-                    <embed
-                      key={previewPaper.doi || previewPaper.title}
-                      src={blobUrl}
-                      type="application/pdf"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        border: 'none'
-                      }}
-                    />
-                  )}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    {(previewStage === 'checking' ||
+                      previewStage === 'viewer-loading') && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '10px',
+                          backgroundColor: '#ffffff',
+                          zIndex: 1
+                        }}
+                      >
+                        <Loader2
+                          size={28}
+                          className="animate-spin"
+                          style={{ color: 'var(--primary)' }}
+                        />
+                        <div
+                          style={{
+                            fontSize: '0.82rem',
+                            color: 'var(--text-muted)',
+                            fontWeight: 600
+                          }}
+                        >
+                          Loading preview...
+                        </div>
+                      </div>
+                    )}
 
-                  {(previewStage === 'viewer-loading' ||
-                    previewStage === 'viewer-loaded') && (
-                    <iframe
-                      key={previewPaper.doi || previewPaper.title}
-                      src={getPreviewViewerUrl(previewPaper)}
-                      title="Academic Paper PDF Preview"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        border: 'none'
-                      }}
-                      onLoad={handleIframeLoad}
-                      onError={handleIframeError}
-                    />
-                  )}
+                    {previewStage === 'blob' && blobUrl && (
+                      <embed
+                        key={previewPaper.doi || previewPaper.title}
+                        src={blobUrl}
+                        type="application/pdf"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          border: 'none'
+                        }}
+                      />
+                    )}
+
+                    {(previewStage === 'viewer-loading' ||
+                      previewStage === 'viewer-loaded') && (
+                      <iframe
+                        key={previewPaper.doi || previewPaper.title}
+                        src={getPreviewViewerUrl(previewPaper)}
+                        title="Academic Paper PDF Preview"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          border: 'none'
+                        }}
+                        onLoad={handleIframeLoad}
+                        onError={handleIframeError}
+                      />
+                    )}
+                  </div>
                 </div>
               ) : previewStage === 'failed' ? (
                 /* PDF FALLBACK */
