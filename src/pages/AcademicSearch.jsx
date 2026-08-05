@@ -154,21 +154,26 @@ export default function AcademicSearch({
     previewAbortRef.current = controller;
 
     try {
-      const res = await fetch(paper.downloadUrl, {
-        signal: controller.signal
-      });
+      let res;
+      try {
+        res = await fetch(paper.downloadUrl, {
+          signal: controller.signal
+        });
+      } catch (directErr) {
+        // Direct fetch blocked by CORS. Attempt via CORS proxy:
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(paper.downloadUrl)}`;
+        res = await fetch(proxyUrl, { signal: controller.signal });
+      }
 
-      if (previewKeyRef.current !== key) return; // preview changed while we waited
+      if (previewKeyRef.current !== key) return;
 
-      if (!res.ok) throw new Error(`Bad status ${res.status}`);
+      if (!res || !res.ok) throw new Error('Could not fetch PDF stream');
 
       const contentType = (res.headers.get('content-type') || '').toLowerCase();
       const looksLikePdfUrl = isDirectPdfUrl(paper.downloadUrl);
 
       if (!contentType.includes('pdf') && !looksLikePdfUrl) {
-        // Landing page HTML, not an actual PDF byte stream — the blob
-        // approach can't render this, move to the viewer stage instead.
-        throw new Error('Response is not a PDF');
+        throw new Error('Response is not a PDF byte stream');
       }
 
       const blob = await res.blob();
@@ -179,9 +184,9 @@ export default function AcademicSearch({
       setPreviewStage('blob');
     } catch (err) {
       if (controller.signal.aborted || previewKeyRef.current !== key) return;
-      // Direct fetch failed (CORS block, network error, or not a PDF) —
-      // try the Google viewer next.
-      startViewerStage(paper, key);
+      // Direct/Proxy fetch failed. Transition directly to clean Executive Abstract Reader
+      // instead of rendering a blocked iframe.
+      setPreviewStage('failed');
     }
   };
 
@@ -1181,108 +1186,41 @@ export default function AcademicSearch({
                   </div>
                 </div>
               ) : previewStage === 'failed' ? (
-                /* PDF FALLBACK */
+                /* IN-APP EXECUTIVE LITERATURE OVERVIEW READER */
                 <div
                   style={{
-                    backgroundColor:
-                      'var(--bg-card)',
+                    backgroundColor: 'var(--bg-card)',
                     borderRadius: '14px',
-                    border:
-                      '1px solid var(--border-color)',
-                    padding: '35px 25px',
-                    textAlign: 'center'
+                    border: '1px solid var(--border-color)',
+                    padding: '24px',
+                    marginBottom: '16px'
                   }}
                 >
-                  <AlertCircle
-                    size={48}
-                    style={{
-                      color: 'var(--primary)',
-                      marginBottom: '12px'
-                    }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)', fontWeight: 700, fontSize: '0.9rem' }}>
+                      <BookOpen size={18} />
+                      <span>Executive Literature Overview</span>
+                    </div>
 
-                  <h3
-                    style={{
-                      color: 'var(--text-main)',
-                      marginBottom: '8px'
-                    }}
-                  >
-                    PDF Preview Is Not Available
-                  </h3>
-
-                  <p
-                    style={{
-                      color: 'var(--text-muted)',
-                      maxWidth: '600px',
-                      margin:
-                        '0 auto 20px',
-                      lineHeight: 1.6
-                    }}
-                  >
-                    This publisher does not allow
-                    the PDF to be displayed inside
-                    ResearchVault. You can still
-                    open the paper directly in a
-                    new browser tab.
-                  </p>
-
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent:
-                        'center',
-                      gap: '10px',
-                      flexWrap: 'wrap'
-                    }}
-                  >
-                    {previewPaper.downloadUrl && (
-                      <a
-                        href={
-                          previewPaper.downloadUrl
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-primary"
-                        style={{
-                          textDecoration: 'none',
-                          padding:
-                            '10px 18px',
-                          display:
-                            'inline-flex',
-                          alignItems:
-                            'center',
-                          gap: '8px'
-                        }}
-                      >
-                        <FileText size={16} />
-                        Open PDF
-                      </a>
-                    )}
-
-                    {previewPaper.sourceUrl && (
-                      <a
-                        href={
-                          previewPaper.sourceUrl
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-secondary"
-                        style={{
-                          textDecoration: 'none',
-                          padding:
-                            '10px 18px',
-                          display:
-                            'inline-flex',
-                          alignItems:
-                            'center',
-                          gap: '8px'
-                        }}
-                      >
-                        <ExternalLink size={16} />
-                        Open Source
-                      </a>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {previewPaper.downloadUrl && (
+                        <a
+                          href={previewPaper.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-secondary"
+                          style={{ textDecoration: 'none', padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <ExternalLink size={14} />
+                          <span>Open Publisher Page</span>
+                        </a>
+                      )}
+                    </div>
                   </div>
+
+                  <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)', lineHeight: 1.65, marginBottom: '0' }}>
+                    {previewPaper.abstractText || 'No full abstract text was returned by the publisher for this item.'}
+                  </p>
                 </div>
               ) : null}
 
