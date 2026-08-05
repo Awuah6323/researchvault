@@ -1224,113 +1224,160 @@ export default function AcademicSearch({
                 </div>
               ) : null}
 
-              {/* ABSTRACT */}
+              {/* FULL UNTRUNCATED ABSTRACT */}
               <div
                 style={{
-                  backgroundColor:
-                    'var(--bg-card)',
-                  padding: '20px',
+                  backgroundColor: 'var(--bg-card)',
+                  padding: '24px',
                   borderRadius: '14px',
-                  border:
-                    '1px solid var(--border-color)'
+                  border: '1px solid var(--border-color)'
                 }}
               >
                 <div
                   style={{
                     fontSize: '0.82rem',
                     fontWeight: 700,
-                    textTransform:
-                      'uppercase',
+                    textTransform: 'uppercase',
                     letterSpacing: '0.8px',
                     color: 'var(--primary)',
-                    marginBottom: '10px',
+                    marginBottom: '12px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    justifyContent: 'space-between'
                   }}
                 >
-                  <FileText size={16} />
-                  Abstract
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <FileText size={16} />
+                    <span>Full Paper Abstract & Literature Summary</span>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', textTransform: 'none', color: 'var(--text-muted)', fontWeight: 500 }}>
+                    {previewPaper.abstractText ? `${previewPaper.abstractText.split(' ').length} words` : ''}
+                  </span>
                 </div>
 
                 <p
                   style={{
-                    fontSize: '0.94rem',
+                    fontSize: '0.96rem',
                     color: 'var(--text-main)',
-                    lineHeight: 1.65,
-                    whiteSpace: 'pre-wrap'
+                    lineHeight: 1.75,
+                    whiteSpace: 'pre-wrap',
+                    margin: 0
                   }}
                 >
-                  {previewPaper.abstractText ||
-                    'No abstract is available for this paper.'}
+                  {previewPaper.abstractText || 'No abstract is available for this paper.'}
                 </p>
+
+                {/* KEY CONCEPTS & TOPICS BADGES */}
+                {((previewPaper.concepts && previewPaper.concepts.length > 0) || (previewPaper.topics && previewPaper.topics.length > 0)) && (
+                  <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                      Key Research Topics & Domains
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {(previewPaper.concepts || []).map((concept, idx) => (
+                        <span
+                          key={`c-${idx}`}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '20px',
+                            backgroundColor: 'rgba(0, 229, 255, 0.1)',
+                            border: '1px solid rgba(0, 229, 255, 0.25)',
+                            color: '#00e5ff',
+                            fontSize: '0.78rem',
+                            fontWeight: 600
+                          }}
+                        >
+                          {concept}
+                        </span>
+                      ))}
+
+                      {(previewPaper.topics || []).map((topic, idx) => (
+                        <span
+                          key={`t-${idx}`}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '20px',
+                            backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                            border: '1px solid rgba(52, 211, 153, 0.25)',
+                            color: '#34d399',
+                            fontSize: '0.78rem',
+                            fontWeight: 600
+                          }}
+                        >
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* METADATA */}
+              {/* METADATA GRID */}
               <div
                 style={{
-                  backgroundColor:
-                    'var(--bg-card)',
-                  padding: '20px',
+                  backgroundColor: 'var(--bg-card)',
+                  padding: '24px',
                   borderRadius: '14px',
-                  border:
-                    '1px solid var(--border-color)'
+                  border: '1px solid var(--border-color)'
                 }}
               >
                 <div
                   style={{
                     fontSize: '0.82rem',
                     fontWeight: 700,
-                    textTransform:
-                      'uppercase',
+                    textTransform: 'uppercase',
                     letterSpacing: '0.8px',
                     color: 'var(--primary)',
-                    marginBottom: '10px',
+                    marginBottom: '14px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px'
                   }}
                 >
                   <BookOpen size={16} />
-                  Paper Information
+                  <span>Publication Metadata & Indexing</span>
                 </div>
 
                 <div
                   style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: '16px',
                     fontSize: '0.88rem',
-                    color: 'var(--text-main)',
-                    lineHeight: 1.7
+                    color: 'var(--text-main)'
                   }}
                 >
-                  <p>
-                    <strong>
-                      Category:
-                    </strong>{' '}
-                    {previewPaper.suggestedCategory ||
-                      'Computer Science'}
-                  </p>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.78rem', fontWeight: 600 }}>Category</span>
+                    <strong>{previewPaper.suggestedCategory || 'Computer Science'}</strong>
+                  </div>
 
-                  <p>
-                    <strong>
-                      Journal / Venue:
-                    </strong>{' '}
-                    {previewPaper.journalOrVenue ||
-                      'Not available'}
-                  </p>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.78rem', fontWeight: 600 }}>Journal / Venue</span>
+                    <strong>{previewPaper.journalOrVenue || 'Academic Venue'}</strong>
+                  </div>
 
-                  <p>
-                    <strong>
-                      Publication Year:
-                    </strong>{' '}
-                    {previewPaper.publicationYear ||
-                      'Not available'}
-                  </p>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.78rem', fontWeight: 600 }}>Publication Year</span>
+                    <strong>{previewPaper.publicationYear || 'N/A'}</strong>
+                  </div>
 
-                  <p>
-                    <strong>DOI:</strong>{' '}
-                    {previewPaper.doi ||
-                      'Not available'}
-                  </p>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.78rem', fontWeight: 600 }}>Citations</span>
+                    <strong>{previewPaper.citationCount ? previewPaper.citationCount.toLocaleString() : 'N/A'}</strong>
+                  </div>
+
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.78rem', fontWeight: 600 }}>Access Type</span>
+                    <strong style={{ color: previewPaper.openAccess ? '#34d399' : 'var(--text-muted)' }}>
+                      {previewPaper.openAccess ? 'Open Access (Free)' : 'Subscription / Paywall'}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.78rem', fontWeight: 600 }}>DOI / Identifier</span>
+                    <strong style={{ wordBreak: 'break-all' }}>{previewPaper.doi || 'N/A'}</strong>
+                  </div>
                 </div>
               </div>
             </div>

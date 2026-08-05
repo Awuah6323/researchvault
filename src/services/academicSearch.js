@@ -176,6 +176,16 @@ function parseOpenAlexItem(item, queryClean) {
   const doi = (item.doi || '').replace('https://doi.org/', '');
   const pdfUrl = item.open_access?.oa_url || item.best_oa_location?.pdf_url || '';
   const pdfDomain = extractDomain(pdfUrl || primaryLoc.landing_page_url);
+
+  const concepts = (item.concepts || [])
+    .slice(0, 8)
+    .map(c => c.display_name)
+    .filter(Boolean);
+
+  const topics = (item.topics || [])
+    .slice(0, 4)
+    .map(t => t.display_name)
+    .filter(Boolean);
   
   return {
     title: item.title || 'Untitled Academic Paper',
@@ -192,7 +202,9 @@ function parseOpenAlexItem(item, queryClean) {
     resourceType: item.type === 'book' ? 'Book' : (item.type === 'dissertation' ? 'Thesis' : 'Research Paper'),
     openAccess: item.open_access?.is_oa || false,
     citationCount: item.cited_by_count || 0,
-    suggestedCategory: suggestCategory(item.title || '')
+    suggestedCategory: suggestCategory(item.title || ''),
+    concepts,
+    topics
   };
 }
 
@@ -210,6 +222,8 @@ function parseCrossrefItem(item, queryClean) {
   const pdfUrl = item.link?.find(l => l['content-type'] === 'application/pdf')?.URL || '';
   const pdfDomain = extractDomain(pdfUrl || item.URL);
 
+  const subjectConcepts = (item.subject || []).slice(0, 6);
+
   return {
     title,
     authors,
@@ -225,7 +239,9 @@ function parseCrossrefItem(item, queryClean) {
     resourceType: 'Research Paper',
     openAccess: !!pdfUrl,
     citationCount: item['is-referenced-by-count'] || 0,
-    suggestedCategory: suggestCategory(title)
+    suggestedCategory: suggestCategory(title),
+    concepts: subjectConcepts,
+    topics: []
   };
 }
 
@@ -238,7 +254,7 @@ function reconstructAbstract(invertedIndex) {
     });
   });
   const text = map.filter(Boolean).join(' ');
-  return text.length > 420 ? text.slice(0, 420) + '...' : text;
+  return text || "Abstract text provided in paper publication.";
 }
 
 function suggestCategory(title) {
