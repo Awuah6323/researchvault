@@ -904,12 +904,12 @@ export default function AcademicSearch({
         </div>
       )}
 
-      {/* GOOGLE SCHOLAR STYLE PAGINATION */}
+      {/* SEARCH RESULTS PAGINATION */}
       {totalPages > 1 && (
         <div
           className="glass-card"
           style={{
-            padding: '24px 20px',
+            padding: '20px',
             marginTop: '20px',
             display: 'flex',
             flexDirection: 'column',
@@ -920,48 +920,6 @@ export default function AcademicSearch({
             backgroundColor: 'var(--bg-card)'
           }}
         >
-          {/* GOOGLE SCHOLAR MULTI-O BRANDING GRAPHIC */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px',
-              userSelect: 'none',
-              marginBottom: '4px'
-            }}
-          >
-            <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#4285F4', fontFamily: 'var(--font-serif)' }}>G</span>
-            {getPageNumbers().map((pg, idx) => {
-              if (pg === '...') {
-                return (
-                  <span key={`dot-${idx}`} style={{ fontSize: '1.2rem', color: 'var(--text-muted)', padding: '0 2px' }}>
-                    o
-                  </span>
-                );
-              }
-              const isActive = pg === page;
-              return (
-                <span
-                  key={`o-${pg}`}
-                  onClick={() => handlePageChange(pg)}
-                  style={{
-                    fontSize: isActive ? '1.8rem' : '1.3rem',
-                    fontWeight: isActive ? 900 : 700,
-                    color: isActive ? '#EA4335' : idx % 2 === 0 ? '#FBBC05' : '#34A853',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    transform: isActive ? 'scale(1.25)' : 'scale(1)',
-                    display: 'inline-block'
-                  }}
-                  title={`Go to page ${pg}`}
-                >
-                  o
-                </span>
-              );
-            })}
-            <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#4285F4', fontFamily: 'var(--font-serif)', marginLeft: '2px' }}>g l e</span>
-          </div>
 
           {/* PAGE CONTROLS BAR */}
           <div
