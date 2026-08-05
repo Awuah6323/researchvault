@@ -12,8 +12,9 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
   const [fieldOfStudy, setFieldOfStudy] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -24,33 +25,37 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
     }
 
     try {
+      setSubmitting(true);
       if (mode === 'login') {
-        const user = storage.loginUser(email.trim(), password.trim());
-        setSuccess(`Welcome back, ${user.name}!`);
+        const user = await storage.loginUser(email.trim(), password.trim());
+        setSuccess(`Welcome back, ${user.name}! Synchronizing vault...`);
         setTimeout(() => {
           onLoginSuccess(storage.getProfile());
           onClose();
-        }, 1000);
+        }, 500);
       } else {
         if (!name.trim()) {
           setError('Please enter your full name.');
+          setSubmitting(false);
           return;
         }
-        const user = storage.registerUser(
+        const user = await storage.registerUser(
           name.trim(),
           email.trim(),
           password.trim(),
           institution.trim() || 'Stanford University',
           fieldOfStudy.trim() || 'Computer Science'
         );
-        setSuccess(`Account registered successfully for ${user.name}!`);
+        setSuccess(`Account registered successfully for ${user.name}! Synchronizing vault...`);
         setTimeout(() => {
           onLoginSuccess(storage.getProfile());
           onClose();
-        }, 1000);
+        }, 500);
       }
     } catch (err) {
       setError(err.message || 'Authentication failed. Please check credentials.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -63,16 +68,19 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
     { name: 'Prof. Marcus Vance', email: 'm.vance@mit.edu', institution: 'MIT Media Lab' }
   ];
 
-  const handleGoogleAccountSelect = (acc) => {
+  const handleGoogleAccountSelect = async (acc) => {
     try {
-      const user = storage.loginWithGoogle(acc.email, acc.name, acc.institution);
-      setSuccess(`Signed in with Google as ${user.name} (${user.email})!`);
+      setSubmitting(true);
+      const user = await storage.loginWithGoogle(acc.email, acc.name, acc.institution);
+      setSuccess(`Signed in with Google as ${user.name} (${user.email})! Synchronizing vault...`);
       setTimeout(() => {
         onLoginSuccess(storage.getProfile());
         if (onClose) onClose();
-      }, 800);
+      }, 500);
     } catch (err) {
       setError('Google Sign-In failed.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -366,9 +374,30 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
             </div>
           )}
 
-          <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '6px' }}>
-            {mode === 'login' ? <LogIn size={18} /> : <UserPlus size={18} />}
-            <span>{mode === 'login' ? 'Sign In to Vault' : 'Create Scholar Account'}</span>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn-primary"
+            style={{
+              width: '100%',
+              marginTop: '6px',
+              opacity: submitting ? 0.7 : 1,
+              cursor: submitting ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {submitting ? (
+              <span>Syncing Vault...</span>
+            ) : mode === 'login' ? (
+              <>
+                <LogIn size={18} />
+                <span>Sign In to Vault</span>
+              </>
+            ) : (
+              <>
+                <UserPlus size={18} />
+                <span>Create Scholar Account</span>
+              </>
+            )}
           </button>
         </form>
         </>

@@ -79,10 +79,12 @@ export default function AuthPage({ onLoginSuccess }) {
     };
   }, [googleClientId]);
 
+  const [submitting, setSubmitting] = useState(false);
+
   /**
    * Handle successful Google login
    */
-  const handleGoogleCredential = (response) => {
+  const handleGoogleCredential = async (response) => {
     try {
       setError('');
       setGoogleLoading(true);
@@ -118,21 +120,21 @@ export default function AuthPage({ onLoginSuccess }) {
         googleId: payload.sub || '',
       };
 
-      // Login or create the user in your local storage
-      const user = storage.loginWithGoogle(
+      // Login or create the user in your local storage & pull cloud vault
+      const user = await storage.loginWithGoogle(
         googleUser.email,
         googleUser.name,
         googleUser.institution
       );
 
       setSuccess(
-        `Signed in with Google as ${user.name}! Redirecting...`
+        `Signed in with Google as ${user.name}! Synchronizing vault...`
       );
 
       // Redirect to the application
       setTimeout(() => {
         onLoginSuccess(storage.getProfile());
-      }, 700);
+      }, 500);
     } catch (err) {
       console.error('Google Sign-In Error:', err);
 
@@ -189,7 +191,7 @@ export default function AuthPage({ onLoginSuccess }) {
   /**
    * Normal email/password login and signup
    */
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     setError('');
@@ -205,20 +207,22 @@ export default function AuthPage({ onLoginSuccess }) {
     }
 
     try {
+      setSubmitting(true);
+
       // LOGIN
       if (activeTab === 'login') {
-        const user = storage.loginUser(
+        const user = await storage.loginUser(
           email.trim(),
           password.trim()
         );
 
         setSuccess(
-          `Welcome back, ${user.name}! Redirecting...`
+          `Welcome back, ${user.name}! Synchronizing vault...`
         );
 
         setTimeout(() => {
           onLoginSuccess(storage.getProfile());
-        }, 700);
+        }, 500);
       }
 
       // SIGNUP
@@ -227,11 +231,12 @@ export default function AuthPage({ onLoginSuccess }) {
           setError(
             'Please enter your full name.'
           );
+          setSubmitting(false);
 
           return;
         }
 
-        const user = storage.registerUser(
+        const user = await storage.registerUser(
           name.trim(),
           email.trim(),
           password.trim(),
@@ -242,12 +247,12 @@ export default function AuthPage({ onLoginSuccess }) {
         );
 
         setSuccess(
-          `Account created successfully for ${user.name}!`
+          `Account created successfully for ${user.name}! Synchronizing vault...`
         );
 
         setTimeout(() => {
           onLoginSuccess(storage.getProfile());
-        }, 700);
+        }, 500);
       }
     } catch (err) {
       console.error(
@@ -259,6 +264,8 @@ export default function AuthPage({ onLoginSuccess }) {
         err.message ||
         'Authentication failed. Please check your credentials.'
       );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -1163,34 +1170,33 @@ export default function AuthPage({ onLoginSuccess }) {
             {/* SUBMIT BUTTON */}
             <button
               type="submit"
+              disabled={submitting || googleLoading}
               className="btn-primary"
               style={{
                 width: '100%',
-
                 marginTop: '8px',
-
                 padding: '12px',
-
                 display: 'flex',
-
                 alignItems: 'center',
-
                 justifyContent: 'center',
-
                 gap: '8px',
+                opacity: (submitting || googleLoading) ? 0.7 : 1,
+                cursor: (submitting || googleLoading) ? 'not-allowed' : 'pointer'
               }}
             >
-              {activeTab === 'login' ? (
-                <LogIn size={18} />
+              {submitting ? (
+                <span>Syncing Vault...</span>
+              ) : activeTab === 'login' ? (
+                <>
+                  <LogIn size={18} />
+                  <span>Sign In to ResearchVault</span>
+                </>
               ) : (
-                <UserPlus size={18} />
+                <>
+                  <UserPlus size={18} />
+                  <span>Create Scholar Account</span>
+                </>
               )}
-
-              <span>
-                {activeTab === 'login'
-                  ? 'Sign In to ResearchVault'
-                  : 'Create Scholar Account'}
-              </span>
             </button>
           </form>
         </div>

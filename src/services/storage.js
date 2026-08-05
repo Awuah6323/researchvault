@@ -262,7 +262,7 @@ export const storage = {
     return data ? JSON.parse(data) : [];
   },
 
-  registerUser(name, email, password, institution = 'Academic Institution', fieldOfStudy = 'General Research') {
+  async registerUser(name, email, password, institution = 'Academic Institution', fieldOfStudy = 'General Research') {
     const users = this.getUsers();
     const existing = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (existing) {
@@ -281,22 +281,22 @@ export const storage = {
     users.push(newUser);
     localStorage.setItem(BASE_KEYS.USERS, JSON.stringify(users));
     this.saveSession(newUser);
-    this.pullCloudVault(newUser.email);
+    await this.pullCloudVault(newUser.email);
     return newUser;
   },
 
-  loginUser(email, password) {
+  async loginUser(email, password) {
     const users = this.getUsers();
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
     if (!user) {
       throw new Error("Invalid email address or password.");
     }
     this.saveSession(user);
-    this.pullCloudVault(user.email);
+    await this.pullCloudVault(user.email);
     return user;
   },
 
-  loginWithGoogle(email, name, institution = 'Google Verified Account', fieldOfStudy = 'Academic Research') {
+  async loginWithGoogle(email, name, institution = 'Google Verified Account', fieldOfStudy = 'Academic Research') {
     if (!email) throw new Error("Google login requires a valid email address.");
     const googleUser = {
       id: Date.now(),
@@ -307,7 +307,7 @@ export const storage = {
       researchInterests: 'Academic Literature, Data Analysis'
     };
     this.saveSession(googleUser);
-    this.pullCloudVault(googleUser.email);
+    await this.pullCloudVault(googleUser.email);
     return googleUser;
   },
 

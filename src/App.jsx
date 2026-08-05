@@ -43,6 +43,11 @@ export default function App() {
     setCategories(storage.getCategories());
   };
 
+  const handleLoginSuccess = (profile) => {
+    setUserProfile(profile || storage.getSession());
+    refreshAppData();
+  };
+
   useEffect(() => {
     refreshAppData();
     const session = storage.getSession();
@@ -55,6 +60,13 @@ export default function App() {
     if (!window.history.state) {
       window.history.replaceState({ tab: 'home' }, '', '#home');
     }
+
+    // Subscribe to cloud sync state changes to auto-refresh data
+    const unsubscribeSync = storage.subscribeSyncState((state) => {
+      if (state === 'synced') {
+        refreshAppData();
+      }
+    });
 
     // Initial Cloud Vault pull for logged-in account
     if (session && session.email) {
@@ -75,7 +87,10 @@ export default function App() {
     };
 
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      unsubscribeSync();
+    };
   }, []);
 
   // Close all open modals & drawers
@@ -182,7 +197,7 @@ export default function App() {
   if (!userProfile || !userProfile.isAuthenticated) {
     return (
       <AuthPage
-        onLoginSuccess={(profile) => setUserProfile(profile)}
+        onLoginSuccess={handleLoginSuccess}
       />
     );
   }
@@ -344,7 +359,7 @@ export default function App() {
       {showAuthModal && (
         <AuthModal
           onClose={() => setShowAuthModal(false)}
-          onLoginSuccess={(p) => setUserProfile(p)}
+          onLoginSuccess={handleLoginSuccess}
         />
       )}
     </div>
