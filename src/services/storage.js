@@ -62,6 +62,52 @@ function getScopedKey(baseKey) {
   return `${baseKey}_${encodeURIComponent(email)}`;
 }
 
+// ---------------------------------------------------------------------------
+// PASSWORD HASHING
+//
+// The auth record has to be pushed to a public, unauthenticated kvdb.io
+// bucket so a second device can verify credentials it has never seen
+// locally. Storing the plaintext password there would mean anyone who
+// knows/guesses a user's email can read their password directly. Hashing
+// with a per-user random salt keeps the plaintext password off the wire
+// and off the public bucket entirely.
+//
+// IMPORTANT CAVEAT: this is a meaningful improvement over plaintext, but a
+// client-side hash written to a public, unauthenticated store is still not
+// equivalent to real backend authentication — anyone with the bucket URL
+// can read the hash+salt and run an offline dictionary/brute-force attack
+// against it with no rate limiting. Treat this as a stop-gap for a
+// prototype, not something to keep once real users' accounts matter. The
+// durable fix is a proper auth backend (Firebase Auth, Supabase Auth,
+// Auth0, or your own server with bcrypt/argon2 + rate limiting) sitting
+// behind an endpoint you control, not a public KV store.
+// ---------------------------------------------------------------------------
+
+function getCrypto() {
+  if (typeof window !== 'undefined' && window.crypto) return window.crypto;
+  if (typeof crypto !== 'undefined') return crypto;
+  throw new Error("Web Crypto API is not available in this environment.");
+}
+
+function generateSalt() {
+  const bytes = new Uint8Array(16);
+  getCrypto().getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hashPassword(password, salt) {
+  const enc = new TextEncoder();
+  const data = enc.encode(`${salt}:${password}`);
+  const hashBuffer = await getCrypto().subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function verifyPassword(password, salt, expectedHash) {
+  const computed = await hashPassword(password, salt);
+  return computed === expectedHash;
+}
+
 export const storage = {
   subscribeSyncState(callback) {
     syncListeners.push(callback);
@@ -262,35 +308,131 @@ export const storage = {
     return data ? JSON.parse(data) : [];
   },
 
-  async registerUser(name, email, password, institution = 'Academic Institution', fieldOfStudy = 'General Research') {
+  cacheUserLocally(user) {
     const users = this.getUsers();
-    const existing = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (existing) {
+    const withoutExisting = users.filter(u => u.email.toLowerCase() !== user.email.toLowerCase());
+    withoutExisting.push(user);
+    localStorage.setItem(BASE_KEYS.USERS, JSON.stringify(withoutExisting));
+  },
+
+  // -------------------------------------------------------------------------
+  // CLOUD AUTH RECORD
+  //
+  // registerUser writes this; loginUser reads it when the account isn't
+  // known on the current device yet. This is what makes "log in on a
+  // device you've never registered on" work at all — without it, an
+  // account only ever existed in the localStorage of the device that
+  // created it.
+  // -------------------------------------------------------------------------
+
+  async pushUserAuthRecord(user) {
+    try {
+      await fetch(`${CLOUD_VAULT_URL}/auth_${encodeURIComponent(user.email.toLowerCase().trim())}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: user.name,
+          email: user.email,
+          passwordHash: user.passwordHash,
+          salt: user.salt,
+          institution: user.institution,
+          fieldOfStudy: user.fieldOfStudy,
+          researchInterests: user.researchInterests,
+          createdAt: user.createdAt
+        })
+      });
+    } catch (err) {
+      console.warn("Could not publish auth record to Cloud Vault (offline?).", err);
+    }
+  },
+
+  async fetchUserAuthRecord(email) {
+    try {
+      const res = await fetch(`${CLOUD_VAULT_URL}/auth_${encodeURIComponent(email.toLowerCase().trim())}`);
+      if (!res.ok) return null;
+      const text = await res.text();
+      if (!text || text.trim().length < 5) return null;
+      const parsed = JSON.parse(text);
+      if (parsed && parsed.email && parsed.passwordHash && parsed.salt) return parsed;
+      return null;
+    } catch (err) {
+      return null;
+    }
+  },
+
+  // NOTE: registerUser/loginUser/loginWithGoogle are async and AWAIT the
+  // cloud pull before resolving. Callers must `await` them and re-read
+  // storage.getResources()/getCategories()/getProfile() afterward to
+  // populate the UI, e.g.:
+  //
+  //   const user = await storage.loginUser(email, password);
+  //   setResources(storage.getResources());
+  //   setCategories(storage.getCategories());
+
+  async registerUser(name, email, password, institution = 'Academic Institution', fieldOfStudy = 'General Research') {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const existingLocal = this.getUsers().find(u => u.email.toLowerCase() === normalizedEmail);
+    if (existingLocal) {
       throw new Error("An account with this email address already exists.");
     }
+
+    // Also check the cloud — the account may have been created on a
+    // different device that this one has never synced with.
+    const existingCloud = await this.fetchUserAuthRecord(normalizedEmail);
+    if (existingCloud) {
+      throw new Error("An account with this email address already exists.");
+    }
+
+    const salt = generateSalt();
+    const passwordHash = await hashPassword(password, salt);
+
     const newUser = {
       id: Date.now(),
       name,
-      email,
-      password,
+      email: normalizedEmail,
+      passwordHash,
+      salt,
       institution,
       fieldOfStudy,
       researchInterests: 'Academic Literature, Data Analysis',
       createdAt: new Date().toISOString()
     };
-    users.push(newUser);
-    localStorage.setItem(BASE_KEYS.USERS, JSON.stringify(users));
+
+    this.cacheUserLocally(newUser);
+    await this.pushUserAuthRecord(newUser);
+
     this.saveSession(newUser);
     await this.pullCloudVault(newUser.email);
     return newUser;
   },
 
   async loginUser(email, password) {
-    const users = this.getUsers();
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+    const normalizedEmail = email.toLowerCase().trim();
+    let user = this.getUsers().find(u => u.email.toLowerCase() === normalizedEmail);
+
+    if (user) {
+      const valid = await verifyPassword(password, user.salt, user.passwordHash);
+      if (!valid) user = undefined;
+    }
+
+    if (!user) {
+      // Not known on this device — check whether the account exists in
+      // the cloud (i.e. was registered on a different device).
+      const cloudUser = await this.fetchUserAuthRecord(normalizedEmail);
+      if (cloudUser) {
+        const valid = await verifyPassword(password, cloudUser.salt, cloudUser.passwordHash);
+        if (valid) {
+          user = { id: Date.now(), ...cloudUser, email: normalizedEmail };
+          this.cacheUserLocally(user); // so future logins on this device don't need the network
+        }
+      }
+    }
+
     if (!user) {
       throw new Error("Invalid email address or password.");
     }
+
     this.saveSession(user);
     await this.pullCloudVault(user.email);
     return user;
@@ -406,21 +548,24 @@ export const storage = {
           const vaultPayload = JSON.parse(text);
           
           if (vaultPayload && Array.isArray(vaultPayload.resources)) {
-            // Restore resources, categories, profile, and notes
+            // Restore resources, categories, profile, and notes. Merged
+            // items are written back into the array by index (not just
+            // into a detached Map), so updates to items you already had
+            // locally are actually applied.
             const currentResources = this.getResources();
-            
-            // Merge cloud resources with existing local resources cleanly
             const mergedResources = [...currentResources];
-            const existingMap = new Map(mergedResources.map(r => [r.id || r.title, r]));
+            const indexByKey = new Map(
+              mergedResources.map((r, idx) => [r.id || r.title, idx])
+            );
 
             vaultPayload.resources.forEach(cloudRes => {
               const key = cloudRes.id || cloudRes.title;
-              if (!existingMap.has(key)) {
+              if (!indexByKey.has(key)) {
+                indexByKey.set(key, mergedResources.length);
                 mergedResources.push(cloudRes);
               } else {
-                // Update reading progress & favorite state if newer
-                const existing = existingMap.get(key);
-                existingMap.set(key, { ...existing, ...cloudRes });
+                const idx = indexByKey.get(key);
+                mergedResources[idx] = { ...mergedResources[idx], ...cloudRes };
               }
             });
 
