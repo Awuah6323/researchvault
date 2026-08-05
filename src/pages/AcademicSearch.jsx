@@ -30,9 +30,12 @@ export default function AcademicSearch({
   const [savedMap, setSavedMap] = useState({});
   const [sortBy, setSortBy] = useState('citations');
   const [previewPaper, setPreviewPaper] = useState(null);
-  const [pdfError, setPdfError] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
+  // 'idle' | 'checking' | 'blob' | 'viewer-loading' | 'viewer-loaded' | 'failed'
+  const [previewStage, setPreviewStage] = useState('idle');
+  const [blobUrl, setBlobUrl] = useState(null);
   const previewTimeoutRef = useRef(null);
+  const previewAbortRef = useRef(null);
+  const previewKeyRef = useRef(null);
 
   // ----------------------------------------
   // SEARCH
@@ -75,14 +78,28 @@ export default function AcademicSearch({
 
   // ----------------------------------------
   // OPEN PAPER PREVIEW
+  //
+  // Two real attempts are made before we ever show the "not available"
+  // card:
+  //
+  //  1. Fetch the PDF bytes directly and render them from a blob URL.
+  //     This does NOT get blocked by X-Frame-Options (that header only
+  //     blocks framing a page, not fetching its bytes). It only fails
+  //     if the host doesn't send CORS headers permitting cross-origin
+  //     reads — and that failure is a real, catchable error, not a guess.
+  //
+  //  2. If the fetch is blocked, fall back to Google's PDF viewer, which
+  //     fetches the file server-side and often succeeds where a raw
+  //     iframe of the publisher URL would be blocked. Since browsers
+  //     don't fire an iframe "error" event for X-Frame-Options/CSP
+  //     blocks, this stage uses a timeout to detect failure.
+  //
+  // Only if BOTH fail do we show the fallback card — at that point the
+  // publisher is blocking both bytes-level access and framing, which is
+  // a server-side restriction no client code can get around.
   // ----------------------------------------
 
-  // How long we wait for the embedded viewer to report success before
-  // assuming it's blocked and switching to the fallback UI. Browsers do
-  // NOT fire an iframe "error" event for X-Frame-Options / CSP blocks —
-  // the frame just silently shows a blocked/blank page — so onError alone
-  // can't detect this. A timeout is the standard workaround.
-  const PREVIEW_LOAD_TIMEOUT_MS = 7000;
+  const PREVIEW_VIEWER_TIMEOUT_MS = 7000;
 
   const clearPreviewTimeout = () => {
     if (previewTimeoutRef.current) {
@@ -91,48 +108,109 @@ export default function AcademicSearch({
     }
   };
 
-  const openPreview = (paper) => {
+  const revokeBlobUrl = () => {
+    setBlobUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  };
+
+  const abortInFlightFetch = () => {
+    if (previewAbortRef.current) {
+      previewAbortRef.current.abort();
+      previewAbortRef.current = null;
+    }
+  };
+
+  const startViewerStage = (paper, key) => {
+    if (!paper?.downloadUrl) {
+      setPreviewStage('failed');
+      return;
+    }
+    setPreviewStage('viewer-loading');
+    previewTimeoutRef.current = setTimeout(() => {
+      if (previewKeyRef.current === key) {
+        setPreviewStage('failed');
+      }
+    }, PREVIEW_VIEWER_TIMEOUT_MS);
+  };
+
+  const openPreview = async (paper) => {
+    const key = paper?.doi || paper?.title;
+    previewKeyRef.current = key;
+
     clearPreviewTimeout();
-    setPdfError(false);
+    abortInFlightFetch();
+    revokeBlobUrl();
     setPreviewPaper(paper);
+    setPreviewStage('checking');
 
-    const canAttemptPreview = isDirectPdfUrl(paper?.downloadUrl);
+    if (!paper?.downloadUrl) {
+      setPreviewStage('failed');
+      return;
+    }
 
-    if (canAttemptPreview) {
-      setPdfLoading(true);
-      previewTimeoutRef.current = setTimeout(() => {
-        setPdfLoading(false);
-        setPdfError(true);
-      }, PREVIEW_LOAD_TIMEOUT_MS);
-    } else {
-      // Not a direct PDF link (likely a publisher landing page) — don't
-      // even attempt the iframe, go straight to the fallback card.
-      setPdfLoading(false);
-      setPdfError(true);
+    const controller = new AbortController();
+    previewAbortRef.current = controller;
+
+    try {
+      const res = await fetch(paper.downloadUrl, {
+        signal: controller.signal
+      });
+
+      if (previewKeyRef.current !== key) return; // preview changed while we waited
+
+      if (!res.ok) throw new Error(`Bad status ${res.status}`);
+
+      const contentType = (res.headers.get('content-type') || '').toLowerCase();
+      const looksLikePdfUrl = isDirectPdfUrl(paper.downloadUrl);
+
+      if (!contentType.includes('pdf') && !looksLikePdfUrl) {
+        // Landing page HTML, not an actual PDF byte stream — the blob
+        // approach can't render this, move to the viewer stage instead.
+        throw new Error('Response is not a PDF');
+      }
+
+      const blob = await res.blob();
+      if (previewKeyRef.current !== key) return;
+
+      const objectUrl = URL.createObjectURL(blob);
+      setBlobUrl(objectUrl);
+      setPreviewStage('blob');
+    } catch (err) {
+      if (controller.signal.aborted || previewKeyRef.current !== key) return;
+      // Direct fetch failed (CORS block, network error, or not a PDF) —
+      // try the Google viewer next.
+      startViewerStage(paper, key);
     }
   };
 
   const closePreview = () => {
+    previewKeyRef.current = null;
     clearPreviewTimeout();
+    abortInFlightFetch();
+    revokeBlobUrl();
     setPreviewPaper(null);
-    setPdfError(false);
-    setPdfLoading(false);
+    setPreviewStage('idle');
   };
 
   const handleIframeLoad = () => {
     clearPreviewTimeout();
-    setPdfLoading(false);
+    setPreviewStage('viewer-loaded');
   };
 
   const handleIframeError = () => {
     clearPreviewTimeout();
-    setPdfLoading(false);
-    setPdfError(true);
+    setPreviewStage('failed');
   };
 
-  // Clean up any pending timeout if the component unmounts mid-preview.
+  // Clean up any pending timeout / in-flight fetch / blob URL on unmount.
   useEffect(() => {
-    return () => clearPreviewTimeout();
+    return () => {
+      clearPreviewTimeout();
+      abortInFlightFetch();
+      revokeBlobUrl();
+    };
   }, []);
 
   // Route through Google's PDF viewer instead of framing the publisher
@@ -967,8 +1045,8 @@ export default function AcademicSearch({
               </div>
 
               {/* PDF PREVIEW */}
-              {previewPaper.downloadUrl &&
-              !pdfError ? (
+              {previewStage !== 'failed' &&
+              previewStage !== 'idle' ? (
                 <div
                   style={{
                     minHeight: '650px',
@@ -981,7 +1059,8 @@ export default function AcademicSearch({
                     position: 'relative'
                   }}
                 >
-                  {pdfLoading && (
+                  {(previewStage === 'checking' ||
+                    previewStage === 'viewer-loading') && (
                     <div
                       style={{
                         position: 'absolute',
@@ -1012,20 +1091,36 @@ export default function AcademicSearch({
                     </div>
                   )}
 
-                  <iframe
-                    key={previewPaper.doi || previewPaper.title}
-                    src={getPreviewViewerUrl(previewPaper)}
-                    title="Academic Paper PDF Preview"
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      border: 'none'
-                    }}
-                    onLoad={handleIframeLoad}
-                    onError={handleIframeError}
-                  />
+                  {previewStage === 'blob' && blobUrl && (
+                    <embed
+                      key={previewPaper.doi || previewPaper.title}
+                      src={blobUrl}
+                      type="application/pdf"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        border: 'none'
+                      }}
+                    />
+                  )}
+
+                  {(previewStage === 'viewer-loading' ||
+                    previewStage === 'viewer-loaded') && (
+                    <iframe
+                      key={previewPaper.doi || previewPaper.title}
+                      src={getPreviewViewerUrl(previewPaper)}
+                      title="Academic Paper PDF Preview"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        border: 'none'
+                      }}
+                      onLoad={handleIframeLoad}
+                      onError={handleIframeError}
+                    />
+                  )}
                 </div>
-              ) : (
+              ) : previewStage === 'failed' ? (
                 /* PDF FALLBACK */
                 <div
                   style={{
@@ -1129,7 +1224,7 @@ export default function AcademicSearch({
                     )}
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {/* ABSTRACT */}
               <div
