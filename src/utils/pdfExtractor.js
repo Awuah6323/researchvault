@@ -11,15 +11,31 @@ export async function extractTextFromPdfFile(file) {
   try {
     const arrayBuffer = await file.arrayBuffer();
 
-    // 1. Primary Extractor: pdfjs-dist
+    // 1. Primary Extractor: pdfjs-dist (v6+)
     try {
       const pdfjsLib = await import('pdfjs-dist');
       if (pdfjsLib) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '3.11.174'}/pdf.worker.min.js`;
+        // pdfjs-dist v6 ships .mjs workers. Point to the bundled worker
+        // from the npm package so the CDN version mismatch issue is avoided.
+        // Vite resolves this import to a URL at build time.
+        try {
+          const workerUrl = new URL(
+            'pdfjs-dist/build/pdf.worker.min.mjs',
+            import.meta.url
+          );
+          pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl.href;
+        } catch {
+          // If the URL constructor approach fails (e.g. in some bundler configs),
+          // try the CDN fallback matching the installed version
+          const ver = pdfjsLib.version || '4.0.379';
+          pdfjsLib.GlobalWorkerOptions.workerSrc =
+            `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${ver}/pdf.worker.min.mjs`;
+        }
+
         const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
         const pdf = await loadingTask.promise;
         let extractedPages = [];
-        const pagesToRead = Math.min(pdf.numPages, 10); // Read up to first 10 pages
+        const pagesToRead = Math.min(pdf.numPages, 30); // Read up to first 30 pages
 
         for (let i = 1; i <= pagesToRead; i++) {
           const page = await pdf.getPage(i);
@@ -57,7 +73,7 @@ export async function extractTextFromPdfFile(file) {
     if (textSnippets.length > 0) {
       const fallbackText = textSnippets.join(' ');
       if (fallbackText.length > 50) {
-        return fallbackText.slice(0, 6000);
+        return fallbackText.slice(0, 15000);
       }
     }
   } catch (err) {

@@ -1,9 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, Loader2, Copy, Check, BookmarkPlus, RefreshCw, Bot, User } from 'lucide-react';
-import { chatWithGemini } from '../services/geminiService';
+import { Sparkles, Send, Loader2, Copy, Check, BookmarkPlus, RefreshCw, Bot, User, FileText, X, ChevronDown } from 'lucide-react';
+import { chatWithGemini, askPaperQuestion } from '../services/geminiService';
+import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 import { storage } from '../services/storage';
 
-export default function AiChat({ onSaveNote }) {
+// Sentinel for placeholder detection
+const PLACEHOLDER_TEXT = 'Imported paper document in ResearchVault digital library.';
+
+async function extractTextFromDataUrl(dataUrl, fileName) {
+  try {
+    const parts = dataUrl.split(';base64,');
+    const contentType = parts[0].replace('data:', '') || 'application/pdf';
+    const raw = atob(parts[1]);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    const blob = new Blob([bytes], { type: contentType });
+    const file = new File([blob], fileName || 'document.pdf', { type: contentType });
+    return await extractTextFromPdfFile(file);
+  } catch {
+    return '';
+  }
+}
+
+export default function AiChat({ onSaveNote, resources = [] }) {
   const session = storage.getSession() || storage.getProfile();
   const userName = session?.name || 'Scholar';
 
@@ -11,7 +30,7 @@ export default function AiChat({ onSaveNote }) {
     {
       id: 1,
       sender: 'ai',
-      text: `Hello ${userName}! 👋 I am your ResearchVault AI Assistant powered by Gemini 2.0 Flash. How can I assist with your literature review, paper methodology, or research questions today?`,
+      text: `Hello ${userName}! 👋 I am your ResearchVault AI Assistant. You can ask me any research question, or tag a paper from your library using the 📎 button below to ask questions about a specific paper.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -20,6 +39,14 @@ export default function AiChat({ onSaveNote }) {
   const [copiedId, setCopiedId] = useState(null);
   const [savedId, setSavedId] = useState(null);
   const chatEndRef = useRef(null);
+
+  // Paper tagging state
+  const [taggedPaper, setTaggedPaper] = useState(null);
+  const [showPaperPicker, setShowPaperPicker] = useState(false);
+  const [paperSearchQuery, setPaperSearchQuery] = useState('');
+  const [extractingPaperText, setExtractingPaperText] = useState(false);
+  // Cache resolved text per paper ID
+  const resolvedTextsRef = useRef({});
 
   const quickPrompts = [
     "Explain Transformer Attention Mechanisms simply",
@@ -36,14 +63,46 @@ export default function AiChat({ onSaveNote }) {
     scrollToBottom();
   }, [messages, loading]);
 
+  /**
+   * Resolve the best available text for a paper.
+   */
+  const getResolvedPaperContent = async (paper) => {
+    if (resolvedTextsRef.current[paper.id]) return resolvedTextsRef.current[paper.id];
+
+    const stored = paper.abstractText || '';
+    const isPlaceholder =
+      !stored.trim() ||
+      stored.trim() === PLACEHOLDER_TEXT ||
+      stored.trim().toLowerCase() === 'imported paper document in researchvault digital library.';
+
+    if (isPlaceholder && paper.pdfFileData) {
+      setExtractingPaperText(true);
+      const extracted = await extractTextFromDataUrl(
+        paper.pdfFileData,
+        paper.pdfFileName || `${paper.title}.pdf`
+      );
+      setExtractingPaperText(false);
+      const content = extracted && extracted.trim().length > 40 ? extracted.trim() : stored;
+      resolvedTextsRef.current[paper.id] = content;
+      return content;
+    }
+
+    resolvedTextsRef.current[paper.id] = stored;
+    return stored;
+  };
+
   const handleSendMessage = async (textToSend) => {
     const text = textToSend || inputMessage.trim();
     if (!text || loading) return;
 
+    const currentTaggedPaper = taggedPaper;
+
     const userMsg = {
       id: Date.now(),
       sender: 'user',
-      text,
+      text: currentTaggedPaper
+        ? `📎 [${currentTaggedPaper.title}]\n${text}`
+        : text,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -52,7 +111,15 @@ export default function AiChat({ onSaveNote }) {
     setLoading(true);
 
     try {
-      const responseText = await chatWithGemini(text, messages, userName);
+      let responseText;
+      if (currentTaggedPaper) {
+        // Use paper-aware Q&A with the paper's actual content
+        const paperContent = await getResolvedPaperContent(currentTaggedPaper);
+        responseText = await askPaperQuestion(currentTaggedPaper.title, paperContent, text);
+      } else {
+        // General chat
+        responseText = await chatWithGemini(text, messages, userName);
+      }
       const aiMsg = {
         id: Date.now() + 1,
         sender: 'ai',
@@ -64,7 +131,7 @@ export default function AiChat({ onSaveNote }) {
       const errorMsg = {
         id: Date.now() + 1,
         sender: 'ai',
-        text: err.message || "Gemini API error. Please ensure VITE_GEMINI_API_KEY is configured in your Vercel project environment variables.",
+        text: err.message || "Gemini API error. Please ensure your API key is configured.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -85,6 +152,18 @@ export default function AiChat({ onSaveNote }) {
     setTimeout(() => setSavedId(null), 2000);
   };
 
+  const handleSelectPaper = (paper) => {
+    setTaggedPaper(paper);
+    setShowPaperPicker(false);
+    setPaperSearchQuery('');
+  };
+
+  const filteredPapers = resources.filter(r => {
+    if (!paperSearchQuery.trim()) return true;
+    const q = paperSearchQuery.toLowerCase();
+    return r.title.toLowerCase().includes(q) || r.authors?.toLowerCase().includes(q);
+  });
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: 'calc(100vh - 120px)' }}>
       {/* Header */}
@@ -93,11 +172,11 @@ export default function AiChat({ onSaveNote }) {
           <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Sparkles style={{ color: 'var(--primary)' }} /> Gemini AI Research Chat Assistant
           </h1>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Conversational AI assistant for scholarly writing, methodology design, and concepts.</p>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Chat with AI or tag a paper with 📎 to ask questions about it.</p>
         </div>
 
         <button 
-          onClick={() => setMessages([messages[0]])} 
+          onClick={() => { setMessages([messages[0]]); setTaggedPaper(null); }} 
           className="btn-secondary"
           style={{ padding: '6px 12px', fontSize: '0.8rem' }}
           title="Clear Conversation"
@@ -120,7 +199,7 @@ export default function AiChat({ onSaveNote }) {
               }}
             >
               {msg.sender === 'ai' && (
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', shrink: 0 }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Bot size={20} />
                 </div>
               )}
@@ -162,14 +241,25 @@ export default function AiChat({ onSaveNote }) {
               </div>
 
               {msg.sender === 'user' && (
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--bg-main)', color: 'var(--primary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', shrink: 0 }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--bg-main)', color: 'var(--primary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <User size={20} />
                 </div>
               )}
             </div>
           ))}
 
-          {loading && (
+          {extractingPaperText && (
+            <div style={{ display: 'flex', gap: '12px', alignSelf: 'flex-start' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FileText size={20} />
+              </div>
+              <div style={{ padding: '12px 18px', borderRadius: '16px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>
+                Reading PDF content from your paper...
+              </div>
+            </div>
+          )}
+
+          {loading && !extractingPaperText && (
             <div style={{ display: 'flex', gap: '12px', alignSelf: 'flex-start' }}>
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Loader2 size={20} className="animate-spin" />
@@ -182,38 +272,166 @@ export default function AiChat({ onSaveNote }) {
           <div ref={chatEndRef} />
         </div>
 
-        {/* Quick Prompts */}
-        <div style={{ display: 'flex', gap: '8px', padding: '10px 0', overflowX: 'auto', borderTop: '1px solid var(--border-color)', marginTop: '12px' }}>
-          {quickPrompts.map((qp, idx) => (
-            <button
-              key={idx}
-              onClick={() => handleSendMessage(qp)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '16px',
-                backgroundColor: 'var(--bg-main)',
-                border: '1px solid var(--border-color)',
-                fontSize: '0.75rem',
-                color: 'var(--text-muted)',
-                whiteSpace: 'nowrap',
-                cursor: 'pointer'
-              }}
-            >
-              💡 {qp}
+        {/* Tagged Paper Indicator */}
+        {taggedPaper && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 12px',
+            borderRadius: '10px',
+            backgroundColor: 'var(--primary-light)',
+            border: '1px solid var(--primary)',
+            marginTop: '10px',
+            fontSize: '0.82rem'
+          }}>
+            <FileText size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, color: 'var(--primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                📎 {taggedPaper.title}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                Questions will be answered based on this paper's content
+              </div>
+            </div>
+            <button onClick={() => setTaggedPaper(null)} style={{ color: 'var(--primary)', padding: '2px', flexShrink: 0 }} title="Remove paper tag">
+              <X size={16} />
             </button>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {/* Quick Prompts */}
+        {!taggedPaper && (
+          <div style={{ display: 'flex', gap: '8px', padding: '10px 0', overflowX: 'auto', borderTop: '1px solid var(--border-color)', marginTop: '12px' }}>
+            {quickPrompts.map((qp, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSendMessage(qp)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '16px',
+                  backgroundColor: 'var(--bg-main)',
+                  border: '1px solid var(--border-color)',
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer'
+                }}
+              >
+                💡 {qp}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Paper Picker Dropdown */}
+        {showPaperPicker && (
+          <div style={{
+            marginTop: '8px',
+            padding: '12px',
+            borderRadius: '12px',
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            maxHeight: '240px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>📎 Tag a paper from your library</span>
+              <button onClick={() => setShowPaperPicker(false)} style={{ color: 'var(--text-muted)', padding: '2px' }}>
+                <X size={16} />
+              </button>
+            </div>
+            <input
+              type="text"
+              value={paperSearchQuery}
+              onChange={(e) => setPaperSearchQuery(e.target.value)}
+              placeholder="Search your papers..."
+              autoFocus
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-main)',
+                fontSize: '0.82rem'
+              }}
+            />
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {filteredPapers.length === 0 ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                  {resources.length === 0 ? 'No papers in your library yet.' : 'No papers match your search.'}
+                </div>
+              ) : (
+                filteredPapers.slice(0, 15).map(paper => (
+                  <button
+                    key={paper.id}
+                    onClick={() => handleSelectPaper(paper)}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      backgroundColor: taggedPaper?.id === paper.id ? 'var(--primary-light)' : 'var(--bg-main)',
+                      border: taggedPaper?.id === paper.id ? '1px solid var(--primary)' : '1px solid transparent',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px',
+                      transition: 'all 0.1s ease'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-light)'; }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = taggedPaper?.id === paper.id ? 'var(--primary-light)' : 'var(--bg-main)';
+                    }}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {paper.title}
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      {paper.authors} • {paper.publicationYear}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Chat Input Form */}
         <form 
           onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
-          style={{ display: 'flex', gap: '10px', paddingTop: '10px' }}
+          style={{ display: 'flex', gap: '10px', paddingTop: '10px', alignItems: 'center' }}
         >
+          {/* Paper Tag Button */}
+          <button
+            type="button"
+            onClick={() => setShowPaperPicker(!showPaperPicker)}
+            title={taggedPaper ? `Tagged: ${taggedPaper.title}` : "Tag a paper to ask about it"}
+            style={{
+              padding: '10px',
+              borderRadius: '10px',
+              border: '1px solid var(--border-color)',
+              backgroundColor: taggedPaper ? 'var(--primary-light)' : 'var(--bg-main)',
+              color: taggedPaper ? 'var(--primary)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <FileText size={18} />
+          </button>
+
           <input
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Ask Gemini AI any research, thesis, literature, or concepts question..."
+            placeholder={taggedPaper
+              ? `Ask about "${taggedPaper.title.slice(0, 40)}${taggedPaper.title.length > 40 ? '...' : ''}"...`
+              : "Ask Gemini AI any research question or tag a 📎 paper..."}
             style={{
               flex: 1,
               padding: '12px 16px',

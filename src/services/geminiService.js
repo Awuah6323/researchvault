@@ -409,7 +409,7 @@ export async function generatePaperSummary(
 
   const safeAbstract = sanitizeInput(
     abstractOrText,
-    3000
+    12000
   );
 
   const safeType = sanitizeInput(
@@ -481,7 +481,7 @@ export async function askPaperQuestion(
 
   const safeContent = sanitizeInput(
     content,
-    3000
+    12000
   );
 
   const safeQuestion = sanitizeInput(

@@ -279,6 +279,7 @@ export default function App() {
           {activeTab === 'aichat' && (
             <AiChat
               onSaveNote={handleSaveNote}
+              resources={resources}
             />
           )}
 
