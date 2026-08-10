@@ -80,15 +80,32 @@ export default function App() {
       refreshAppData();
       const activeSession = storage.getSession();
       if (activeSession && activeSession.email) {
-        storage.pullCloudVault(activeSession.email).then(() => {
-          refreshAppData();
+        storage.pullCloudVault(activeSession.email).then((updated) => {
+          if (updated) {
+            refreshAppData();
+            setUserProfile(storage.getSession());
+          }
         });
       }
     };
 
+    // Automatic real-time background sync interval (every 15 seconds)
+    const autoSyncInterval = setInterval(() => {
+      const activeSession = storage.getSession();
+      if (activeSession && activeSession.email) {
+        storage.pullCloudVault(activeSession.email).then((updated) => {
+          if (updated) {
+            refreshAppData();
+            setUserProfile(storage.getSession());
+          }
+        });
+      }
+    }, 15000);
+
     window.addEventListener('focus', handleFocus);
     return () => {
       window.removeEventListener('focus', handleFocus);
+      clearInterval(autoSyncInterval);
       unsubscribeSync();
     };
   }, []);

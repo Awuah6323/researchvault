@@ -308,6 +308,19 @@ export const storage = {
   saveProfile(profile, skipCloudPush = false) {
     const key = getScopedKey(BASE_KEYS.PROFILE);
     localStorage.setItem(key, JSON.stringify(profile));
+
+    // Update current active session if profile matches
+    try {
+      const sessionStr = localStorage.getItem(BASE_KEYS.SESSION);
+      if (sessionStr) {
+        const session = JSON.parse(sessionStr);
+        if (session && session.email === profile.email) {
+          const updatedSession = { ...session, ...profile };
+          localStorage.setItem(BASE_KEYS.SESSION, JSON.stringify(updatedSession));
+        }
+      }
+    } catch (e) {}
+
     if (!skipCloudPush) {
       this.pushCloudVaultBackground();
     }
@@ -393,12 +406,6 @@ export const storage = {
 
   // -------------------------------------------------------------------------
   // CLOUD AUTH RECORD
-  //
-  // registerUser writes this; loginUser reads it when the account isn't
-  // known on the current device yet. This is what makes "log in on a
-  // device you've never registered on" work at all — without it, an
-  // account only ever existed in the localStorage of the device that
-  // created it.
   // -------------------------------------------------------------------------
 
   async pushUserAuthRecord(user) {
@@ -429,11 +436,6 @@ export const storage = {
       return null;
     }
   },
-
-  // NOTE: registerUser/loginUser/loginWithGoogle are async and AWAIT the
-  // cloud pull before resolving. Callers must `await` them and re-read
-  // storage.getResources()/getCategories()/getProfile() afterward to
-  // populate the UI.
 
   async registerUser(name, email, password, institution = 'Academic Institution', fieldOfStudy = 'General Research') {
     const normalizedEmail = email.toLowerCase().trim();
@@ -481,8 +483,6 @@ export const storage = {
     }
 
     if (!user) {
-      // Not known on this device — check whether the account exists in
-      // the cloud (i.e. was registered on a different device).
       const cloudUser = await this.fetchUserAuthRecord(normalizedEmail);
       if (cloudUser) {
         const valid = await verifyPassword(password, cloudUser.salt, cloudUser.passwordHash);
@@ -574,7 +574,6 @@ export const storage = {
         updatedAt: new Date().toISOString(),
         resources: resources.map(r => ({
           ...r,
-          // Exclude huge PDF base64 buffers to ensure payload stays under network limits
           pdfFileData: (r.pdfFileData && r.pdfFileData.length > 100000) ? '' : (r.pdfFileData || '')
         })),
         categories,
@@ -605,28 +604,21 @@ export const storage = {
 
       if (vaultPayload && Array.isArray(vaultPayload.resources)) {
         const currentResources = this.getResources();
-        const mergedResources = [...currentResources];
-        const indexByKey = new Map(
-          mergedResources.map((r, idx) => [r.id || r.title, idx])
+        const localPdfMap = new Map(
+          currentResources.filter(r => r.pdfFileData).map(r => [r.id || r.title, r.pdfFileData])
         );
 
-        vaultPayload.resources.forEach(cloudRes => {
+        // Reconstruct resources preserving local PDF attachments
+        const syncedResources = vaultPayload.resources.map(cloudRes => {
           const itemKey = cloudRes.id || cloudRes.title;
-          if (!indexByKey.has(itemKey)) {
-            indexByKey.set(itemKey, mergedResources.length);
-            mergedResources.push(cloudRes);
-          } else {
-            const idx = indexByKey.get(itemKey);
-            const existingPdf = mergedResources[idx].pdfFileData;
-            mergedResources[idx] = {
-              ...mergedResources[idx],
-              ...cloudRes,
-              pdfFileData: cloudRes.pdfFileData || existingPdf || ''
-            };
-          }
+          const localPdf = localPdfMap.get(itemKey);
+          return {
+            ...cloudRes,
+            pdfFileData: cloudRes.pdfFileData || localPdf || ''
+          };
         });
 
-        this.saveResources(mergedResources, true);
+        this.saveResources(syncedResources, true);
 
         if (vaultPayload.categories && Array.isArray(vaultPayload.categories)) {
           this.saveCategories(vaultPayload.categories, true);
@@ -639,7 +631,9 @@ export const storage = {
         }
 
         if (vaultPayload.profile) {
-          this.saveProfile({ ...this.getProfile(), ...vaultPayload.profile }, true);
+          const currentProfile = this.getProfile() || {};
+          const mergedProfile = { ...currentProfile, ...vaultPayload.profile };
+          this.saveProfile(mergedProfile, true);
         }
 
         const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
