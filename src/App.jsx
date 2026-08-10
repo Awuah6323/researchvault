@@ -340,10 +340,16 @@ export default function App() {
 
       <MobileDrawer
         isOpen={isMobileMenuOpen}
-        onClose={() => window.history.back()}
+        onClose={() => setIsMobileMenuOpen(false)}
         activeTab={activeTab}
-        onNavigate={handleNavigate}
-        onOpenAddModal={() => handleOpenModal(setShowAddModal, true)}
+        onNavigate={(tabId) => {
+          handleNavigate(tabId);
+          setIsMobileMenuOpen(false);
+        }}
+        onOpenAddModal={() => {
+          setIsMobileMenuOpen(false);
+          handleOpenModal(setShowAddModal, true);
+        }}
       />
 
       {/* Reader Full Screen Overlay */}

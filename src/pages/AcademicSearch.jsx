@@ -132,8 +132,10 @@ export default function AcademicSearch({
       setQuery(initialQuery);
       executeSearch(initialQuery, 1, perPage, sortBy);
     } else {
-      setQuery('Transformers AI');
-      executeSearch('Transformers AI', 1, perPage, sortBy);
+      setQuery('');
+      setResults([]);
+      setTotalCount(0);
+      setTotalPages(0);
     }
   }, [initialQuery]);
 
