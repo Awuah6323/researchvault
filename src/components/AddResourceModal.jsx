@@ -257,9 +257,9 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               </div>
             </div>
 
-            <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '6px' }}>
-              <UploadCloud size={18} />
-              <span>Upload PDF to Vault</span>
+            <button type="submit" className="btn-primary" disabled={readingFile} style={{ width: '100%', marginTop: '6px', opacity: readingFile ? 0.6 : 1 }}>
+              {readingFile ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
+              <span>{readingFile ? 'Extracting PDF text...' : 'Upload PDF to Vault'}</span>
             </button>
           </form>
         )}

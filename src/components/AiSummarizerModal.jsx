@@ -1,6 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Send, Copy, Check, Loader2, BookmarkPlus } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Sparkles, Send, Copy, Check, Loader2, BookmarkPlus, FileSearch } from 'lucide-react';
 import { generatePaperSummary, askPaperQuestion } from '../services/geminiService';
+import { extractTextFromPdfFile } from '../utils/pdfExtractor';
+
+// Sentinel value set by AddResourceModal when no real text could be extracted
+const PLACEHOLDER_TEXT = 'Imported paper document in ResearchVault digital library.';
+
+/**
+ * Converts a base64 data-URL PDF string back to a File object so we can
+ * re-run pdfExtractor on it if the stored abstractText is just a placeholder.
+ */
+async function extractTextFromDataUrl(dataUrl, fileName) {
+  try {
+    const parts = dataUrl.split(';base64,');
+    const contentType = parts[0].replace('data:', '') || 'application/pdf';
+    const raw = atob(parts[1]);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    const blob = new Blob([bytes], { type: contentType });
+    const file = new File([blob], fileName || 'document.pdf', { type: contentType });
+    return await extractTextFromPdfFile(file);
+  } catch {
+    return '';
+  }
+}
 
 export default function AiSummarizerModal({ resource, onClose, onSaveNote }) {
   const [summaryType, setSummaryType] = useState('Executive Summary');
@@ -10,15 +33,51 @@ export default function AiSummarizerModal({ resource, onClose, onSaveNote }) {
   const [question, setQuestion] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const [copied, setCopied] = useState(false);
+  const [extractingText, setExtractingText] = useState(false);
+  // Cache the resolved content so we only extract once per modal open
+  const resolvedContentRef = useRef(null);
 
   const summaryTypes = ['Executive Summary', 'Key Takeaways', 'Methodology & Proofs', 'Limitations & Critique'];
+
+  /**
+   * Returns the best available text for this resource.
+   * If the stored abstractText is the placeholder and a pdfFileData blob is
+   * present, we re-extract the real text from the PDF.
+   */
+  const getResolvedContent = async () => {
+    if (resolvedContentRef.current !== null) return resolvedContentRef.current;
+
+    const stored = resource.abstractText || '';
+    const isPlaceholder =
+      !stored.trim() ||
+      stored.trim() === PLACEHOLDER_TEXT ||
+      stored.trim().toLowerCase() === 'imported paper document in researchvault digital library.';
+
+    if (isPlaceholder && resource.pdfFileData) {
+      setExtractingText(true);
+      const extracted = await extractTextFromDataUrl(
+        resource.pdfFileData,
+        resource.pdfFileName || `${resource.title}.pdf`
+      );
+      setExtractingText(false);
+      const content = extracted && extracted.trim().length > 40
+        ? extracted.trim()
+        : stored; // fall back to whatever was stored (even the placeholder)
+      resolvedContentRef.current = content;
+      return content;
+    }
+
+    resolvedContentRef.current = stored;
+    return stored;
+  };
 
   const handleGenerateSummary = async (type) => {
     setLoading(true);
     setError('');
     setSummaryResult('');
     try {
-      const res = await generatePaperSummary(resource.title, resource.authors, resource.abstractText, type);
+      const content = await getResolvedContent();
+      const res = await generatePaperSummary(resource.title, resource.authors, content, type);
       setSummaryResult(res);
     } catch (err) {
       setError(err.message || 'Failed to generate AI summary.');
@@ -41,7 +100,8 @@ export default function AiSummarizerModal({ resource, onClose, onSaveNote }) {
     setLoading(true);
 
     try {
-      const answer = await askPaperQuestion(resource.title, resource.abstractText, q);
+      const content = await getResolvedContent();
+      const answer = await askPaperQuestion(resource.title, content, q);
       setChatHistory(prev => [...prev, { q, a: answer }]);
     } catch (err) {
       setError('Failed to answer AI question.');
@@ -113,7 +173,14 @@ export default function AiSummarizerModal({ resource, onClose, onSaveNote }) {
           </div>
 
           {/* AI Result Box */}
-          {loading && (
+          {extractingText && (
+            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--primary)' }}>
+              <FileSearch size={28} style={{ margin: '0 auto 10px', display: 'block' }} />
+              <div style={{ fontWeight: 600 }}>Reading PDF content for AI analysis...</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Extracting text from your uploaded document</div>
+            </div>
+          )}
+          {loading && !extractingText && (
             <div style={{ padding: '30px', textAlign: 'center', color: 'var(--primary)' }}>
               <Loader2 size={28} className="animate-spin" style={{ margin: '0 auto 10px' }} />
               <div style={{ fontWeight: 600 }}>Analyzing paper with Gemini AI...</div>
