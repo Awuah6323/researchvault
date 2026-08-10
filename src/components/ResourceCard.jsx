@@ -45,10 +45,18 @@ export default function ResourceCard({
                     onDeleteResource(resource.id);
                   }
                 }}
-                style={{ color: 'var(--text-muted)', padding: '4px' }}
-                title="Delete paper"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.15)';
+                  e.currentTarget.style.color = '#ef4444';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.08)';
+                  e.currentTarget.style.color = '#f87171';
+                }}
+                style={{ color: '#f87171', padding: '4px 6px', borderRadius: '6px', backgroundColor: 'rgba(239,68,68,0.08)', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, transition: 'all 0.15s ease' }}
+                title="Delete paper from library"
               >
-                <Trash2 size={16} />
+                <Trash2 size={14} />
               </button>
             )}
           </div>

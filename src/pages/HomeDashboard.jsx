@@ -11,7 +11,8 @@ export default function HomeDashboard({
   onToggleFavorite, 
   onShowCitation, 
   onOpenAiSummarizer, 
-  onOpenAddModal 
+  onOpenAddModal,
+  onDeleteResource
 }) {
   const favoritePapers = resources.filter(r => r.isFavorite);
   const readingInProgress = resources.filter(r => r.readingProgressPercent > 0);
@@ -183,6 +184,7 @@ export default function HomeDashboard({
                 onToggleFavorite={onToggleFavorite}
                 onShowCitation={onShowCitation}
                 onOpenAiSummarizer={onOpenAiSummarizer}
+                onDeleteResource={onDeleteResource}
               />
             ))}
           </div>
@@ -230,6 +232,7 @@ export default function HomeDashboard({
                 onToggleFavorite={onToggleFavorite}
                 onShowCitation={onShowCitation}
                 onOpenAiSummarizer={onOpenAiSummarizer}
+                onDeleteResource={onDeleteResource}
               />
             ))}
           </div>
