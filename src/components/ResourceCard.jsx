@@ -103,7 +103,7 @@ export default function ResourceCard({
           </span>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {/* Delete Button — visible red */}
+            {/* Delete Button — icon only */}
             {onDeleteResource && (
               <button
                 onClick={() => {
@@ -113,28 +113,25 @@ export default function ResourceCard({
                 }}
                 title="Delete paper from library"
                 style={{
-                  padding: '6px 10px',
+                  padding: '6px',
                   borderRadius: '8px',
                   color: '#ef4444',
                   backgroundColor: 'rgba(239, 68, 68, 0.1)',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '4px',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
+                  justifyContent: 'center',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.2)';
+                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.25)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)';
                 }}
               >
-                <Trash2 size={14} />
-                <span>Delete</span>
+                <Trash2 size={16} />
               </button>
             )}
 
