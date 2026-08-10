@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, ArrowUpDown, Grid, List, UploadCloud } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, Grid, List, UploadCloud, RefreshCw, Loader2 } from 'lucide-react';
 import ResourceCard from '../components/ResourceCard';
 
 export default function MyLibrary({ 
@@ -10,12 +10,14 @@ export default function MyLibrary({
   onShowCitation, 
   onOpenAiSummarizer,
   onDeleteResource,
-  onOpenAddModal
+  onOpenAddModal,
+  onSyncCloud
 }) {
   const [activeTabFilter, setActiveTabFilter] = useState('ALL'); // ALL, FAVORITES, COMPLETED
   const [selectedCategory, setSelectedCategory] = useState('');
   const [sortOption, setSortOption] = useState('RECENT');
   const [searchQuery, setSearchQuery] = useState('');
+  const [syncing, setSyncing] = useState(false);
 
   let filtered = resources.filter(r => {
     if (activeTabFilter === 'FAVORITES' && !r.isFavorite) return false;
@@ -68,6 +70,25 @@ export default function MyLibrary({
             >
               <UploadCloud size={16} />
               <span>Upload PDF from Device</span>
+            </button>
+          )}
+
+          {onSyncCloud && (
+            <button
+              onClick={async () => {
+                if (syncing) return;
+                setSyncing(true);
+                try {
+                  await onSyncCloud();
+                } catch (e) {}
+                setSyncing(false);
+              }}
+              className="btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              title="Sync library across devices"
+            >
+              {syncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+              <span>{syncing ? 'Syncing...' : 'Sync Cloud'}</span>
             </button>
           )}
 

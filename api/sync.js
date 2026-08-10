@@ -1,11 +1,11 @@
 // api/sync.js
 // ResearchVault Cloud Synchronization Engine — Vercel Serverless Route
-// Enables cross-device authentication and real-time library synchronization (Laptop <-> Phone).
+// Enables cross-device authentication and real-time paper library synchronization (Laptop <-> Phone).
 
-const INDEX_OBJECT_ID = "ff8081819f7e10ae019fec4131ec1e33";
+const INDEX_OBJECT_ID = "ff8081819f7e10ae019fec51d4f21e41";
 const REST_API_BASE = "https://api.restful-api.dev/objects";
 
-// In-memory fallback cache for fast serverless hits
+// Memory cache per serverless instance
 const localMemoryStore = new Map();
 
 async function getMasterIndex() {
@@ -24,13 +24,13 @@ async function updateMasterIndex(newIndexData) {
     await fetch(`${REST_API_BASE}/${INDEX_OBJECT_ID}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'master_vault_index', data: newIndexData })
+      body: JSON.stringify({ name: 'researchvault_global_index_v1', data: newIndexData })
     });
   } catch (e) {}
 }
 
 export default async function handler(req, res) {
-  // Enable CORS headers for cross-origin mobile/web requests
+  // CORS configuration
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS');
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
 
   const { key: queryKey } = req.query || {};
 
-  // GET: Fetch vault data by key (e.g. key=auth_user@example.com or key=vault_user@example.com)
+  // GET: Retrieve user auth or vault data by key (e.g., auth_email or vault_email)
   if (req.method === 'GET') {
     if (!queryKey) {
       return res.status(400).json({ error: 'Missing key parameter' });
@@ -50,7 +50,6 @@ export default async function handler(req, res) {
 
     const safeKey = String(queryKey).toLowerCase().trim();
 
-    // Check memory cache first
     if (localMemoryStore.has(safeKey)) {
       return res.status(200).json(localMemoryStore.get(safeKey));
     }
@@ -76,7 +75,7 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: 'Key not found in Cloud Vault' });
   }
 
-  // POST: Save vault data for a key
+  // POST/PUT: Save user auth or vault data
   if (req.method === 'POST' || req.method === 'PUT') {
     const { key: bodyKey, data } = req.body || {};
     const key = String(bodyKey || queryKey || '').toLowerCase().trim();
@@ -85,7 +84,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing key or data in request' });
     }
 
-    // Cache locally in serverless memory
     localMemoryStore.set(key, data);
 
     try {
@@ -93,14 +91,14 @@ export default async function handler(req, res) {
       let targetId = masterIndex[key];
 
       if (targetId) {
-        // Update existing remote object
+        // Update existing cloud object
         await fetch(`${REST_API_BASE}/${targetId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: key, data })
         });
       } else {
-        // Create new remote object
+        // Create new cloud object
         const createRes = await fetch(REST_API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -119,7 +117,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, timestamp: new Date().toISOString() });
     } catch (err) {
       console.warn("Sync save error:", err);
-      // Return 200 with memory fallback status so client non-blocking continues
       return res.status(200).json({ success: true, cachedInMemory: true });
     }
   }

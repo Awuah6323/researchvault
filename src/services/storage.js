@@ -35,7 +35,7 @@ if (typeof window !== 'undefined' && !localStorage.getItem('researchvault_v4_aut
 }
 
 const REST_FALLBACK_BASE = "https://api.restful-api.dev/objects";
-const REST_INDEX_ID = "ff8081819f7e10ae019fec4131ec1e33";
+const REST_INDEX_ID = "ff8081819f7e10ae019fec51d4f21e41";
 
 async function callSyncApi(method, key, data = null) {
   const normKey = String(key).toLowerCase().trim();

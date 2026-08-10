@@ -263,6 +263,13 @@ export default function App() {
               onOpenAiSummarizer={(r) => handleOpenModal(setAiModalResource, r)}
               onDeleteResource={handleDeleteResource}
               onOpenAddModal={() => handleOpenModal(setShowAddModal, true)}
+              onSyncCloud={async () => {
+                const session = storage.getSession();
+                if (session && session.email) {
+                  await storage.pullCloudVault(session.email);
+                  refreshAppData();
+                }
+              }}
             />
           )}
 
