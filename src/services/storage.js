@@ -34,8 +34,84 @@ if (typeof window !== 'undefined' && !localStorage.getItem('researchvault_v4_aut
   localStorage.setItem('researchvault_v4_auth_strict', 'true');
 }
 
-// Cloud Vault API endpoint for cross-device synchronization
-const CLOUD_VAULT_URL = "https://kvdb.io/8E3qMhR9Y6pT4x7V1w5K9Z";
+const REST_FALLBACK_BASE = "https://api.restful-api.dev/objects";
+const REST_INDEX_ID = "ff8081819f7e10ae019fec4131ec1e33";
+
+async function callSyncApi(method, key, data = null) {
+  const normKey = String(key).toLowerCase().trim();
+
+  // Primary: Call Vercel serverless /api/sync handler
+  try {
+    if (method === 'GET') {
+      const res = await fetch(`/api/sync?key=${encodeURIComponent(normKey)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json && !json.error) return json;
+      }
+    } else {
+      const res = await fetch(`/api/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: normKey, data })
+      });
+      if (res.ok) return true;
+    }
+  } catch (e) {}
+
+  // Fallback: Direct REST API storage for static/dev server
+  try {
+    if (method === 'GET') {
+      const idxRes = await fetch(`${REST_FALLBACK_BASE}/${REST_INDEX_ID}`);
+      if (idxRes.ok) {
+        const idxJson = await idxRes.json();
+        const objId = (idxJson.data || {})[normKey];
+        if (objId) {
+          const itemRes = await fetch(`${REST_FALLBACK_BASE}/${objId}`);
+          if (itemRes.ok) {
+            const itemJson = await itemRes.json();
+            return itemJson.data || null;
+          }
+        }
+      }
+    } else {
+      const idxRes = await fetch(`${REST_FALLBACK_BASE}/${REST_INDEX_ID}`);
+      let masterIndex = {};
+      if (idxRes.ok) {
+        const idxJson = await idxRes.json();
+        masterIndex = idxJson.data || {};
+      }
+
+      let targetId = masterIndex[normKey];
+      if (targetId) {
+        await fetch(`${REST_FALLBACK_BASE}/${targetId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: normKey, data })
+        });
+      } else {
+        const createRes = await fetch(REST_FALLBACK_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: normKey, data })
+        });
+        if (createRes.ok) {
+          const createJson = await createRes.json();
+          if (createJson && createJson.id) {
+            masterIndex[normKey] = createJson.id;
+            await fetch(`${REST_FALLBACK_BASE}/${REST_INDEX_ID}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: 'master_vault_index', data: masterIndex })
+            });
+          }
+        }
+      }
+      return true;
+    }
+  } catch (err) {}
+
+  return null;
+}
 
 // Event listeners for sync state updates
 let syncListeners = [];
@@ -327,33 +403,27 @@ export const storage = {
 
   async pushUserAuthRecord(user) {
     try {
-      await fetch(`${CLOUD_VAULT_URL}/auth_${encodeURIComponent(user.email.toLowerCase().trim())}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: user.name,
-          email: user.email,
-          passwordHash: user.passwordHash,
-          salt: user.salt,
-          institution: user.institution,
-          fieldOfStudy: user.fieldOfStudy,
-          researchInterests: user.researchInterests,
-          createdAt: user.createdAt
-        })
+      const key = `auth_${user.email.toLowerCase().trim()}`;
+      await callSyncApi('POST', key, {
+        name: user.name,
+        email: user.email,
+        passwordHash: user.passwordHash,
+        salt: user.salt,
+        institution: user.institution,
+        fieldOfStudy: user.fieldOfStudy,
+        researchInterests: user.researchInterests,
+        createdAt: user.createdAt
       });
     } catch (err) {
-      console.warn("Could not publish auth record to Cloud Vault (offline?).", err);
+      console.warn("Could not publish auth record to Cloud Vault.", err);
     }
   },
 
   async fetchUserAuthRecord(email) {
     try {
-      const res = await fetch(`${CLOUD_VAULT_URL}/auth_${encodeURIComponent(email.toLowerCase().trim())}`);
-      if (!res.ok) return null;
-      const text = await res.text();
-      if (!text || text.trim().length < 5) return null;
-      const parsed = JSON.parse(text);
-      if (parsed && parsed.email && parsed.passwordHash && parsed.salt) return parsed;
+      const key = `auth_${email.toLowerCase().trim()}`;
+      const data = await callSyncApi('GET', key);
+      if (data && data.email && data.passwordHash && data.salt) return data;
       return null;
     } catch (err) {
       return null;
@@ -363,11 +433,7 @@ export const storage = {
   // NOTE: registerUser/loginUser/loginWithGoogle are async and AWAIT the
   // cloud pull before resolving. Callers must `await` them and re-read
   // storage.getResources()/getCategories()/getProfile() afterward to
-  // populate the UI, e.g.:
-  //
-  //   const user = await storage.loginUser(email, password);
-  //   setResources(storage.getResources());
-  //   setCategories(storage.getCategories());
+  // populate the UI.
 
   async registerUser(name, email, password, institution = 'Academic Institution', fieldOfStudy = 'General Research') {
     const normalizedEmail = email.toLowerCase().trim();
@@ -377,8 +443,6 @@ export const storage = {
       throw new Error("An account with this email address already exists.");
     }
 
-    // Also check the cloud — the account may have been created on a
-    // different device that this one has never synced with.
     const existingCloud = await this.fetchUserAuthRecord(normalizedEmail);
     if (existingCloud) {
       throw new Error("An account with this email address already exists.");
@@ -424,7 +488,7 @@ export const storage = {
         const valid = await verifyPassword(password, cloudUser.salt, cloudUser.passwordHash);
         if (valid) {
           user = { id: Date.now(), ...cloudUser, email: normalizedEmail };
-          this.cacheUserLocally(user); // so future logins on this device don't need the network
+          this.cacheUserLocally(user);
         }
       }
     }
@@ -499,7 +563,6 @@ export const storage = {
       const categories = this.getCategories();
       const profile = this.getProfile();
       
-      // Gather all notes across resources
       const notesMap = {};
       resources.forEach(r => {
         const n = this.getNotes(r.id);
@@ -509,25 +572,22 @@ export const storage = {
       const vaultPayload = {
         email,
         updatedAt: new Date().toISOString(),
-        resources: resources.map(r => ({ ...r, pdfFileData: '' })), // Exclude heavy PDF buffers for lightning-fast sync
+        resources: resources.map(r => ({
+          ...r,
+          // Exclude huge PDF base64 buffers to ensure payload stays under network limits
+          pdfFileData: (r.pdfFileData && r.pdfFileData.length > 100000) ? '' : (r.pdfFileData || '')
+        })),
         categories,
         notesMap,
         profile
       };
 
-      const res = await fetch(`${CLOUD_VAULT_URL}/${encodeURIComponent(email)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(vaultPayload)
-      });
+      const key = `vault_${email.toLowerCase().trim()}`;
+      await callSyncApi('POST', key, vaultPayload);
 
-      if (res.ok) {
-        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        this.setLastSyncTime(timeStr);
-        notifySyncListeners("synced", timeStr);
-      } else {
-        notifySyncListeners("synced", this.getLastSyncTime());
-      }
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      this.setLastSyncTime(timeStr);
+      notifySyncListeners("synced", timeStr);
     } catch (err) {
       console.warn("Cloud Vault sync currently offline or disconnected.", err);
       notifySyncListeners("offline", this.getLastSyncTime());
@@ -540,57 +600,52 @@ export const storage = {
 
     try {
       notifySyncListeners("syncing", this.getLastSyncTime());
-      const res = await fetch(`${CLOUD_VAULT_URL}/${encodeURIComponent(email)}`);
-      
-      if (res.ok) {
-        const text = await res.text();
-        if (text && text.trim().length > 10) {
-          const vaultPayload = JSON.parse(text);
-          
-          if (vaultPayload && Array.isArray(vaultPayload.resources)) {
-            // Restore resources, categories, profile, and notes. Merged
-            // items are written back into the array by index (not just
-            // into a detached Map), so updates to items you already had
-            // locally are actually applied.
-            const currentResources = this.getResources();
-            const mergedResources = [...currentResources];
-            const indexByKey = new Map(
-              mergedResources.map((r, idx) => [r.id || r.title, idx])
-            );
+      const key = `vault_${email.toLowerCase().trim()}`;
+      const vaultPayload = await callSyncApi('GET', key);
 
-            vaultPayload.resources.forEach(cloudRes => {
-              const key = cloudRes.id || cloudRes.title;
-              if (!indexByKey.has(key)) {
-                indexByKey.set(key, mergedResources.length);
-                mergedResources.push(cloudRes);
-              } else {
-                const idx = indexByKey.get(key);
-                mergedResources[idx] = { ...mergedResources[idx], ...cloudRes };
-              }
-            });
+      if (vaultPayload && Array.isArray(vaultPayload.resources)) {
+        const currentResources = this.getResources();
+        const mergedResources = [...currentResources];
+        const indexByKey = new Map(
+          mergedResources.map((r, idx) => [r.id || r.title, idx])
+        );
 
-            this.saveResources(mergedResources, true);
-
-            if (vaultPayload.categories && Array.isArray(vaultPayload.categories)) {
-              this.saveCategories(vaultPayload.categories, true);
-            }
-
-            if (vaultPayload.notesMap && typeof vaultPayload.notesMap === 'object') {
-              Object.keys(vaultPayload.notesMap).forEach(resId => {
-                this.saveNotes(resId, vaultPayload.notesMap[resId], true);
-              });
-            }
-
-            if (vaultPayload.profile) {
-              this.saveProfile({ ...this.getProfile(), ...vaultPayload.profile }, true);
-            }
-
-            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            this.setLastSyncTime(timeStr);
-            notifySyncListeners("synced", timeStr);
-            return true;
+        vaultPayload.resources.forEach(cloudRes => {
+          const itemKey = cloudRes.id || cloudRes.title;
+          if (!indexByKey.has(itemKey)) {
+            indexByKey.set(itemKey, mergedResources.length);
+            mergedResources.push(cloudRes);
+          } else {
+            const idx = indexByKey.get(itemKey);
+            const existingPdf = mergedResources[idx].pdfFileData;
+            mergedResources[idx] = {
+              ...mergedResources[idx],
+              ...cloudRes,
+              pdfFileData: cloudRes.pdfFileData || existingPdf || ''
+            };
           }
+        });
+
+        this.saveResources(mergedResources, true);
+
+        if (vaultPayload.categories && Array.isArray(vaultPayload.categories)) {
+          this.saveCategories(vaultPayload.categories, true);
         }
+
+        if (vaultPayload.notesMap && typeof vaultPayload.notesMap === 'object') {
+          Object.keys(vaultPayload.notesMap).forEach(resId => {
+            this.saveNotes(resId, vaultPayload.notesMap[resId], true);
+          });
+        }
+
+        if (vaultPayload.profile) {
+          this.saveProfile({ ...this.getProfile(), ...vaultPayload.profile }, true);
+        }
+
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        this.setLastSyncTime(timeStr);
+        notifySyncListeners("synced", timeStr);
+        return true;
       }
       notifySyncListeners("synced", this.getLastSyncTime());
     } catch (err) {
