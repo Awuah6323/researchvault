@@ -14,7 +14,7 @@ export default function ResourceCard({
       <div>
         {/* Header Badges */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span className="badge">
               {resource.resourceType || 'Research Paper'}
             </span>
@@ -30,36 +30,13 @@ export default function ResourceCard({
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <button 
-              onClick={() => onToggleFavorite(resource.id)}
-              style={{ color: resource.isFavorite ? 'var(--accent-gold)' : 'var(--text-muted)', padding: '4px' }}
-              title={resource.isFavorite ? "Unstar paper" : "Star paper"}
-            >
-              <Star size={18} fill={resource.isFavorite ? 'var(--accent-gold)' : 'none'} />
-            </button>
-            {onDeleteResource && (
-              <button
-                onClick={() => {
-                  if (window.confirm(`Delete "${resource.title}" from your library?`)) {
-                    onDeleteResource(resource.id);
-                  }
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.15)';
-                  e.currentTarget.style.color = '#ef4444';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.08)';
-                  e.currentTarget.style.color = '#f87171';
-                }}
-                style={{ color: '#f87171', padding: '4px 6px', borderRadius: '6px', backgroundColor: 'rgba(239,68,68,0.08)', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, transition: 'all 0.15s ease' }}
-                title="Delete paper from library"
-              >
-                <Trash2 size={14} />
-              </button>
-            )}
-          </div>
+          <button 
+            onClick={() => onToggleFavorite(resource.id)}
+            style={{ color: resource.isFavorite ? 'var(--accent-gold)' : 'var(--text-muted)', padding: '4px' }}
+            title={resource.isFavorite ? "Unstar paper" : "Star paper"}
+          >
+            <Star size={18} fill={resource.isFavorite ? 'var(--accent-gold)' : 'none'} />
+          </button>
         </div>
 
         {/* Title */}
@@ -126,6 +103,41 @@ export default function ResourceCard({
           </span>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {/* Delete Button — visible red */}
+            {onDeleteResource && (
+              <button
+                onClick={() => {
+                  if (window.confirm(`Delete "${resource.title}" from your library?`)) {
+                    onDeleteResource(resource.id);
+                  }
+                }}
+                title="Delete paper from library"
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  color: '#ef4444',
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)';
+                }}
+              >
+                <Trash2 size={14} />
+                <span>Delete</span>
+              </button>
+            )}
+
             {/* AI Summary */}
             <button 
               onClick={() => onOpenAiSummarizer(resource)}

@@ -326,7 +326,10 @@ export default function App() {
         <DocumentReader
           resource={activeReaderResource}
           onClose={() => setActiveReaderResource(null)}
-          onOpenAiSummarizer={(r) => setAiModalResource(r)}
+          onDeleteResource={(id) => {
+            handleDeleteResource(id);
+            setActiveReaderResource(null);
+          }}
         />
       )}
 

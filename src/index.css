@@ -762,6 +762,19 @@ input, textarea, select {
   to { transform: translateX(0); }
 }
 
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
 
-
-
+/* AI Assistant side panel: full-screen overlay on mobile */
+@media (max-width: 768px) {
+  .ai-reader-panel {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-left: none !important;
+    z-index: 200 !important;
+  }
+}
