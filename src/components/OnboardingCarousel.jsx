@@ -241,6 +241,9 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       onTouchEnd={handleTouchEnd}
       style={{
         position: 'relative',
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
         borderRadius: '24px',
         border: '1px solid var(--border-color)',
         backgroundColor: 'var(--bg-card)',
@@ -252,6 +255,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       {/* Floating Side Arrow Buttons: Left (Previous) */}
       <button
         onClick={handlePrev}
+        className="carousel-side-arrow"
         aria-label="Previous Slide"
         title="Previous Slide (← Left Arrow)"
         style={{
@@ -283,6 +287,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       {/* Floating Side Arrow Buttons: Right (Next) */}
       <button
         onClick={handleNext}
+        className="carousel-side-arrow"
         aria-label="Next Slide"
         title="Next Slide (→ Right Arrow)"
         style={{
@@ -333,15 +338,18 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       </div>
 
       {/* Main Slide Card Container */}
-      <div style={{
-        padding: '28px 32px',
-        background: currentSlide.gradient,
-        minHeight: '280px',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        position: 'relative'
-      }}>
+      <div 
+        className="onboarding-slide-card"
+        style={{
+          padding: '28px 32px',
+          background: currentSlide.gradient,
+          minHeight: '280px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          position: 'relative'
+        }}
+      >
         {/* Top Header Row: Badge, Controls & Dismiss */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
