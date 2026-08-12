@@ -42,7 +42,11 @@ export default function Navbar({
       backgroundColor: 'var(--header-bg)',
       backdropFilter: 'blur(16px)',
       borderBottom: '1px solid var(--border-color)',
-      padding: '12px 24px'
+      padding: '12px 16px',
+      width: '100%',
+      maxWidth: '100vw',
+      boxSizing: 'border-box',
+      overflowX: 'hidden'
     }}>
       <div className="nav-container" style={{
         maxWidth: '1440px',
@@ -51,7 +55,9 @@ export default function Navbar({
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: '12px',
-        flexWrap: 'nowrap'
+        flexWrap: 'wrap',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
         {/* Brand Logo & Mobile Menu Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
