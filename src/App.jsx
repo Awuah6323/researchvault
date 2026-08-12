@@ -69,6 +69,14 @@ export default function App() {
       window.history.replaceState({ tab: 'home' }, '', '#home');
     }
 
+    // Auto-trigger Onboarding Carousel Modal for first-time visitors
+    try {
+      const hasSeenOnboarding = localStorage.getItem('researchvault_has_seen_onboarding');
+      if (!hasSeenOnboarding) {
+        setShowUserGuideModal(true);
+      }
+    } catch (e) {}
+
     // Subscribe to cloud sync state changes to auto-refresh data
     const unsubscribeSync = storage.subscribeSyncState((state) => {
       if (state === 'synced') {
@@ -442,7 +450,12 @@ export default function App() {
       {/* User Guide & Onboarding Carousel Modal */}
       <UserGuideModal
         isOpen={showUserGuideModal}
-        onClose={() => setShowUserGuideModal(false)}
+        onClose={() => {
+          try {
+            localStorage.setItem('researchvault_has_seen_onboarding', 'true');
+          } catch (e) {}
+          setShowUserGuideModal(false);
+        }}
         onNavigate={handleNavigate}
         onOpenAddModal={() => handleOpenModal(setShowAddModal, true)}
       />

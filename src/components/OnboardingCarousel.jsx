@@ -428,34 +428,67 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
               ))}
             </div>
 
-            {/* Action CTA Button */}
-            <button
-              onClick={() => {
-                if (currentSlide.actionTab === 'addModal') {
-                  if (onOpenAddModal) onOpenAddModal();
-                } else if (onNavigate) {
-                  onNavigate(currentSlide.actionTab);
-                }
-              }}
-              className="btn-primary"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 20px',
-                borderRadius: '14px',
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                backgroundColor: currentSlide.accentColor,
-                borderColor: currentSlide.accentColor,
-                color: '#ffffff',
-                boxShadow: `0 4px 16px ${currentSlide.accentColor}40`,
-                cursor: 'pointer'
-              }}
-            >
-              <span>{currentSlide.actionText}</span>
-              <ArrowRight size={16} />
-            </button>
+            {/* Action CTA Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  try {
+                    localStorage.setItem('researchvault_has_seen_onboarding', 'true');
+                  } catch (e) {}
+                  if (currentSlide.actionTab === 'addModal') {
+                    if (onOpenAddModal) onOpenAddModal();
+                  } else if (onNavigate) {
+                    onNavigate(currentSlide.actionTab);
+                  }
+                }}
+                className="btn-primary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 20px',
+                  borderRadius: '14px',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  backgroundColor: currentSlide.accentColor,
+                  borderColor: currentSlide.accentColor,
+                  color: '#ffffff',
+                  boxShadow: `0 4px 16px ${currentSlide.accentColor}40`,
+                  cursor: 'pointer'
+                }}
+              >
+                <span>{currentSlide.actionText}</span>
+                <ArrowRight size={16} />
+              </button>
+
+              {onClose && (
+                <button
+                  onClick={() => {
+                    try {
+                      localStorage.setItem('researchvault_has_seen_onboarding', 'true');
+                    } catch (e) {}
+                    onClose();
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '10px 18px',
+                    borderRadius: '14px',
+                    fontSize: '0.86rem',
+                    fontWeight: 700,
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-main)',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+                  }}
+                >
+                  <CheckCircle2 size={16} style={{ color: '#10b981' }} />
+                  <span>Got It! Start Using App</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Right Icon Illustration (Desktop) */}
