@@ -138,15 +138,18 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
 
   // 2. SECONDARY ENGINE: OpenAlex API (250M CORS-friendly catalog)
   try {
+    const alexPage = usingRelevancePool ? 1 : page;
+    const alexPerPage = usingRelevancePool ? poolSize : perPage;
+
     let openAlexUrl = '';
 
     if (isDoi) {
       openAlexUrl = `https://api.openalex.org/works/https://doi.org/${clean}`;
     } else if (explicitAuthor) {
       const authFilter = `raw_author_name.search:"${encodeURIComponent(explicitAuthor)}"`;
-      openAlexUrl = `https://api.openalex.org/works?filter=${authFilter}&page=1&per_page=${poolSize}&sort=relevance_score:desc`;
+      openAlexUrl = `https://api.openalex.org/works?filter=${authFilter}&page=${alexPage}&per_page=${alexPerPage}&sort=relevance_score:desc`;
     } else {
-      openAlexUrl = `https://api.openalex.org/works?search=${encodeURIComponent(searchPhrase)}&page=1&per_page=${poolSize}&sort=relevance_score:desc`;
+      openAlexUrl = `https://api.openalex.org/works?search=${encodeURIComponent(searchPhrase)}&page=${alexPage}&per_page=${alexPerPage}&sort=relevance_score:desc`;
     }
 
     const alexRes = await fetch(openAlexUrl);
