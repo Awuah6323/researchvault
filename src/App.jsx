@@ -69,10 +69,11 @@ export default function App() {
       window.history.replaceState({ tab: 'home' }, '', '#home');
     }
 
-    // Auto-trigger Onboarding Carousel Modal for first-time visitors
+    // Auto-trigger Onboarding Carousel Modal for first-time visitors unless opted out
     try {
+      const neverShowOnboarding = localStorage.getItem('researchvault_never_show_onboarding');
       const hasSeenOnboarding = localStorage.getItem('researchvault_has_seen_onboarding');
-      if (!hasSeenOnboarding) {
+      if (!neverShowOnboarding && !hasSeenOnboarding) {
         setShowUserGuideModal(true);
       }
     } catch (e) {}

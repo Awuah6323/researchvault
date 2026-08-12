@@ -15,7 +15,26 @@ export default function HomeDashboard({
   onOpenAddModal,
   onDeleteResource
 }) {
-  const [showGuide, setShowGuide] = useState(true);
+  const [showGuide, setShowGuide] = useState(() => {
+    try {
+      return localStorage.getItem('researchvault_hide_dashboard_guide') !== 'true';
+    } catch (e) {
+      return true;
+    }
+  });
+
+  const handleToggleGuide = () => {
+    const nextState = !showGuide;
+    setShowGuide(nextState);
+    try {
+      if (!nextState) {
+        localStorage.setItem('researchvault_hide_dashboard_guide', 'true');
+      } else {
+        localStorage.removeItem('researchvault_hide_dashboard_guide');
+      }
+    } catch (e) {}
+  };
+
   const favoritePapers = resources.filter(r => r.isFavorite);
   const readingInProgress = resources.filter(r => r.readingProgressPercent > 0);
   const recentlyAdded = [...resources].sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt)).slice(0, 6);
@@ -54,7 +73,7 @@ export default function HomeDashboard({
               <span>Search Academic Sources</span>
             </button>
             <button 
-              onClick={() => setShowGuide(!showGuide)} 
+              onClick={handleToggleGuide} 
               className="neu-button" 
               style={{ padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontWeight: 600 }}
             >
