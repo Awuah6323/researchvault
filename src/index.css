@@ -845,6 +845,31 @@ html, body {
     max-width: 100% !important;
   }
 
+  /* Smooth Horizontal Sliding Action Bar for Header Controls on Mobile */
+  .nav-actions-bar {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 4px 2px !important;
+    gap: 8px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-snap-type: x mandatory !important;
+    scrollbar-width: none !important; /* Firefox */
+    -ms-overflow-style: none !important; /* IE 10+ */
+  }
+
+  .nav-actions-bar::-webkit-scrollbar {
+    display: none !important; /* Chrome, Safari, Opera */
+  }
+
+  .nav-actions-bar > * {
+    flex-shrink: 0 !important;
+    scroll-snap-align: start !important;
+  }
+
   .nav-search-bar {
     order: 3;
     width: 100% !important;

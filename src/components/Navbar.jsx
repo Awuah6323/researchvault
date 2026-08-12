@@ -162,8 +162,8 @@ export default function Navbar({
           />
         </form>
 
-        {/* Action Controls Bar: User Account, User Guide, Install App, Theme Mode & Cloud Sync */}
-        <div className="nav-actions-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
+        {/* Horizontal Sliding Action Controls Bar: User Account, Install App, User Guide, Theme Mode & Cloud Sync */}
+        <div className="nav-actions-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'nowrap' }}>
           {/* User Guide Carousel Trigger */}
           {onOpenUserGuide && (
             <button
