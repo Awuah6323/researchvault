@@ -25,6 +25,14 @@ export default function HomeDashboard({
     }
   });
 
+  const handleCloseGuide = () => {
+    setShowGuide(false);
+    try {
+      localStorage.setItem('researchvault_hide_dashboard_guide', 'true');
+      localStorage.setItem('researchvault_has_seen_onboarding', 'true');
+    } catch (e) {}
+  };
+
   const handleToggleGuide = () => {
     const nextState = !showGuide;
     setShowGuide(nextState);
@@ -118,7 +126,7 @@ export default function HomeDashboard({
         <OnboardingCarousel 
           onNavigate={onNavigate}
           onOpenAddModal={onOpenAddModal}
-          onClose={() => setShowGuide(false)}
+          onClose={handleCloseGuide}
         />
       )}
 

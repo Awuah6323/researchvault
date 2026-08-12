@@ -9,6 +9,7 @@ export default function UserGuideModal({ isOpen, onClose, onNavigate, onOpenAddM
 
   const handleCloseModal = (neverShow = dontShowAgain) => {
     try {
+      localStorage.setItem('researchvault_hide_dashboard_guide', 'true');
       if (neverShow) {
         localStorage.setItem('researchvault_never_show_onboarding', 'true');
         localStorage.setItem('researchvault_has_seen_onboarding', 'true');
