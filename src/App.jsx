@@ -25,10 +25,23 @@ import AuthPage from './pages/AuthPage';
 import { storage } from './services/storage';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const hash = window.location.hash ? window.location.hash.replace('#', '') : null;
+      if (hash && ['home', 'search', 'library', 'categories', 'aichat', 'notes', 'synthesis', 'profile'].includes(hash)) {
+        return hash;
+      }
+      const saved = localStorage.getItem('researchvault_active_tab');
+      if (saved && ['home', 'search', 'library', 'categories', 'aichat', 'notes', 'synthesis', 'profile'].includes(saved)) {
+        return saved;
+      }
+    } catch (e) {}
+    return 'home';
+  });
+
   const [resources, setResources] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [userProfile, setUserProfile] = useState(null);
+  const [userProfile, setUserProfile] = useState(() => storage.getSession());
   const [theme, setTheme] = useState('warm-sepia');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -201,6 +214,9 @@ export default function App() {
     if (tabName !== activeTab) {
       window.history.pushState({ tab: tabName }, '', `#${tabName}`);
       setActiveTab(tabName);
+      try {
+        localStorage.setItem('researchvault_active_tab', tabName);
+      } catch (e) {}
     }
     closeAllModals();
   };
