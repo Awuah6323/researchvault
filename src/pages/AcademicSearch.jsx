@@ -424,8 +424,7 @@ export default function AcademicSearch({
             color: 'var(--text-muted)'
           }}
         >
-          Search over 250M academic works, authors, DOIs,
-          and journals via OpenAlex and Crossref repositories.
+          Powered by Semantic Scholar AI & arXiv repositories for pinpoint Google Scholar-level paper matching.
         </p>
       </div>
 
