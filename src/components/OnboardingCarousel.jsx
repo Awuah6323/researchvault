@@ -379,24 +379,6 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {/* Speed Selector Toggle Button (5s / 7s / 10s) */}
-            <button
-              onClick={handleCycleSpeed}
-              title={`Slide Duration: ${slideDuration}s. Click to switch (5s, 7s, 10s)`}
-              style={{
-                padding: '4px 10px',
-                borderRadius: '12px',
-                border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-card)',
-                color: currentSlide.accentColor,
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              ⏱️ {slideDuration}s
-            </button>
 
             {/* Auto-Slide Play/Pause Button */}
             <button
