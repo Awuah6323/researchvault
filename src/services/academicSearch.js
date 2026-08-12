@@ -67,44 +67,68 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
     return score;
   };
 
+  // Every sort mode (Most Cited / Newest / Open Access / Relevance) is applied
+  // WITHIN the set of papers that actually match the query — never as a raw
+  // API-level sort over the whole corpus. Otherwise "Most Cited" pulls in
+  // whatever is most-cited anywhere near the query, not most-cited among the
+  // papers you're actually looking for.
+  const usingRelevancePool = sortBy !== 'relevance';
+  const poolSize = usingRelevancePool ? Math.min(100, Math.max(perPage * 5, 30)) : perPage;
+  const fetchOffset = usingRelevancePool ? 0 : (page - 1) * perPage;
+
+  // Narrows to papers that actually match the query, then applies the
+  // requested refinement on top of that narrowed set.
+  const refine = (parsed) => {
+    let list = parsed;
+    if (queryTokens.length > 0) {
+      const relevant = list.filter(item => calculateRelevance(item) > 0);
+      if (relevant.length > 0) list = relevant;
+    }
+    if (sortBy === 'openaccess') {
+      list = list.filter(item => item.openAccess);
+    }
+    list = [...list].sort((a, b) => {
+      if (sortBy === 'citations') return (b.citationCount || 0) - (a.citationCount || 0);
+      if (sortBy === 'newest') return (b.publicationYear || 0) - (a.publicationYear || 0);
+      return calculateRelevance(b) - calculateRelevance(a); // relevance & openaccess default
+    });
+    return list;
+  };
+
+  const paginate = (refined, apiTotal) => {
+    if (usingRelevancePool) {
+      const total = refined.length;
+      return {
+        results: refined.slice((page - 1) * perPage, page * perPage),
+        totalCount: total,
+        page,
+        perPage,
+        totalPages: Math.ceil(total / perPage)
+      };
+    }
+    const total = apiTotal || refined.length;
+    return {
+      results: refined,
+      totalCount: total,
+      page,
+      perPage,
+      totalPages: Math.ceil(total / perPage)
+    };
+  };
+
   // 1. PRIMARY ENGINE: Semantic Scholar API (with independent error handling)
   try {
-    const ssOffset = (page - 1) * perPage;
     const ssFields = 'title,authors,year,abstract,citationCount,isOpenAccess,openAccessPdf,externalIds,venue,publicationVenue';
-    const ssUrl = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(searchPhrase)}&offset=${ssOffset}&limit=${perPage}&fields=${ssFields}`;
+    const ssUrl = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(searchPhrase)}&offset=${fetchOffset}&limit=${poolSize}&fields=${ssFields}`;
 
     const ssRes = await fetch(ssUrl);
     if (ssRes.ok) {
       const ssData = await ssRes.json();
       if (ssData && Array.isArray(ssData.data) && ssData.data.length > 0) {
-        let parsed = ssData.data.map(item => parseSemanticScholarItem(item, clean));
-
-        // Filter out items with zero query token match
-        if (queryTokens.length > 0) {
-          const relevant = parsed.filter(item => calculateRelevance(item) > 0);
-          if (relevant.length > 0) parsed = relevant;
-        }
-
-        if (sortBy === 'citations') {
-          parsed.sort((a, b) => (b.citationCount || 0) - (a.citationCount || 0));
-        } else if (sortBy === 'newest') {
-          parsed.sort((a, b) => (b.publicationYear || 0) - (a.publicationYear || 0));
-        } else if (sortBy === 'relevance') {
-          parsed.sort((a, b) => calculateRelevance(b) - calculateRelevance(a));
-        }
-
-        if (sortBy === 'openaccess') {
-          parsed = parsed.filter(p => p.openAccess);
-        }
-
-        if (parsed.length > 0) {
-          return {
-            results: parsed,
-            totalCount: ssData.total || parsed.length,
-            page,
-            perPage,
-            totalPages: Math.ceil((ssData.total || parsed.length) / perPage)
-          };
+        const parsed = ssData.data.map(item => parseSemanticScholarItem(item, clean));
+        const refined = refine(parsed);
+        if (refined.length > 0) {
+          return paginate(refined, ssData.total);
         }
       }
     }
@@ -114,51 +138,27 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
 
   // 2. SECONDARY ENGINE: OpenAlex API (250M CORS-friendly catalog)
   try {
-    let openAlexSort = 'cited_by_count:desc';
-    if (sortBy === 'newest') openAlexSort = 'publication_year:desc';
-    if (sortBy === 'relevance') openAlexSort = 'relevance_score:desc';
-
-    let openAlexFilters = [];
-    if (sortBy === 'openaccess') {
-      openAlexFilters.push('is_oa:true');
-    }
-
-    const filterStr = openAlexFilters.length > 0 ? `&filter=${openAlexFilters.join(',')}` : '';
     let openAlexUrl = '';
 
     if (isDoi) {
       openAlexUrl = `https://api.openalex.org/works/https://doi.org/${clean}`;
     } else if (explicitAuthor) {
       const authFilter = `raw_author_name.search:"${encodeURIComponent(explicitAuthor)}"`;
-      const combinedFilter = openAlexFilters.length > 0 ? `${authFilter},${openAlexFilters.join(',')}` : authFilter;
-      openAlexUrl = `https://api.openalex.org/works?filter=${combinedFilter}&page=${page}&per_page=${perPage}&sort=${openAlexSort}`;
+      openAlexUrl = `https://api.openalex.org/works?filter=${authFilter}&page=1&per_page=${poolSize}&sort=relevance_score:desc`;
     } else {
-      openAlexUrl = `https://api.openalex.org/works?search=${encodeURIComponent(searchPhrase)}&page=${page}&per_page=${perPage}&sort=${openAlexSort}${filterStr}`;
+      openAlexUrl = `https://api.openalex.org/works?search=${encodeURIComponent(searchPhrase)}&page=1&per_page=${poolSize}&sort=relevance_score:desc`;
     }
 
     const alexRes = await fetch(openAlexUrl);
     if (alexRes.ok) {
       const alexData = await alexRes.json();
-      const items = alexData.results || [];
+      const items = alexData.results || (alexData.id ? [alexData] : []);
       if (items.length > 0) {
-        let parsed = items.map(item => parseOpenAlexItem(item, clean));
-
-        if (queryTokens.length > 0 && !isDoi) {
-          const relevant = parsed.filter(item => calculateRelevance(item) > 0);
-          if (relevant.length > 0) parsed = relevant;
+        const parsed = items.map(item => parseOpenAlexItem(item, clean));
+        const refined = refine(parsed);
+        if (refined.length > 0) {
+          return paginate(refined, alexData.meta?.count);
         }
-
-        if (sortBy === 'relevance') {
-          parsed.sort((a, b) => calculateRelevance(b) - calculateRelevance(a));
-        }
-
-        return {
-          results: parsed,
-          totalCount: alexData.meta?.count || parsed.length,
-          page,
-          perPage,
-          totalPages: Math.ceil((alexData.meta?.count || parsed.length) / perPage)
-        };
       }
     }
   } catch (err) {
@@ -167,31 +167,17 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
 
   // 3. TERTIARY ENGINE: Crossref API
   try {
-    let crossrefSort = '&sort=is-referenced-by-count&order=desc';
-    if (sortBy === 'newest') crossrefSort = '&sort=published&order=desc';
-    if (sortBy === 'relevance') crossrefSort = '&sort=score&order=desc';
-
-    const offset = (page - 1) * perPage;
-    const crossrefUrl = `https://api.crossref.org/works?query=${encodeURIComponent(searchPhrase)}&rows=${perPage}&offset=${offset}${crossrefSort}`;
+    const crossrefUrl = `https://api.crossref.org/works?query=${encodeURIComponent(searchPhrase)}&rows=${poolSize}&offset=${fetchOffset}&sort=score&order=desc`;
     const crRes = await fetch(crossrefUrl);
     if (crRes.ok) {
       const crData = await crRes.json();
       const crItems = crData.message?.items || [];
       if (crItems.length > 0) {
-        let parsed = crItems.map(item => parseCrossrefItem(item, clean));
-
-        if (queryTokens.length > 0) {
-          const relevant = parsed.filter(item => calculateRelevance(item) > 0);
-          if (relevant.length > 0) parsed = relevant;
+        const parsed = crItems.map(item => parseCrossrefItem(item, clean));
+        const refined = refine(parsed);
+        if (refined.length > 0) {
+          return paginate(refined, crData.message?.['total-results']);
         }
-
-        return {
-          results: parsed,
-          totalCount: crData.message?.['total-results'] || parsed.length,
-          page,
-          perPage,
-          totalPages: Math.ceil((crData.message?.['total-results'] || parsed.length) / perPage)
-        };
       }
     }
   } catch (err) {
@@ -309,7 +295,7 @@ function parseCrossrefItem(item, queryClean) {
     journalOrVenue: journal,
     abstractText: item.abstract 
       ? item.abstract.replace(/<[^>]*>?/gm, '') 
-      : `Academic paper authored by ${authors} in ${year}.`,
+      : `Academic paper authored by ${authors} in ${journal} (${year}).`,
     doi,
     sourceUrl: item.URL || `https://doi.org/${doi}`,
     downloadUrl: pdfUrl,

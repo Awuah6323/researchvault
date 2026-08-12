@@ -579,20 +579,20 @@ export default function AcademicSearch({
 
             {[
               {
-                id: 'citations',
-                label: 'Most Cited'
+                id: 'relevance',
+                label: 'Relevance'
               },
               {
                 id: 'newest',
                 label: 'Newest Year'
               },
               {
-                id: 'openaccess',
-                label: 'Open Access Only'
+                id: 'citations',
+                label: 'Most Cited'
               },
               {
-                id: 'relevance',
-                label: 'Relevance'
+                id: 'openaccess',
+                label: 'Open Access Only'
               }
             ].map((tab) => (
               <button
