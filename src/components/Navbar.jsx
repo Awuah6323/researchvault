@@ -80,16 +80,17 @@ export default function Navbar({
             style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
           >
             <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '12px',
+              width: '38px',
+              height: '38px',
+              borderRadius: '11px',
               overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 20px rgba(0, 255, 136, 0.4)',
+              border: '1px solid var(--border-color)',
+              boxShadow: 'var(--card-shadow)',
               flexShrink: 0,
-              backgroundColor: '#0b0f19'
+              backgroundColor: 'var(--bg-card)'
             }}>
               <img src="/logo_icon.png" alt="ResearchVault Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>

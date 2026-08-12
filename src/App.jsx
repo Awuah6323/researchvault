@@ -244,9 +244,7 @@ export default function App() {
     <div style={{
       minHeight: '100vh',
       backgroundColor: 'var(--bg-main)',
-      color: 'var(--text-main)',
-      backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(0, 255, 136, 0.07) 0%, transparent 60%)',
-      backgroundAttachment: 'fixed'
+      color: 'var(--text-main)'
     }}>
       <Navbar
         searchQuery={searchQuery}

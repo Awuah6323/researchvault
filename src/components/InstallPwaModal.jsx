@@ -67,8 +67,8 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
       }}>
         {/* Header Banner */}
         <div style={{
-          background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)',
-          padding: '28px 24px 20px',
+          backgroundColor: 'var(--bg-main)',
+          padding: '24px 24px 20px',
           borderBottom: '1px solid var(--border-color)',
           display: 'flex',
           alignItems: 'flex-start',
@@ -76,15 +76,16 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
-              width: '54px',
-              height: '54px',
-              borderRadius: '16px',
+              width: '50px',
+              height: '50px',
+              borderRadius: '14px',
               overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#0b0f19',
-              boxShadow: '0 8px 20px rgba(0, 255, 136, 0.3)'
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              boxShadow: 'var(--card-shadow)'
             }}>
               <img src="/logo_icon.png" alt="ResearchVault App Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>

@@ -33,8 +33,9 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#0b0f19',
-              boxShadow: '0 0 14px rgba(0, 255, 136, 0.3)'
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              boxShadow: 'var(--card-shadow)'
             }}>
               <img src="/logo_icon.png" alt="ResearchVault Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
