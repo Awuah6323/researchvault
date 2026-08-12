@@ -26,16 +26,17 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
-              width: '34px',
-              height: '34px',
+              width: '36px',
+              height: '36px',
               borderRadius: '10px',
-              background: 'linear-gradient(135deg, #00ff88 0%, #10b981 50%, #059669 100%)',
+              overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#03140a'
+              backgroundColor: '#0b0f19',
+              boxShadow: '0 0 14px rgba(0, 255, 136, 0.3)'
             }}>
-              <BookOpen size={18} />
+              <img src="/logo_icon.png" alt="ResearchVault Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-sidebar-active)' }}>
               Research<span className="text-gradient-emerald">Vault</span>

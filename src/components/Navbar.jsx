@@ -80,18 +80,18 @@ export default function Navbar({
             style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
           >
             <div style={{
-              width: '38px',
-              height: '38px',
+              width: '40px',
+              height: '40px',
               borderRadius: '12px',
-              background: 'linear-gradient(135deg, #00ff88 0%, #10b981 50%, #059669 100%)',
+              overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#03140a',
               boxShadow: '0 0 20px rgba(0, 255, 136, 0.4)',
-              flexShrink: 0
+              flexShrink: 0,
+              backgroundColor: '#0b0f19'
             }}>
-              <BookOpen size={22} />
+              <img src="/logo_icon.png" alt="ResearchVault Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.5px', color: 'var(--text-main)', lineHeight: 1.1 }}>

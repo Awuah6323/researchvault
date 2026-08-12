@@ -79,14 +79,14 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
               width: '54px',
               height: '54px',
               borderRadius: '16px',
-              background: 'linear-gradient(135deg, #00ff88 0%, #10b981 100%)',
+              overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#03140a',
+              backgroundColor: '#0b0f19',
               boxShadow: '0 8px 20px rgba(0, 255, 136, 0.3)'
             }}>
-              <Download size={28} />
+              <img src="/logo_icon.png" alt="ResearchVault App Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
