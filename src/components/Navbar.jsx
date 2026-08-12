@@ -164,19 +164,21 @@ export default function Navbar({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
+                gap: '8px',
+                padding: '8px 16px',
                 borderRadius: '20px',
-                backgroundColor: 'rgba(0, 255, 136, 0.12)',
-                border: '1px solid rgba(0, 255, 136, 0.3)',
-                color: '#00ff88',
-                fontSize: '0.78rem',
+                background: 'var(--gradient-glow)',
+                border: 'none',
+                color: '#ffffff',
+                fontSize: '0.82rem',
                 fontWeight: 700,
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
+                transition: 'all 0.2s ease',
+                letterSpacing: '0.2px'
               }}
             >
-              <Download size={14} />
+              <Download size={15} style={{ strokeWidth: 2.5 }} />
               <span>Install App</span>
             </button>
           )}

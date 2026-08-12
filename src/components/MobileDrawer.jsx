@@ -92,17 +92,20 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
                 justifyContent: 'center',
                 gap: '8px',
                 width: '100%',
-                padding: '10px',
+                padding: '12px',
                 borderRadius: '12px',
-                backgroundColor: 'rgba(0, 255, 136, 0.12)',
-                border: '1px solid rgba(0, 255, 136, 0.3)',
-                color: '#00ff88',
+                background: 'var(--gradient-glow)',
+                border: 'none',
+                color: '#ffffff',
                 fontWeight: 700,
-                fontSize: '0.88rem',
-                cursor: 'pointer'
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+                transition: 'all 0.2s ease',
+                letterSpacing: '0.2px'
               }}
             >
-              <Download size={18} />
+              <Download size={18} style={{ strokeWidth: 2.5 }} />
               <span>Install App on Phone / Tablet</span>
             </button>
           )}

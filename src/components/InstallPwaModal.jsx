@@ -160,28 +160,28 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#03140a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>1</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--gradient-primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>1</div>
                   <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', flex: 1 }}>
                     Tap the <strong>Share</strong> icon in your Safari browser bar
                   </div>
-                  <Share size={20} style={{ color: '#00ff88' }} />
+                  <Share size={20} style={{ color: 'var(--primary)' }} />
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#03140a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>2</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--gradient-primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>2</div>
                   <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', flex: 1 }}>
                     Scroll down and tap <strong>Add to Home Screen</strong>
                   </div>
-                  <PlusSquare size={20} style={{ color: '#00ff88' }} />
+                  <PlusSquare size={20} style={{ color: 'var(--primary)' }} />
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#03140a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>3</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--gradient-primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>3</div>
                   <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', flex: 1 }}>
                     Tap <strong>Add</strong> in the top right corner
                   </div>
-                  <CheckCircle size={20} style={{ color: '#10b981' }} />
+                  <CheckCircle size={20} style={{ color: 'var(--primary)' }} />
                 </div>
               </div>
             </div>
@@ -195,17 +195,17 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
                 marginBottom: '20px'
               }}>
                 <div style={{ padding: '14px 10px', backgroundColor: 'var(--bg-main)', borderRadius: '14px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
-                  <Zap size={20} style={{ color: '#00ff88', marginBottom: '6px' }} />
+                  <Zap size={20} style={{ color: 'var(--primary)', marginBottom: '6px' }} />
                   <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Instant Launch</div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Launch from Home / Desktop</div>
                 </div>
                 <div style={{ padding: '14px 10px', backgroundColor: 'var(--bg-main)', borderRadius: '14px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
-                  <ShieldCheck size={20} style={{ color: '#10b981', marginBottom: '6px' }} />
+                  <ShieldCheck size={20} style={{ color: 'var(--primary)', marginBottom: '6px' }} />
                   <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Offline Access</div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Read papers offline</div>
                 </div>
                 <div style={{ padding: '14px 10px', backgroundColor: 'var(--bg-main)', borderRadius: '14px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
-                  <Sparkles size={20} style={{ color: '#6366f1', marginBottom: '6px' }} />
+                  <Sparkles size={20} style={{ color: 'var(--secondary)', marginBottom: '6px' }} />
                   <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Full Screen</div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Distraction-free</div>
                 </div>
@@ -218,7 +218,6 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
               <button
                 onClick={handleInstallClick}
                 disabled={isInstalling}
-                className="btn-primary"
                 style={{
                   width: '100%',
                   padding: '14px',
@@ -229,8 +228,12 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '10px',
-                  boxShadow: '0 0 25px rgba(0, 255, 136, 0.3)',
-                  cursor: 'pointer'
+                  background: 'var(--gradient-primary)',
+                  color: '#ffffff',
+                  border: 'none',
+                  boxShadow: 'var(--card-shadow)',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s ease'
                 }}
               >
                 <Download size={20} />

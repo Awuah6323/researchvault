@@ -71,19 +71,21 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenI
               justifyContent: 'center',
               gap: '8px',
               width: '100%',
-              padding: '10px',
+              padding: '12px',
               borderRadius: '12px',
-              backgroundColor: 'rgba(0, 255, 136, 0.1)',
-              border: '1px solid rgba(0, 255, 136, 0.25)',
-              color: '#00ff88',
-              fontSize: '0.82rem',
+              background: 'var(--gradient-glow)',
+              border: 'none',
+              color: '#ffffff',
+              fontSize: '0.85rem',
               fontWeight: 700,
               cursor: 'pointer',
-              transition: 'all 0.2s ease'
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
+              transition: 'all 0.2s ease',
+              letterSpacing: '0.2px'
             }}
           >
-            <Download size={16} />
-            <span>Install Desktop / Mobile App</span>
+            <Download size={17} style={{ strokeWidth: 2.5 }} />
+            <span>Install App on Device</span>
           </button>
         )}
 
