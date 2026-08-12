@@ -296,6 +296,8 @@ export default function App() {
               onOpenAiSummarizer={(r) => handleOpenModal(setAiModalResource, r)}
               onOpenAddModal={() => handleOpenModal(setShowAddModal, true)}
               onDeleteResource={handleDeleteResource}
+              onOpenInstallPwa={() => handleOpenModal(setShowInstallModal, true)}
+              isStandalone={isStandalone}
             />
           )}
 
@@ -364,6 +366,8 @@ export default function App() {
               resources={resources}
               onImportBackup={handleImportBackup}
               onLogout={handleLogout}
+              onOpenInstallPwa={() => handleOpenModal(setShowInstallModal, true)}
+              isStandalone={isStandalone}
             />
           )}
         </main>

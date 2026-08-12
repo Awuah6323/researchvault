@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { User, Shield, Download, Upload, Check } from 'lucide-react';
 import { storage } from '../services/storage';
 
-export default function ProfileSettings({ userProfile, onSaveProfile, resources, onImportBackup, onLogout }) {
+export default function ProfileSettings({ userProfile, onSaveProfile, resources, onImportBackup, onLogout, onOpenInstallPwa, isStandalone }) {
   const [name, setName] = useState(userProfile?.name || '');
   const [institution, setInstitution] = useState(userProfile?.institution || '');
   const [fieldOfStudy, setFieldOfStudy] = useState(userProfile?.fieldOfStudy || '');
@@ -176,6 +176,38 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
           </div>
         </div>
       </div>
+
+      {/* PWA App Installation Card */}
+      {!isStandalone && onOpenInstallPwa && (
+        <div className="glass-card-accent" style={{ padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>Install Mobile & Desktop App</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+              Install ResearchVault on your phone, tablet, or PC for fast offline reading and home screen access.
+            </p>
+          </div>
+          <button
+            onClick={onOpenInstallPwa}
+            style={{
+              padding: '10px 20px',
+              borderRadius: '14px',
+              background: 'var(--gradient-glow)',
+              color: '#ffffff',
+              border: 'none',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)'
+            }}
+          >
+            <Download size={18} style={{ strokeWidth: 2.5 }} />
+            <span>Install App</span>
+          </button>
+        </div>
+      )}
 
       {/* Data Export & Backup Card */}
       <div className="glass-card" style={{ padding: '24px' }}>

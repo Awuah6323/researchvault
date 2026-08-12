@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Sparkles, Plus, TrendingUp, Star, Award, Search, ArrowRight, MessageSquare, FolderKanban, FileCode, Compass } from 'lucide-react';
+import { BookOpen, Sparkles, Plus, TrendingUp, Star, Award, Search, ArrowRight, MessageSquare, FolderKanban, FileCode, Compass, Download } from 'lucide-react';
 import ResourceCard from '../components/ResourceCard';
 import OnboardingCarousel from '../components/OnboardingCarousel';
 
@@ -13,7 +13,9 @@ export default function HomeDashboard({
   onShowCitation, 
   onOpenAiSummarizer, 
   onOpenAddModal,
-  onDeleteResource
+  onDeleteResource,
+  onOpenInstallPwa,
+  isStandalone
 }) {
   const [showGuide, setShowGuide] = useState(() => {
     try {
@@ -72,6 +74,28 @@ export default function HomeDashboard({
               <Search size={18} />
               <span>Search Academic Sources</span>
             </button>
+            {!isStandalone && onOpenInstallPwa && (
+              <button 
+                onClick={onOpenInstallPwa} 
+                style={{ 
+                  padding: '10px 18px', 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  color: '#ffffff', 
+                  background: 'var(--gradient-glow)', 
+                  border: 'none', 
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
+                  cursor: 'pointer'
+                }}
+              >
+                <Download size={18} style={{ strokeWidth: 2.5 }} />
+                <span>Install App on Device</span>
+              </button>
+            )}
             <button 
               onClick={handleToggleGuide} 
               className="neu-button" 

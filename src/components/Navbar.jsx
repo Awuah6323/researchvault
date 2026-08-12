@@ -190,31 +190,7 @@ export default function Navbar({
             </button>
           )}
 
-          {/* PWA Install Button */}
-          {!isStandalone && (
-            <button
-              onClick={onOpenInstallPwa}
-              title="Install ResearchVault as Phone, Tablet, or Desktop App"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '18px',
-                background: 'var(--gradient-glow)',
-                border: 'none',
-                color: '#ffffff',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <Download size={14} style={{ strokeWidth: 2.5 }} />
-              <span>Install</span>
-            </button>
-          )}
+
 
           {/* Cloud Sync Status Badge */}
           <div 
