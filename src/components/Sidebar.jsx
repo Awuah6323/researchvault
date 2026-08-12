@@ -1,7 +1,7 @@
 import React from 'react';
-import { Home, Search, Library, FolderKanban, Sparkles, User, PlusCircle, FileText, MessageSquare } from 'lucide-react';
+import { Home, Search, Library, FolderKanban, Sparkles, User, PlusCircle, FileText, MessageSquare, Download } from 'lucide-react';
 
-export default function Sidebar({ activeTab, onNavigate, onOpenAddModal }) {
+export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenInstallPwa, isStandalone }) {
   const menuItems = [
     { id: 'home', label: 'Dashboard', icon: Home },
     { id: 'search', label: 'Academic Search', icon: Search },
@@ -60,19 +60,47 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal }) {
         })}
       </div>
 
-      {/* Footer Info */}
-      <div style={{
-        padding: '12px',
-        borderRadius: '12px',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        fontSize: '0.75rem',
-        color: 'var(--text-sidebar)',
-        lineHeight: 1.4
-      }}>
-        <div style={{ fontWeight: 700, color: 'var(--text-sidebar-active)' }}>ResearchVault v2.0</div>
-        <div>Offline Persistence Active</div>
-        <div>Gemini 2.0 Flash AI Enabled</div>
+      {/* Footer Info & PWA Install Button */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {!isStandalone && (
+          <button
+            onClick={onOpenInstallPwa}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              width: '100%',
+              padding: '10px',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(0, 255, 136, 0.1)',
+              border: '1px solid rgba(0, 255, 136, 0.25)',
+              color: '#00ff88',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Download size={16} />
+            <span>Install Desktop / Mobile App</span>
+          </button>
+        )}
+
+        <div style={{
+          padding: '12px',
+          borderRadius: '12px',
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          fontSize: '0.75rem',
+          color: 'var(--text-sidebar)',
+          lineHeight: 1.4
+        }}>
+          <div style={{ fontWeight: 700, color: 'var(--text-sidebar-active)' }}>ResearchVault v2.0</div>
+          <div>Offline PWA Active</div>
+          <div>Gemini 2.0 Flash AI Enabled</div>
+        </div>
       </div>
     </aside>
   );
 }
+

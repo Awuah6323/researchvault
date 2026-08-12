@@ -8,6 +8,7 @@ import AddResourceModal from './components/AddResourceModal';
 import AuthModal from './components/AuthModal';
 import BottomNav from './components/BottomNav';
 import MobileDrawer from './components/MobileDrawer';
+import InstallPwaModal from './components/InstallPwaModal';
 
 import HomeDashboard from './pages/HomeDashboard';
 import AcademicSearch from './pages/AcademicSearch';
@@ -37,6 +38,11 @@ export default function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // PWA Install State
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   const refreshAppData = () => {
     setResources(storage.getResources());
@@ -102,8 +108,23 @@ export default function App() {
       }
     }, 15000);
 
+    // Detect if running in standalone PWA mode
+    const checkStandalone = () => {
+      const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      setIsStandalone(isStandaloneMode);
+    };
+    checkStandalone();
+
+    // Listen for browser PWA installation event
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
     window.addEventListener('focus', handleFocus);
     return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('focus', handleFocus);
       clearInterval(autoSyncInterval);
       unsubscribeSync();
@@ -237,6 +258,8 @@ export default function App() {
         onOpenAuthModal={() => handleOpenModal(setShowAuthModal, true)}
         onLogout={handleLogout}
         onOpenMobileMenu={() => handleOpenModal(setIsMobileMenuOpen, true)}
+        onOpenInstallPwa={() => handleOpenModal(setShowInstallModal, true)}
+        isStandalone={isStandalone}
       />
 
       <div className="app-layout" style={{ display: 'flex', maxWidth: '1440px', margin: '0 auto' }}>
@@ -244,6 +267,8 @@ export default function App() {
           activeTab={activeTab}
           onNavigate={handleNavigate}
           onOpenAddModal={() => handleOpenModal(setShowAddModal, true)}
+          onOpenInstallPwa={() => handleOpenModal(setShowInstallModal, true)}
+          isStandalone={isStandalone}
         />
 
         <main style={{ flex: 1, padding: '28px 36px', overflowX: 'hidden' }}>
@@ -350,6 +375,8 @@ export default function App() {
           setIsMobileMenuOpen(false);
           handleOpenModal(setShowAddModal, true);
         }}
+        onOpenInstallPwa={() => handleOpenModal(setShowInstallModal, true)}
+        isStandalone={isStandalone}
       />
 
       {/* Reader Full Screen Overlay */}
@@ -395,6 +422,16 @@ export default function App() {
         <AuthModal
           onClose={() => setShowAuthModal(false)}
           onLoginSuccess={handleLoginSuccess}
+        />
+      )}
+
+      {/* PWA Install Modal */}
+      {showInstallModal && (
+        <InstallPwaModal
+          onClose={() => setShowInstallModal(false)}
+          deferredPrompt={deferredPrompt}
+          isStandalone={isStandalone}
+          onInstallSuccess={() => setShowInstallModal(false)}
         />
       )}
     </div>

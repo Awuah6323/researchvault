@@ -1,0 +1,262 @@
+import React, { useState, useEffect } from 'react';
+import { Download, X, Smartphone, Monitor, Share, PlusSquare, CheckCircle, Sparkles, ShieldCheck, Zap } from 'lucide-react';
+
+export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone, onInstallSuccess }) {
+  const [isIOS, setIsIOS] = useState(false);
+  const [isInstalling, setIsInstalling] = useState(false);
+  const [installed, setInstalled] = useState(isStandalone);
+
+  useEffect(() => {
+    // Detect iOS devices (Safari on iPhone, iPad, iPod)
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+    setIsIOS(isIosDevice);
+
+    // Detect if already installed / standalone
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+      setInstalled(true);
+    }
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      alert("To install ResearchVault, use your browser's menu (e.g., ⋮ or Share) and select 'Add to Home Screen' or 'Install App'.");
+      return;
+    }
+
+    setIsInstalling(true);
+    try {
+      deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+      if (choiceResult.outcome === 'accepted') {
+        setInstalled(true);
+        if (onInstallSuccess) onInstallSuccess();
+      }
+    } catch (err) {
+      console.error('PWA Installation Error:', err);
+    } finally {
+      setIsInstalling(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      backdropFilter: 'blur(8px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: '20px'
+    }}>
+      <div style={{
+        backgroundColor: 'var(--bg-card)',
+        borderRadius: '24px',
+        border: '1px solid var(--border-color)',
+        maxWidth: '520px',
+        width: '100%',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+        overflow: 'hidden',
+        position: 'relative',
+        animation: 'fadeIn 0.2s ease-out'
+      }}>
+        {/* Header Banner */}
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)',
+          padding: '28px 24px 20px',
+          borderBottom: '1px solid var(--border-color)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '54px',
+              height: '54px',
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, #00ff88 0%, #10b981 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#03140a',
+              boxShadow: '0 8px 20px rgba(0, 255, 136, 0.3)'
+            }}>
+              <Download size={28} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                Install ResearchVault App
+              </h3>
+              <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Phone • Tablet • Desktop Browser App
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div style={{ padding: '24px' }}>
+          {installed ? (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px'
+              }}>
+                <CheckCircle size={36} />
+              </div>
+              <h4 style={{ margin: '0 0 8px', fontSize: '1.2rem', color: 'var(--text-main)' }}>
+                ResearchVault is Installed!
+              </h4>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                You are currently running the installed native web application.
+              </p>
+            </div>
+          ) : isIOS ? (
+            /* iOS Specific Instructions */
+            <div>
+              <div style={{
+                backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                border: '1px solid rgba(99, 102, 241, 0.2)',
+                borderRadius: '16px',
+                padding: '14px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <Smartphone size={24} style={{ color: '#6366f1', flexShrink: 0 }} />
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: 1.4 }}>
+                  Install on <strong>iPhone or iPad</strong> directly from Safari in 3 easy steps:
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#03140a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>1</div>
+                  <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', flex: 1 }}>
+                    Tap the <strong>Share</strong> icon in your Safari browser bar
+                  </div>
+                  <Share size={20} style={{ color: '#00ff88' }} />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#03140a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>2</div>
+                  <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', flex: 1 }}>
+                    Scroll down and tap <strong>Add to Home Screen</strong>
+                  </div>
+                  <PlusSquare size={20} style={{ color: '#00ff88' }} />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#03140a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>3</div>
+                  <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', flex: 1 }}>
+                    Tap <strong>Add</strong> in the top right corner
+                  </div>
+                  <CheckCircle size={20} style={{ color: '#10b981' }} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Chrome / Android / Edge / Desktop */
+            <div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr 1fr',
+                gap: '12px',
+                marginBottom: '20px'
+              }}>
+                <div style={{ padding: '14px 10px', backgroundColor: 'var(--bg-main)', borderRadius: '14px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+                  <Zap size={20} style={{ color: '#00ff88', marginBottom: '6px' }} />
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Instant Launch</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Launch from Home / Desktop</div>
+                </div>
+                <div style={{ padding: '14px 10px', backgroundColor: 'var(--bg-main)', borderRadius: '14px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+                  <ShieldCheck size={20} style={{ color: '#10b981', marginBottom: '6px' }} />
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Offline Access</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Read papers offline</div>
+                </div>
+                <div style={{ padding: '14px 10px', backgroundColor: 'var(--bg-main)', borderRadius: '14px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+                  <Sparkles size={20} style={{ color: '#6366f1', marginBottom: '6px' }} />
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Full Screen</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Distraction-free</div>
+                </div>
+              </div>
+
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '24px' }}>
+                Installing converts ResearchVault into a standalone application on your Android phone, tablet, PC, or Mac with full offline research support.
+              </p>
+
+              <button
+                onClick={handleInstallClick}
+                disabled={isInstalling}
+                className="btn-primary"
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  borderRadius: '14px',
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  boxShadow: '0 0 25px rgba(0, 255, 136, 0.3)',
+                  cursor: 'pointer'
+                }}
+              >
+                <Download size={20} />
+                <span>{isInstalling ? 'Installing...' : 'Install App Now'}</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '16px 24px',
+          backgroundColor: 'var(--bg-main)',
+          borderTop: '1px solid var(--border-color)',
+          display: 'flex',
+          justifyContent: 'flex-end'
+        }}>
+          <button
+            onClick={onClose}
+            className="btn-secondary"
+            style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem' }}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

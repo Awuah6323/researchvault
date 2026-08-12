@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, BookOpen, Moon, Sun, Sparkles, User, Palette, Menu, Cloud, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Search, BookOpen, Moon, Sun, Sparkles, User, Palette, Menu, Cloud, CheckCircle2, RefreshCw, Download } from 'lucide-react';
 import { storage } from '../services/storage';
 
 export default function Navbar({ 
@@ -11,7 +11,9 @@ export default function Navbar({
   onNavigate,
   onOpenAuthModal,
   onLogout,
-  onOpenMobileMenu
+  onOpenMobileMenu,
+  onOpenInstallPwa,
+  isStandalone
 }) {
   const [syncState, setSyncState] = useState(storage.getSyncState());
   const [lastSyncTime, setLastSyncTime] = useState(storage.getLastSyncTime());
@@ -154,6 +156,31 @@ export default function Navbar({
 
         {/* Action Controls: Cloud Sync, Theme Switcher & Profile */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          {/* PWA Install Button */}
+          {!isStandalone && (
+            <button
+              onClick={onOpenInstallPwa}
+              title="Install ResearchVault as Phone, Tablet, or Desktop App"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                backgroundColor: 'rgba(0, 255, 136, 0.12)',
+                border: '1px solid rgba(0, 255, 136, 0.3)',
+                color: '#00ff88',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Download size={14} />
+              <span>Install App</span>
+            </button>
+          )}
+
           {/* Cloud Sync Status Badge */}
           <div 
             onClick={() => storage.pullCloudVault()}

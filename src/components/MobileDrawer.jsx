@@ -1,7 +1,7 @@
 import React from 'react';
-import { X, Home, Search, Library, FolderKanban, MessageSquare, FileText, Sparkles, User, PlusCircle, BookOpen } from 'lucide-react';
+import { X, Home, Search, Library, FolderKanban, MessageSquare, FileText, Sparkles, User, PlusCircle, BookOpen, Download } from 'lucide-react';
 
-export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, onOpenAddModal }) {
+export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, onOpenAddModal, onOpenInstallPwa, isStandalone }) {
   if (!isOpen) return null;
 
   const menuItems = [
@@ -61,23 +61,51 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
           </button>
         </div>
 
-        {/* Add Paper Action */}
-        <button
-          onClick={() => {
-            onOpenAddModal();
-            onClose();
-          }}
-          className="btn-primary"
-          style={{
-            width: '100%',
-            marginBottom: '18px',
-            boxShadow: '0 4px 14px rgba(0, 255, 136, 0.25)',
-            justifyContent: 'center'
-          }}
-        >
-          <PlusCircle size={18} />
-          <span>Add Paper</span>
-        </button>
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
+          <button
+            onClick={() => {
+              onOpenAddModal();
+              onClose();
+            }}
+            className="btn-primary"
+            style={{
+              width: '100%',
+              boxShadow: '0 4px 14px rgba(0, 255, 136, 0.25)',
+              justifyContent: 'center'
+            }}
+          >
+            <PlusCircle size={18} />
+            <span>Add Paper</span>
+          </button>
+
+          {!isStandalone && (
+            <button
+              onClick={() => {
+                onClose();
+                onOpenInstallPwa();
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                width: '100%',
+                padding: '10px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(0, 255, 136, 0.12)',
+                border: '1px solid rgba(0, 255, 136, 0.3)',
+                color: '#00ff88',
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                cursor: 'pointer'
+              }}
+            >
+              <Download size={18} />
+              <span>Install App on Phone / Tablet</span>
+            </button>
+          )}
+        </div>
 
         <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-sidebar)', marginBottom: '10px', paddingLeft: '4px' }}>
           Navigation
@@ -131,9 +159,10 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
           lineHeight: 1.4
         }}>
           <div style={{ fontWeight: 700, color: 'var(--text-sidebar-active)' }}>ResearchVault v2.0</div>
-          <div>Mobile Sliding Navigation</div>
+          <div>Mobile Sliding Navigation & PWA</div>
         </div>
       </div>
     </div>
   );
 }
+
