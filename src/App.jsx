@@ -52,8 +52,20 @@ export default function App() {
   };
 
   const handleLoginSuccess = (profile) => {
-    setUserProfile(profile || storage.getSession());
+    const session = profile || storage.getSession();
+    setUserProfile(session);
     refreshAppData();
+
+    // Auto-trigger Onboarding Carousel Modal for first-time logins unless explicitly opted out
+    try {
+      const neverShow = localStorage.getItem('researchvault_never_show_onboarding');
+      const hasSeen = localStorage.getItem('researchvault_has_seen_onboarding');
+      if (!neverShow && !hasSeen) {
+        setShowUserGuideModal(true);
+      }
+    } catch (e) {
+      setShowUserGuideModal(true);
+    }
   };
 
   useEffect(() => {
