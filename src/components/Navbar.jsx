@@ -162,8 +162,8 @@ export default function Navbar({
           />
         </form>
 
-        {/* Action Controls: Cloud Sync, Theme Switcher & Profile */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        {/* Action Controls Bar: User Account, User Guide, Install App, Theme Mode & Cloud Sync */}
+        <div className="nav-actions-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
           {/* User Guide Carousel Trigger */}
           {onOpenUserGuide && (
             <button
@@ -172,13 +172,13 @@ export default function Navbar({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
+                gap: '5px',
+                padding: '6px 10px',
                 borderRadius: '16px',
                 backgroundColor: 'var(--bg-card)',
                 border: '1px solid var(--border-color)',
                 color: 'var(--primary)',
-                fontSize: '0.8rem',
+                fontSize: '0.78rem',
                 fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
@@ -186,7 +186,7 @@ export default function Navbar({
               }}
             >
               <Compass size={16} />
-              <span className="mobile-hide">User Guide</span>
+              <span className="mobile-hide">Guide</span>
             </button>
           )}
 
@@ -198,22 +198,21 @@ export default function Navbar({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                borderRadius: '20px',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '18px',
                 background: 'var(--gradient-glow)',
                 border: 'none',
                 color: '#ffffff',
-                fontSize: '0.82rem',
+                fontSize: '0.78rem',
                 fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
-                transition: 'all 0.2s ease',
-                letterSpacing: '0.2px'
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                transition: 'all 0.2s ease'
               }}
             >
-              <Download size={15} style={{ strokeWidth: 2.5 }} />
-              <span>Install App</span>
+              <Download size={14} style={{ strokeWidth: 2.5 }} />
+              <span>Install</span>
             </button>
           )}
 
@@ -221,12 +220,11 @@ export default function Navbar({
           <div 
             onClick={() => storage.pullCloudVault()}
             title={`Cross-Device Cloud Vault (${syncState}). Click to sync.`}
-            className="mobile-hide"
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '5px',
-              padding: '4px 8px',
+              gap: '4px',
+              padding: '5px 8px',
               borderRadius: '12px',
               backgroundColor: 'var(--bg-card)',
               border: '1px solid var(--border-color)',
@@ -241,37 +239,39 @@ export default function Navbar({
             ) : (
               <CheckCircle2 size={14} />
             )}
-            <span>{syncState === 'syncing' ? 'Syncing...' : 'Cloud Synced'}</span>
+            <span className="mobile-hide">{syncState === 'syncing' ? 'Syncing...' : 'Synced'}</span>
           </div>
 
           {/* Theme Dropdown */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Palette size={16} style={{ color: 'var(--primary)' }} />
+            <Palette size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
             <select
               value={currentTheme}
               onChange={(e) => setTheme(e.target.value)}
+              title="Switch Theme Mode"
               style={{
-                padding: '6px 8px',
+                padding: '5px 6px',
                 borderRadius: '8px',
                 border: '1px solid var(--border-color)',
                 backgroundColor: 'var(--bg-card)',
                 color: 'var(--text-main)',
-                fontSize: '0.8rem',
+                fontSize: '0.76rem',
                 fontWeight: 600,
                 cursor: 'pointer',
-                maxWidth: '120px'
+                maxWidth: '105px'
               }}
             >
               {themes.map(t => (
-                <option key={t.id} value={t.id}>{t.label.replace('⚡ ', '')}</option>
+                <option key={t.id} value={t.id}>{t.label.replace('⚡ ', '').replace('☕ ', '')}</option>
               ))}
             </select>
           </div>
 
-          {/* User Account / Auth Action */}
+          {/* User Account / Profile Button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div 
+            <button 
               onClick={() => onNavigate('profile')}
+              title="Open Account Profile & Settings"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -280,32 +280,33 @@ export default function Navbar({
                 borderRadius: '20px',
                 backgroundColor: 'var(--bg-card)',
                 border: '1px solid var(--border-color)',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)'
               }}
             >
               <div style={{
                 width: '26px',
                 height: '26px',
                 borderRadius: '50%',
-                backgroundColor: 'var(--primary-light)',
-                color: 'var(--primary-text)',
+                backgroundColor: 'var(--primary)',
+                color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: 700,
+                fontWeight: 800,
                 fontSize: '0.75rem'
               }}>
                 {userProfile?.name ? userProfile.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : (userProfile?.email ? userProfile.email[0].toUpperCase() : 'RV')}
               </div>
-              <div className="mobile-hide" style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                {userProfile?.name || userProfile?.email || 'Scholar'}
-              </div>
-            </div>
+              <span className="mobile-hide" style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                {userProfile?.name || userProfile?.email ? (userProfile?.name || userProfile?.email.split('@')[0]) : 'Account'}
+              </span>
+            </button>
 
             <button
               onClick={onOpenAuthModal}
               className="btn-primary"
-              style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+              style={{ padding: '6px 10px', fontSize: '0.76rem', borderRadius: '12px' }}
             >
               {userProfile?.isAuthenticated ? 'Switch' : 'Sign In'}
             </button>
