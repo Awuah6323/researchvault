@@ -218,6 +218,16 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
     touchStartX.current = null;
   };
 
+  // Keyboard Navigation Support (Left / Right Arrow Keys)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowRight') handleNext();
+      else if (e.key === 'ArrowLeft') handlePrev();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [totalSlides]);
+
   const currentSlide = slides[currentIndex];
   const BadgeIcon = currentSlide.badgeIcon;
   const SlideIcon = currentSlide.icon;
@@ -239,6 +249,67 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}
     >
+      {/* Floating Side Arrow Buttons: Left (Previous) */}
+      <button
+        onClick={handlePrev}
+        aria-label="Previous Slide"
+        title="Previous Slide (← Left Arrow)"
+        style={{
+          position: 'absolute',
+          left: '12px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 30,
+          width: '42px',
+          height: '42px',
+          borderRadius: '50%',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color)',
+          color: 'var(--text-main)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+          transition: 'all 0.2s ease',
+          opacity: 0.85
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.85')}
+      >
+        <ChevronLeft size={22} />
+      </button>
+
+      {/* Floating Side Arrow Buttons: Right (Next) */}
+      <button
+        onClick={handleNext}
+        aria-label="Next Slide"
+        title="Next Slide (→ Right Arrow)"
+        style={{
+          position: 'absolute',
+          right: '12px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 30,
+          width: '42px',
+          height: '42px',
+          borderRadius: '50%',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color)',
+          color: 'var(--text-main)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+          transition: 'all 0.2s ease',
+          opacity: 0.85
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.85')}
+      >
+        <ChevronRight size={22} />
+      </button>
       {/* Dynamic Animated Progress Bar (5s-10s Auto-Slide Timer) */}
       <div style={{
         position: 'absolute',
@@ -548,46 +619,54 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
           paddingTop: '14px',
           borderTop: '1px solid rgba(0, 0, 0, 0.06)'
         }}>
-          {/* Previous / Next Arrow Buttons */}
+          {/* Previous / Next Navigation Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={handlePrev}
               aria-label="Previous Slide"
+              title="Previous Slide (← Left Arrow)"
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '12px',
                 border: '1px solid var(--border-color)',
                 backgroundColor: 'var(--bg-card)',
                 color: 'var(--text-main)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                fontSize: '0.82rem',
+                fontWeight: 700,
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)'
               }}
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} />
+              <span>Previous</span>
             </button>
 
             <button
               onClick={handleNext}
               aria-label="Next Slide"
+              title="Next Slide (→ Right Arrow)"
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '12px',
                 border: '1px solid var(--border-color)',
                 backgroundColor: 'var(--bg-card)',
                 color: 'var(--text-main)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                fontSize: '0.82rem',
+                fontWeight: 700,
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)'
               }}
             >
-              <ChevronRight size={18} />
+              <span>Next</span>
+              <ChevronRight size={16} />
             </button>
           </div>
 
