@@ -518,6 +518,54 @@ export default function AcademicSearch({
           </button>
         </form>
 
+        {/* PROMINENT GOOGLE SCHOLAR ENGINE BAR */}
+        <div style={{
+          padding: '12px 16px',
+          borderRadius: '16px',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              🎓 Google Scholar Ranking Engine Active
+            </span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              (Title matching, citation weighting & multi-field indexing)
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              const q = query.trim() || 'artificial intelligence';
+              window.open(`https://scholar.google.com/scholar?q=${encodeURIComponent(q)}`, '_blank');
+            }}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '12px',
+              backgroundColor: '#4285F4',
+              color: '#ffffff',
+              border: 'none',
+              fontWeight: 700,
+              fontSize: '0.82rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(66, 133, 244, 0.3)'
+            }}
+            title="Open query on Google Scholar search engine"
+          >
+            <ExternalLink size={14} />
+            <span>Search Live on Google Scholar</span>
+          </button>
+        </div>
+
         {/* SORTING */}
         <div
           style={{

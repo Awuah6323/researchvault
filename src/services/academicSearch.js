@@ -79,14 +79,27 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
     const titleText = (item.title || '').toLowerCase();
     const abstractText = (item.abstractText || '').toLowerCase();
     const authorsText = (item.authors || '').toLowerCase();
+    const fullQuery = searchPhrase.toLowerCase().trim();
 
-    let matches = 0;
+    let score = 0;
+
+    // Exact title match gets highest Google Scholar priority boost
+    if (titleText.includes(fullQuery)) {
+      score += 50;
+    }
+
     queryTokens.forEach(token => {
-      if (titleText.includes(token)) matches += 3;
-      else if (abstractText.includes(token)) matches += 1.5;
-      else if (authorsText.includes(token)) matches += 2;
+      if (titleText.includes(token)) score += 10; // Title keyword match (10x)
+      if (authorsText.includes(token)) score += 5;  // Author keyword match (5x)
+      if (abstractText.includes(token)) score += 2; // Abstract keyword match (2x)
     });
-    return matches;
+
+    // Google Scholar Citation Boost factor
+    const citations = Number(item.citationCount || 0);
+    const citationBoost = Math.log10(citations + 1) * 2.5;
+    score += citationBoost;
+
+    return score;
   };
 
   // Build OpenAlex sort and filter parameters
@@ -131,11 +144,11 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
       if (items.length > 0) {
         const parsedResults = items.map(item => parseOpenAlexItem(item, clean));
         
-        // Filter out items that share 0 token match if query is specific
+        // Filter and rank items by Google Scholar relevance score
         let relevantResults = parsedResults;
         if (queryTokens.length > 0 && !isDoi) {
           const scored = parsedResults.map(item => ({ item, score: calculateRelevance(item) }));
-          // Keep items with non-zero score or fallback to top items
+          scored.sort((a, b) => b.score - a.score);
           const filtered = scored.filter(s => s.score > 0).map(s => s.item);
           if (filtered.length > 0) {
             relevantResults = filtered;
@@ -183,6 +196,7 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
         let relevantResults = parsed;
         if (queryTokens.length > 0 && !isDoi) {
           const scored = parsed.map(item => ({ item, score: calculateRelevance(item) }));
+          scored.sort((a, b) => b.score - a.score);
           const filtered = scored.filter(s => s.score > 0).map(s => s.item);
           if (filtered.length > 0) {
             relevantResults = filtered;
