@@ -27,7 +27,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
-  const [slideDuration, setSlideDuration] = useState(5); // Default 5 seconds (selectable: 5s, 7s, 10s)
+  const [slideDuration, setSlideDuration] = useState(10); // Default 10 seconds before moving to next slide
   const touchStartX = useRef(null);
 
   const slides = [
