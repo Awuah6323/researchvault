@@ -78,7 +78,13 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
       const ssData = await ssRes.json();
       if (ssData && Array.isArray(ssData.data) && ssData.data.length > 0) {
         let parsed = ssData.data.map(item => parseSemanticScholarItem(item, clean));
-        
+
+        // Filter out items with zero query token match
+        if (queryTokens.length > 0) {
+          const relevant = parsed.filter(item => calculateRelevance(item) > 0);
+          if (relevant.length > 0) parsed = relevant;
+        }
+
         if (sortBy === 'citations') {
           parsed.sort((a, b) => (b.citationCount || 0) - (a.citationCount || 0));
         } else if (sortBy === 'newest') {
@@ -136,7 +142,12 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
       const items = alexData.results || [];
       if (items.length > 0) {
         let parsed = items.map(item => parseOpenAlexItem(item, clean));
-        
+
+        if (queryTokens.length > 0 && !isDoi) {
+          const relevant = parsed.filter(item => calculateRelevance(item) > 0);
+          if (relevant.length > 0) parsed = relevant;
+        }
+
         if (sortBy === 'relevance') {
           parsed.sort((a, b) => calculateRelevance(b) - calculateRelevance(a));
         }
@@ -168,6 +179,12 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
       const crItems = crData.message?.items || [];
       if (crItems.length > 0) {
         let parsed = crItems.map(item => parseCrossrefItem(item, clean));
+
+        if (queryTokens.length > 0) {
+          const relevant = parsed.filter(item => calculateRelevance(item) > 0);
+          if (relevant.length > 0) parsed = relevant;
+        }
+
         return {
           results: parsed,
           totalCount: crData.message?.['total-results'] || parsed.length,
@@ -292,7 +309,7 @@ function parseCrossrefItem(item, queryClean) {
     journalOrVenue: journal,
     abstractText: item.abstract 
       ? item.abstract.replace(/<[^>]*>?/gm, '') 
-      : `Academic paper authored by ${authors} in ${journal} (${year}).`,
+      : `Academic paper authored by ${authors} in ${year}.`,
     doi,
     sourceUrl: item.URL || `https://doi.org/${doi}`,
     downloadUrl: pdfUrl,
