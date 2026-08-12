@@ -1,4 +1,4 @@
-// Academic Search Engine Service (OpenAlex & Crossref API Integration)
+// Academic Search Engine Service (Semantic Scholar, OpenAlex & Crossref Integration)
 
 const SAMPLE_PAPERS = [
   {
@@ -14,34 +14,6 @@ const SAMPLE_PAPERS = [
     openAccess: true,
     citationCount: 112000,
     suggestedCategory: "Artificial Intelligence"
-  },
-  {
-    title: "Deep Residual Learning for Image Recognition",
-    authors: "He, K., Zhang, X., Ren, S., Sun, J.",
-    publicationYear: 2020,
-    journalOrVenue: "IEEE Conference on Computer Vision and Pattern Recognition",
-    abstractText: "Deeper neural networks are more difficult to train. We present a residual learning framework to ease the training of networks that are substantially deeper than those previously used.",
-    doi: "10.1109/CVPR.2016.90",
-    sourceUrl: "https://doi.org/10.1109/CVPR.2016.90",
-    downloadUrl: "https://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf",
-    resourceType: "Conference Paper",
-    openAccess: true,
-    citationCount: 185000,
-    suggestedCategory: "Artificial Intelligence"
-  },
-  {
-    title: "Mastering the Game of Go with Deep Neural Networks and Tree Search",
-    authors: "Silver, D., Huang, A., Maddison, C. J., Guez, A., Hinton, G.",
-    publicationYear: 2022,
-    journalOrVenue: "Nature Journal",
-    abstractText: "The game of Go has long been viewed as the most challenging of classic games for artificial intelligence owing to its enormous search space and difficulty of evaluating board positions.",
-    doi: "10.1038/nature16961",
-    sourceUrl: "https://doi.org/10.1038/nature16961",
-    downloadUrl: "",
-    resourceType: "Journal Article",
-    openAccess: false,
-    citationCount: 42000,
-    suggestedCategory: "Artificial Intelligence"
   }
 ];
 
@@ -51,14 +23,11 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
   }
   const clean = query.trim();
 
-  // Check DOI pattern
   const isDoi = /^10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/.test(clean);
   
-  // Detect explicit author search syntax (e.g. author:"Yoshua Bengio" or author:Bengio)
   const authorMatch = clean.match(/^author:(?:"([^"]+)"|([^\s]+))/i);
   const explicitAuthor = authorMatch ? (authorMatch[1] || authorMatch[2]) : null;
 
-  // Detect explicit title search syntax (e.g. title:"Deep Learning")
   const titleMatch = clean.match(/^title:(?:"([^"]+)"|([^\s]+))/i);
   const explicitTitle = titleMatch ? (titleMatch[1] || titleMatch[2]) : null;
 
@@ -66,7 +35,6 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
   if (explicitAuthor) searchPhrase = explicitAuthor;
   if (explicitTitle) searchPhrase = explicitTitle;
 
-  // Extract query keywords for strict relevance scoring
   const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'in', 'for', 'on', 'with', 'by', 'at', 'to', 'is', 'it', 'from', 'as', 'paper', 'papers', 'research', 'study']);
   const queryTokens = searchPhrase
     .toLowerCase()
@@ -75,7 +43,6 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
     .filter(w => w.length > 2 && !stopWords.has(w));
 
   const calculateRelevance = (item) => {
-    if (queryTokens.length === 0) return 1;
     const titleText = (item.title || '').toLowerCase();
     const abstractText = (item.abstractText || '').toLowerCase();
     const authorsText = (item.authors || '').toLowerCase();
@@ -83,18 +50,16 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
 
     let score = 0;
 
-    // Exact title match gets highest Google Scholar priority boost
     if (titleText.includes(fullQuery)) {
       score += 50;
     }
 
     queryTokens.forEach(token => {
-      if (titleText.includes(token)) score += 10; // Title keyword match (10x)
-      if (authorsText.includes(token)) score += 5;  // Author keyword match (5x)
-      if (abstractText.includes(token)) score += 2; // Abstract keyword match (2x)
+      if (titleText.includes(token)) score += 10;
+      if (authorsText.includes(token)) score += 5;
+      if (abstractText.includes(token)) score += 2;
     });
 
-    // Google Scholar Citation Boost factor
     const citations = Number(item.citationCount || 0);
     const citationBoost = Math.log10(citations + 1) * 2.5;
     score += citationBoost;
@@ -102,27 +67,57 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
     return score;
   };
 
-  // Build OpenAlex sort and filter parameters
-  let openAlexSort = 'cited_by_count:desc';
-  if (sortBy === 'newest') openAlexSort = 'publication_year:desc';
-  if (sortBy === 'relevance') openAlexSort = 'relevance_score:desc';
-
-  let openAlexFilters = [];
-  if (sortBy === 'openaccess') {
-    openAlexFilters.push('is_oa:true');
-  }
-
-  // Detect custom year in query if provided (e.g., "2022 computer")
-  const yearMatch = clean.match(/\b(19\d{2}|20[0-2]\d)\b/);
-  if (yearMatch) {
-    const customYear = parseInt(yearMatch[1], 10);
-    openAlexFilters.push(`publication_year:${customYear}`);
-  }
-
-  const filterStr = openAlexFilters.length > 0 ? `&filter=${openAlexFilters.join(',')}` : '';
-
-  // 1. Primary Query: OpenAlex API (250M works catalog with full CORS support)
+  // 1. PRIMARY ENGINE: Semantic Scholar API (with independent error handling)
   try {
+    const ssOffset = (page - 1) * perPage;
+    const ssFields = 'title,authors,year,abstract,citationCount,isOpenAccess,openAccessPdf,externalIds,venue,publicationVenue';
+    const ssUrl = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(searchPhrase)}&offset=${ssOffset}&limit=${perPage}&fields=${ssFields}`;
+
+    const ssRes = await fetch(ssUrl);
+    if (ssRes.ok) {
+      const ssData = await ssRes.json();
+      if (ssData && Array.isArray(ssData.data) && ssData.data.length > 0) {
+        let parsed = ssData.data.map(item => parseSemanticScholarItem(item, clean));
+        
+        if (sortBy === 'citations') {
+          parsed.sort((a, b) => (b.citationCount || 0) - (a.citationCount || 0));
+        } else if (sortBy === 'newest') {
+          parsed.sort((a, b) => (b.publicationYear || 0) - (a.publicationYear || 0));
+        } else if (sortBy === 'relevance') {
+          parsed.sort((a, b) => calculateRelevance(b) - calculateRelevance(a));
+        }
+
+        if (sortBy === 'openaccess') {
+          parsed = parsed.filter(p => p.openAccess);
+        }
+
+        if (parsed.length > 0) {
+          return {
+            results: parsed,
+            totalCount: ssData.total || parsed.length,
+            page,
+            perPage,
+            totalPages: Math.ceil((ssData.total || parsed.length) / perPage)
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Semantic Scholar API call skipped/throttled:", err);
+  }
+
+  // 2. SECONDARY ENGINE: OpenAlex API (250M CORS-friendly catalog)
+  try {
+    let openAlexSort = 'cited_by_count:desc';
+    if (sortBy === 'newest') openAlexSort = 'publication_year:desc';
+    if (sortBy === 'relevance') openAlexSort = 'relevance_score:desc';
+
+    let openAlexFilters = [];
+    if (sortBy === 'openaccess') {
+      openAlexFilters.push('is_oa:true');
+    }
+
+    const filterStr = openAlexFilters.length > 0 ? `&filter=${openAlexFilters.join(',')}` : '';
     let openAlexUrl = '';
 
     if (isDoi) {
@@ -135,131 +130,78 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
       openAlexUrl = `https://api.openalex.org/works?search=${encodeURIComponent(searchPhrase)}&page=${page}&per_page=${perPage}&sort=${openAlexSort}${filterStr}`;
     }
 
-    const res = await fetch(openAlexUrl);
-    if (res.ok) {
-      const data = await res.json();
-      const items = isDoi ? (data ? [data] : []) : (data.results || []);
-      const totalCount = isDoi ? (data ? 1 : 0) : (data.meta?.count || items.length);
-
+    const alexRes = await fetch(openAlexUrl);
+    if (alexRes.ok) {
+      const alexData = await alexRes.json();
+      const items = alexData.results || [];
       if (items.length > 0) {
-        const parsedResults = items.map(item => parseOpenAlexItem(item, clean));
+        let parsed = items.map(item => parseOpenAlexItem(item, clean));
         
-        let relevantResults = parsedResults;
-        if (queryTokens.length > 0 && !isDoi) {
-          const scored = parsedResults.map(item => ({ item, score: calculateRelevance(item) }));
-          scored.sort((a, b) => b.score - a.score);
-          relevantResults = scored.map(s => s.item);
-        }
-
-        if (sortBy === 'openaccess') {
-          relevantResults = relevantResults.filter(p => p.openAccess);
+        if (sortBy === 'relevance') {
+          parsed.sort((a, b) => calculateRelevance(b) - calculateRelevance(a));
         }
 
         return {
-          results: relevantResults,
-          totalCount: Math.max(totalCount, relevantResults.length),
+          results: parsed,
+          totalCount: alexData.meta?.count || parsed.length,
           page,
           perPage,
-          totalPages: Math.ceil(totalCount / perPage)
+          totalPages: Math.ceil((alexData.meta?.count || parsed.length) / perPage)
         };
       }
     }
   } catch (err) {
-    console.warn("OpenAlex query error, trying Crossref fallback.", err);
+    console.warn("OpenAlex API fallback error:", err);
   }
 
-  // 2. Secondary Query: Crossref API
+  // 3. TERTIARY ENGINE: Crossref API
   try {
     let crossrefSort = '&sort=is-referenced-by-count&order=desc';
     if (sortBy === 'newest') crossrefSort = '&sort=published&order=desc';
     if (sortBy === 'relevance') crossrefSort = '&sort=score&order=desc';
 
     const offset = (page - 1) * perPage;
-    let crossrefUrl = '';
-    if (explicitAuthor) {
-      crossrefUrl = `https://api.crossref.org/works?query.author=${encodeURIComponent(explicitAuthor)}&rows=${perPage}&offset=${offset}${crossrefSort}`;
-    } else if (explicitTitle) {
-      crossrefUrl = `https://api.crossref.org/works?query.title=${encodeURIComponent(explicitTitle)}&rows=${perPage}&offset=${offset}${crossrefSort}`;
-    } else {
-      crossrefUrl = `https://api.crossref.org/works?query=${encodeURIComponent(searchPhrase)}&rows=${perPage}&offset=${offset}${crossrefSort}`;
-    }
-
+    const crossrefUrl = `https://api.crossref.org/works?query=${encodeURIComponent(searchPhrase)}&rows=${perPage}&offset=${offset}${crossrefSort}`;
     const crRes = await fetch(crossrefUrl);
     if (crRes.ok) {
       const crData = await crRes.json();
       const crItems = crData.message?.items || [];
-      const totalCount = crData.message?.['total-results'] || crItems.length;
-
       if (crItems.length > 0) {
-        const parsed = crItems.map(item => parseCrossrefItem(item, clean));
-        
-        let relevantResults = parsed;
-        if (queryTokens.length > 0 && !isDoi) {
-          const scored = parsed.map(item => ({ item, score: calculateRelevance(item) }));
-          scored.sort((a, b) => b.score - a.score);
-          relevantResults = scored.map(s => s.item);
-        }
-
-        if (sortBy === 'openaccess') {
-          relevantResults = relevantResults.filter(p => p.openAccess);
-        }
-
+        let parsed = crItems.map(item => parseCrossrefItem(item, clean));
         return {
-          results: relevantResults,
-          totalCount: Math.max(totalCount, relevantResults.length),
+          results: parsed,
+          totalCount: crData.message?.['total-results'] || parsed.length,
           page,
           perPage,
-          totalPages: Math.ceil(totalCount / perPage)
+          totalPages: Math.ceil((crData.message?.['total-results'] || parsed.length) / perPage)
         };
       }
     }
   } catch (err) {
-    console.warn("Crossref query error.", err);
+    console.warn("Crossref API fallback error:", err);
   }
 
-  // 3. Fallback: Filter Local Curated Catalog strictly by query matching
-  const lower = searchPhrase.toLowerCase();
+  // 4. FALLBACK: Local Catalog
   const sampleFiltered = SAMPLE_PAPERS.filter(p => {
     if (queryTokens.length === 0) return true;
     const title = p.title.toLowerCase();
     const authors = p.authors.toLowerCase();
-    const category = p.suggestedCategory.toLowerCase();
     const abstract = p.abstractText.toLowerCase();
 
     return queryTokens.some(token => 
-      title.includes(token) || 
-      authors.includes(token) || 
-      category.includes(token) || 
-      abstract.includes(token)
+      title.includes(token) || authors.includes(token) || abstract.includes(token)
     );
   });
 
-  let sortedSample = [...sampleFiltered];
-  if (sortBy === 'citations') {
-    sortedSample.sort((a, b) => (b.citationCount || 0) - (a.citationCount || 0));
-  } else if (sortBy === 'newest') {
-    sortedSample.sort((a, b) => (b.publicationYear || 0) - (a.publicationYear || 0));
-  } else if (sortBy === 'openaccess') {
-    sortedSample = sortedSample.filter(p => p.openAccess);
-  }
-
-  const offset = (page - 1) * perPage;
-  const pageResults = sortedSample.slice(offset, offset + perPage);
-  const totalCount = sortedSample.length;
-
   return {
-    results: pageResults,
-    totalCount,
+    results: sampleFiltered.slice((page - 1) * perPage, page * perPage),
+    totalCount: sampleFiltered.length,
     page,
     perPage,
-    totalPages: Math.ceil(totalCount / perPage)
+    totalPages: Math.ceil(sampleFiltered.length / perPage)
   };
 }
 
-// A URL is only worth trying to preview inline if it looks like it
-// resolves directly to a PDF file (as opposed to a publisher landing
-// page such as https://doi.org/... or https://journal.example/article/123,
-// which almost always sends X-Frame-Options/CSP headers that block framing).
 export function isDirectPdfUrl(urlStr) {
   if (!urlStr) return false;
   try {
@@ -289,65 +231,14 @@ function parseSemanticScholarItem(item, queryClean) {
     journalOrVenue: venue,
     abstractText: item.abstract || `Research paper authored by ${authors} in ${venue} (${year}).`,
     doi: doi || queryClean,
-    sourceUrl: doi ? `https://doi.org/${doi}` : (item.externalIds?.ArXiv ? `https://arxiv.org/abs/${item.externalIds.ArXiv}` : `https://www.semanticscholar.org/paper/${item.paperId}`),
+    sourceUrl: doi ? `https://doi.org/${doi}` : `https://www.semanticscholar.org/paper/${item.paperId}`,
     downloadUrl: pdfUrl,
     pdfDomain: extractDomain(pdfUrl || item.externalIds?.ArXiv),
     resourceType: 'Research Paper',
     openAccess: !!item.isOpenAccess || !!pdfUrl,
     citationCount: item.citationCount || 0,
-    suggestedCategory: suggestCategory(item.title || ''),
-    concepts: [],
-    topics: []
+    suggestedCategory: suggestCategory(item.title || '')
   };
-}
-
-function parseArxivXml(xmlText, queryClean) {
-  if (!xmlText) return [];
-  try {
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(xmlText, 'text/xml');
-    const entries = Array.from(xml.querySelectorAll('entry'));
-
-    return entries.map(entry => {
-      const title = entry.querySelector('title')?.textContent?.replace(/\s+/g, ' ').trim() || 'Untitled Paper';
-      const abstract = entry.querySelector('summary')?.textContent?.replace(/\s+/g, ' ').trim() || '';
-      const authors = Array.from(entry.querySelectorAll('author name')).map(a => a.textContent).join(', ') || 'arXiv Authors';
-      const published = entry.querySelector('published')?.textContent || '';
-      const year = published ? new Date(published).getFullYear() : 2024;
-      const id = entry.querySelector('id')?.textContent || '';
-      const pdfLink = Array.from(entry.querySelectorAll('link')).find(l => l.getAttribute('title') === 'pdf')?.getAttribute('href') || '';
-
-      return {
-        title,
-        authors,
-        publicationYear: year,
-        journalOrVenue: 'arXiv Repository',
-        abstractText: abstract,
-        doi: id.replace('http://arxiv.org/abs/', 'arXiv:'),
-        sourceUrl: id,
-        downloadUrl: pdfLink,
-        pdfDomain: 'arxiv.org',
-        resourceType: 'Preprint',
-        openAccess: true,
-        citationCount: 0,
-        suggestedCategory: suggestCategory(title),
-        concepts: [],
-        topics: []
-      };
-    });
-  } catch (e) {
-    return [];
-  }
-}
-
-function extractDomain(urlStr) {
-  if (!urlStr) return '';
-  try {
-    const parsed = new URL(urlStr);
-    return parsed.hostname.replace('www.', '');
-  } catch (e) {
-    return 'openaccess.org';
-  }
 }
 
 function parseOpenAlexItem(item, queryClean) {
@@ -358,21 +249,10 @@ function parseOpenAlexItem(item, queryClean) {
     .join(', ') || 'Scholarly Authors';
 
   const primaryLoc = item.primary_location || {};
-  const journal = primaryLoc.source?.display_name || item.host_venue?.display_name || 'Academic Venue';
+  const journal = primaryLoc.source?.display_name || 'Academic Venue';
   const doi = (item.doi || '').replace('https://doi.org/', '');
   const pdfUrl = item.open_access?.oa_url || item.best_oa_location?.pdf_url || '';
-  const pdfDomain = extractDomain(pdfUrl || primaryLoc.landing_page_url);
 
-  const concepts = (item.concepts || [])
-    .slice(0, 8)
-    .map(c => c.display_name)
-    .filter(Boolean);
-
-  const topics = (item.topics || [])
-    .slice(0, 4)
-    .map(t => t.display_name)
-    .filter(Boolean);
-  
   return {
     title: item.title || 'Untitled Academic Paper',
     authors,
@@ -384,13 +264,11 @@ function parseOpenAlexItem(item, queryClean) {
     doi: doi || queryClean,
     sourceUrl: primaryLoc.landing_page_url || (doi ? `https://doi.org/${doi}` : 'https://openalex.org'),
     downloadUrl: pdfUrl,
-    pdfDomain: pdfDomain || 'scholar.org',
-    resourceType: item.type === 'book' ? 'Book' : (item.type === 'dissertation' ? 'Thesis' : 'Research Paper'),
+    pdfDomain: extractDomain(pdfUrl),
+    resourceType: 'Research Paper',
     openAccess: item.open_access?.is_oa || false,
     citationCount: item.cited_by_count || 0,
-    suggestedCategory: suggestCategory(item.title || ''),
-    concepts,
-    topics
+    suggestedCategory: suggestCategory(item.title || '')
   };
 }
 
@@ -406,9 +284,6 @@ function parseCrossrefItem(item, queryClean) {
   const doi = item.DOI || queryClean;
   const title = (item.title && item.title[0]) || 'Academic Work';
   const pdfUrl = item.link?.find(l => l['content-type'] === 'application/pdf')?.URL || '';
-  const pdfDomain = extractDomain(pdfUrl || item.URL);
-
-  const subjectConcepts = (item.subject || []).slice(0, 6);
 
   return {
     title,
@@ -421,13 +296,11 @@ function parseCrossrefItem(item, queryClean) {
     doi,
     sourceUrl: item.URL || `https://doi.org/${doi}`,
     downloadUrl: pdfUrl,
-    pdfDomain: pdfDomain || 'crossref.org',
+    pdfDomain: extractDomain(pdfUrl || item.URL),
     resourceType: 'Research Paper',
     openAccess: !!pdfUrl,
     citationCount: item['is-referenced-by-count'] || 0,
-    suggestedCategory: suggestCategory(title),
-    concepts: subjectConcepts,
-    topics: []
+    suggestedCategory: suggestCategory(title)
   };
 }
 
@@ -439,16 +312,23 @@ function reconstructAbstract(invertedIndex) {
       map[pos] = word;
     });
   });
-  const text = map.filter(Boolean).join(' ');
-  return text || "Abstract text provided in paper publication.";
+  return map.filter(Boolean).join(' ');
 }
 
 function suggestCategory(title) {
   const t = title.toLowerCase();
-  if (t.includes('ai') || t.includes('neural') || t.includes('learning') || t.includes('gpt') || t.includes('transformer')) return 'Artificial Intelligence';
-  if (t.includes('security') || t.includes('crypto') || t.includes('privacy')) return 'Cybersecurity';
-  if (t.includes('data') || t.includes('stat') || t.includes('graph')) return 'Data Science';
-  if (t.includes('cloud') || t.includes('distributed') || t.includes('network')) return 'Cloud Computing';
-  if (t.includes('human') || t.includes('interface') || t.includes('interaction') || t.includes('hci')) return 'Human-Computer Interaction';
+  if (t.includes('ai') || t.includes('learning') || t.includes('transformer')) return 'Artificial Intelligence';
+  if (t.includes('security') || t.includes('crypto')) return 'Cybersecurity';
+  if (t.includes('data') || t.includes('graph')) return 'Data Science';
   return 'Computer Science';
+}
+
+function extractDomain(urlStr) {
+  if (!urlStr) return '';
+  try {
+    const parsed = new URL(urlStr);
+    return parsed.hostname.replace('www.', '');
+  } catch (e) {
+    return 'openaccess.org';
+  }
 }
