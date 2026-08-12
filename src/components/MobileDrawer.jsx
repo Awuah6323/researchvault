@@ -1,7 +1,7 @@
 import React from 'react';
-import { X, Home, Search, Library, FolderKanban, MessageSquare, FileText, Sparkles, User, PlusCircle, BookOpen, Download } from 'lucide-react';
+import { X, Home, Search, Library, FolderKanban, MessageSquare, FileText, Sparkles, User, PlusCircle, BookOpen, Download, Compass } from 'lucide-react';
 
-export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, onOpenAddModal, onOpenInstallPwa, isStandalone }) {
+export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, onOpenAddModal, onOpenInstallPwa, onOpenUserGuide, isStandalone }) {
   if (!isOpen) return null;
 
   const menuItems = [
@@ -80,6 +80,33 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
             <PlusCircle size={18} />
             <span>Add Paper</span>
           </button>
+
+          {onOpenUserGuide && (
+            <button
+              onClick={() => {
+                onClose();
+                onOpenUserGuide();
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                width: '100%',
+                padding: '10px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-sidebar-active)',
+                fontWeight: 600,
+                fontSize: '0.88rem',
+                cursor: 'pointer'
+              }}
+            >
+              <Compass size={17} style={{ color: 'var(--primary)' }} />
+              <span>💡 How to Navigate & Features</span>
+            </button>
+          )}
 
           {!isStandalone && (
             <button

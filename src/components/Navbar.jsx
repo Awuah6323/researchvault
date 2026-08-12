@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, BookOpen, Moon, Sun, Sparkles, User, Palette, Menu, Cloud, CheckCircle2, RefreshCw, Download } from 'lucide-react';
+import { Search, BookOpen, Moon, Sun, Sparkles, User, Palette, Menu, Cloud, CheckCircle2, RefreshCw, Download, Compass, HelpCircle } from 'lucide-react';
 import { storage } from '../services/storage';
 
 export default function Navbar({ 
@@ -13,6 +13,7 @@ export default function Navbar({
   onLogout,
   onOpenMobileMenu,
   onOpenInstallPwa,
+  onOpenUserGuide,
   isStandalone
 }) {
   const [syncState, setSyncState] = useState(storage.getSyncState());
@@ -157,6 +158,32 @@ export default function Navbar({
 
         {/* Action Controls: Cloud Sync, Theme Switcher & Profile */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          {/* User Guide Carousel Trigger */}
+          {onOpenUserGuide && (
+            <button
+              onClick={onOpenUserGuide}
+              title="Open App Guide & Navigation Tutorial"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '16px',
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--primary)',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)'
+              }}
+            >
+              <Compass size={16} />
+              <span className="mobile-hide">User Guide</span>
+            </button>
+          )}
+
           {/* PWA Install Button */}
           {!isStandalone && (
             <button

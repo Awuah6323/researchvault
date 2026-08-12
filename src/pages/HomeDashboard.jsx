@@ -1,6 +1,7 @@
-import React from 'react';
-import { BookOpen, Sparkles, Plus, TrendingUp, Star, Award, Search, ArrowRight, MessageSquare, FolderKanban, FileCode } from 'lucide-react';
+import React, { useState } from 'react';
+import { BookOpen, Sparkles, Plus, TrendingUp, Star, Award, Search, ArrowRight, MessageSquare, FolderKanban, FileCode, Compass } from 'lucide-react';
 import ResourceCard from '../components/ResourceCard';
+import OnboardingCarousel from '../components/OnboardingCarousel';
 
 export default function HomeDashboard({ 
   resources, 
@@ -14,6 +15,7 @@ export default function HomeDashboard({
   onOpenAddModal,
   onDeleteResource
 }) {
+  const [showGuide, setShowGuide] = useState(true);
   const favoritePapers = resources.filter(r => r.isFavorite);
   const readingInProgress = resources.filter(r => r.readingProgressPercent > 0);
   const recentlyAdded = [...resources].sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt)).slice(0, 6);
@@ -51,9 +53,13 @@ export default function HomeDashboard({
               <Search size={18} />
               <span>Search Academic Sources</span>
             </button>
-            <button onClick={() => onNavigate('aichat')} className="neu-button" style={{ padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontWeight: 600 }}>
-              <MessageSquare size={18} style={{ color: 'var(--primary)' }} />
-              <span>AI Chat Assistant</span>
+            <button 
+              onClick={() => setShowGuide(!showGuide)} 
+              className="neu-button" 
+              style={{ padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontWeight: 600 }}
+            >
+              <Compass size={18} style={{ color: 'var(--primary)' }} />
+              <span>{showGuide ? 'Hide App Guide' : '💡 User Guide & Navigation'}</span>
             </button>
           </div>
         </div>
@@ -63,6 +69,15 @@ export default function HomeDashboard({
           <BookOpen size={280} />
         </div>
       </div>
+
+      {/* Auto-sliding 3s Feature Onboarding Carousel */}
+      {showGuide && (
+        <OnboardingCarousel 
+          onNavigate={onNavigate}
+          onOpenAddModal={onOpenAddModal}
+          onClose={() => setShowGuide(false)}
+        />
+      )}
 
       {/* Neumorphic Metric Cards Grid */}
       <div className="metrics-grid">

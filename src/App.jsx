@@ -9,6 +9,7 @@ import AuthModal from './components/AuthModal';
 import BottomNav from './components/BottomNav';
 import MobileDrawer from './components/MobileDrawer';
 import InstallPwaModal from './components/InstallPwaModal';
+import UserGuideModal from './components/UserGuideModal';
 
 import HomeDashboard from './pages/HomeDashboard';
 import AcademicSearch from './pages/AcademicSearch';
@@ -37,6 +38,7 @@ export default function App() {
   const [aiModalResource, setAiModalResource] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showUserGuideModal, setShowUserGuideModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // PWA Install State
@@ -139,6 +141,7 @@ export default function App() {
     setAiModalResource(null);
     setShowAddModal(false);
     setShowAuthModal(false);
+    setShowUserGuideModal(false);
   };
 
   // Hardware Back Button & Browser Popstate Integration
@@ -150,7 +153,8 @@ export default function App() {
         !!citationModalResource || 
         !!aiModalResource || 
         showAddModal || 
-        showAuthModal;
+        showAuthModal ||
+        showUserGuideModal;
 
       if (hasOpenModal) {
         closeAllModals();
@@ -257,6 +261,7 @@ export default function App() {
         onLogout={handleLogout}
         onOpenMobileMenu={() => handleOpenModal(setIsMobileMenuOpen, true)}
         onOpenInstallPwa={() => handleOpenModal(setShowInstallModal, true)}
+        onOpenUserGuide={() => handleOpenModal(setShowUserGuideModal, true)}
         isStandalone={isStandalone}
       />
 
@@ -374,6 +379,7 @@ export default function App() {
           handleOpenModal(setShowAddModal, true);
         }}
         onOpenInstallPwa={() => handleOpenModal(setShowInstallModal, true)}
+        onOpenUserGuide={() => handleOpenModal(setShowUserGuideModal, true)}
         isStandalone={isStandalone}
       />
 
@@ -432,6 +438,14 @@ export default function App() {
           onInstallSuccess={() => setShowInstallModal(false)}
         />
       )}
+
+      {/* User Guide & Onboarding Carousel Modal */}
+      <UserGuideModal
+        isOpen={showUserGuideModal}
+        onClose={() => setShowUserGuideModal(false)}
+        onNavigate={handleNavigate}
+        onOpenAddModal={() => handleOpenModal(setShowAddModal, true)}
+      />
     </div>
   );
 }
