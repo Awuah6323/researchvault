@@ -17,7 +17,7 @@ const SAMPLE_PAPERS = [
   }
 ];
 
-export async function searchAcademicSources(query, page = 1, perPage = 10, sortBy = 'citations') {
+export async function searchAcademicSources(query, page = 1, perPage = 10, sortBy = 'relevance') {
   if (!query || !query.trim()) {
     return { results: [], totalCount: 0, page: 1, perPage, totalPages: 0 };
   }

@@ -31,7 +31,7 @@ export default function AcademicSearch({
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [savedMap, setSavedMap] = useState({});
-  const [sortBy, setSortBy] = useState('citations');
+  const [sortBy, setSortBy] = useState('relevance');
   
   // Pagination State
   const [page, setPage] = useState(1);
