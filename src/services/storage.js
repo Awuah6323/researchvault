@@ -222,11 +222,15 @@ export const storage = {
       localStorage.setItem(key, JSON.stringify(resources));
     } catch (e) {
       // Fallback for large files to avoid quota limits
-      const lightResources = resources.map(r => ({
-        ...r,
-        pdfFileData: (r.pdfFileData && r.pdfFileData.length > 400000) ? '' : r.pdfFileData
-      }));
-      localStorage.setItem(key, JSON.stringify(lightResources));
+      try {
+        const lightResources = resources.map(r => ({
+          ...r,
+          pdfFileData: '' // strip heavy pdf payload if storage is full
+        }));
+        localStorage.setItem(key, JSON.stringify(lightResources));
+      } catch (err) {
+        console.warn("Storage quota limit reached while saving resources:", err);
+      }
     }
 
     if (!skipCloudPush) {
@@ -349,7 +353,11 @@ export const storage = {
 
   saveNotes(resourceId, notesList, skipCloudPush = false) {
     const key = `${getScopedKey(BASE_KEYS.NOTES)}_${resourceId}`;
-    localStorage.setItem(key, JSON.stringify(notesList));
+    try {
+      localStorage.setItem(key, JSON.stringify(notesList));
+    } catch (e) {
+      console.warn("Storage quota limit reached while saving notes:", e);
+    }
     if (!skipCloudPush) {
       this.pushCloudVaultBackground();
     }
