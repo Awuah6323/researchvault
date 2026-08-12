@@ -501,52 +501,32 @@ export default function AcademicSearch({
 
             <span>Search</span>
           </button>
-        </form>
-
-        {/* PROMINENT GOOGLE SCHOLAR ENGINE BAR */}
-        <div style={{
-          padding: '12px 16px',
-          borderRadius: '16px',
-          backgroundColor: 'var(--bg-card)',
-          border: '1px solid var(--border-color)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '10px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              🎓 Google Scholar Engine Mode Active
-            </span>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              (Searches title matching, citations & fulltext index directly inside app)
-            </span>
-          </div>
 
           <button
             type="button"
-            onClick={() => openInAppScholar(query)}
+            onClick={() => {
+              const q = query.trim() || 'artificial intelligence';
+              window.open(`https://scholar.google.com/scholar?q=${encodeURIComponent(q)}`, '_blank');
+            }}
+            className="neu-button"
             style={{
-              padding: '8px 16px',
-              borderRadius: '12px',
-              backgroundColor: '#4285F4',
-              color: '#ffffff',
-              border: 'none',
-              fontWeight: 700,
-              fontSize: '0.84rem',
+              padding: '0 18px',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
+              fontWeight: 700,
+              fontSize: '0.86rem',
+              color: 'var(--text-main)',
+              borderRadius: '16px',
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(66, 133, 244, 0.3)'
+              flexShrink: 0
             }}
-            title="Open Google Scholar results directly inside ResearchVault"
+            title="Search paper directly on Google Scholar in a new tab"
           >
-            <BookOpen size={16} />
-            <span>Open In-App Google Scholar</span>
+            <ExternalLink size={16} style={{ color: 'var(--primary)' }} />
+            <span>🎓 Google Scholar</span>
           </button>
-        </div>
+        </form>
 
         {/* SORTING */}
         <div
@@ -872,22 +852,25 @@ export default function AcademicSearch({
                       alignItems: 'center'
                     }}
                   >
-                    {/* GOOGLE SCHOLAR IN-APP VIEWER BUTTON */}
-                    <button
-                      onClick={() => openInAppScholar(item.title)}
+                    {/* GOOGLE SCHOLAR DIRECT LINK */}
+                    <a
+                      href={`https://scholar.google.com/scholar?q=${encodeURIComponent(item.title)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="btn-secondary"
                       style={{
                         padding: '6px 12px',
                         fontSize: '0.8rem',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '4px'
+                        gap: '4px',
+                        textDecoration: 'none'
                       }}
-                      title="Search & view citations on Google Scholar directly in app"
+                      title="Search & view citations on Google Scholar in a new tab"
                     >
-                      <BookOpen size={14} />
+                      <ExternalLink size={14} />
                       <span>🎓 Google Scholar</span>
-                    </button>
+                    </a>
 
                     {/* READ PAPER */}
                     <button
