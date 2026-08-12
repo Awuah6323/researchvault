@@ -491,6 +491,31 @@ export default function AcademicSearch({
 
             <span>Search</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const q = query.trim() || 'artificial intelligence';
+              window.open(`https://scholar.google.com/scholar?q=${encodeURIComponent(q)}`, '_blank');
+            }}
+            className="neu-button"
+            style={{
+              padding: '0 16px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 700,
+              fontSize: '0.86rem',
+              color: 'var(--text-main)',
+              borderRadius: '16px',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+            title="Search paper directly on Google Scholar in a new tab"
+          >
+            <ExternalLink size={16} style={{ color: 'var(--primary)' }} />
+            <span>🎓 Google Scholar</span>
+          </button>
         </form>
 
         {/* SORTING */}
@@ -817,6 +842,26 @@ export default function AcademicSearch({
                       alignItems: 'center'
                     }}
                   >
+                    {/* GOOGLE SCHOLAR DIRECT LINK */}
+                    <a
+                      href={`https://scholar.google.com/scholar?q=${encodeURIComponent(item.title)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-secondary"
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '0.8rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        textDecoration: 'none'
+                      }}
+                      title="Search & view citations on Google Scholar"
+                    >
+                      <ExternalLink size={14} />
+                      <span>🎓 Google Scholar</span>
+                    </a>
+
                     {/* READ PAPER */}
                     <button
                       onClick={() =>

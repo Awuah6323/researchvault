@@ -66,6 +66,29 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
   if (explicitAuthor) searchPhrase = explicitAuthor;
   if (explicitTitle) searchPhrase = explicitTitle;
 
+  // Extract query keywords for strict relevance scoring
+  const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'in', 'for', 'on', 'with', 'by', 'at', 'to', 'is', 'it', 'from', 'as', 'paper', 'papers', 'research', 'study']);
+  const queryTokens = searchPhrase
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !stopWords.has(w));
+
+  const calculateRelevance = (item) => {
+    if (queryTokens.length === 0) return 1;
+    const titleText = (item.title || '').toLowerCase();
+    const abstractText = (item.abstractText || '').toLowerCase();
+    const authorsText = (item.authors || '').toLowerCase();
+
+    let matches = 0;
+    queryTokens.forEach(token => {
+      if (titleText.includes(token)) matches += 3;
+      else if (abstractText.includes(token)) matches += 1.5;
+      else if (authorsText.includes(token)) matches += 2;
+    });
+    return matches;
+  };
+
   // Build OpenAlex sort and filter parameters
   let openAlexSort = 'cited_by_count:desc';
   if (sortBy === 'newest') openAlexSort = 'publication_year:desc';
@@ -98,7 +121,7 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
       openAlexUrl = `https://api.openalex.org/works?search=${encodeURIComponent(searchPhrase)}&page=${page}&per_page=${perPage}&sort=${openAlexSort}${filterStr}`;
     }
 
-    // 1. OpenAlex Query
+    // 1. Primary Query: OpenAlex API
     const res = await fetch(openAlexUrl);
     if (res.ok) {
       const data = await res.json();
@@ -108,14 +131,24 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
       if (items.length > 0) {
         const parsedResults = items.map(item => parseOpenAlexItem(item, clean));
         
-        let finalResults = parsedResults;
+        // Filter out items that share 0 token match if query is specific
+        let relevantResults = parsedResults;
+        if (queryTokens.length > 0 && !isDoi) {
+          const scored = parsedResults.map(item => ({ item, score: calculateRelevance(item) }));
+          // Keep items with non-zero score or fallback to top items
+          const filtered = scored.filter(s => s.score > 0).map(s => s.item);
+          if (filtered.length > 0) {
+            relevantResults = filtered;
+          }
+        }
+
         if (sortBy === 'openaccess') {
-          finalResults = parsedResults.filter(p => p.openAccess);
+          relevantResults = relevantResults.filter(p => p.openAccess);
         }
 
         return {
-          results: finalResults,
-          totalCount,
+          results: relevantResults,
+          totalCount: Math.max(totalCount, relevantResults.length),
           page,
           perPage,
           totalPages: Math.ceil(totalCount / perPage)
@@ -123,7 +156,7 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
       }
     }
 
-    // 2. Crossref Query (Fallback/Secondary API)
+    // 2. Secondary Query: Crossref API
     let crossrefSort = '&sort=is-referenced-by-count&order=desc';
     if (sortBy === 'newest') crossrefSort = '&sort=published&order=desc';
     if (sortBy === 'relevance') crossrefSort = '&sort=score&order=desc';
@@ -146,14 +179,23 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
 
       if (crItems.length > 0) {
         const parsed = crItems.map(item => parseCrossrefItem(item, clean));
-        let finalResults = parsed;
+        
+        let relevantResults = parsed;
+        if (queryTokens.length > 0 && !isDoi) {
+          const scored = parsed.map(item => ({ item, score: calculateRelevance(item) }));
+          const filtered = scored.filter(s => s.score > 0).map(s => s.item);
+          if (filtered.length > 0) {
+            relevantResults = filtered;
+          }
+        }
+
         if (sortBy === 'openaccess') {
-          finalResults = parsed.filter(p => p.openAccess);
+          relevantResults = relevantResults.filter(p => p.openAccess);
         }
 
         return {
-          results: finalResults,
-          totalCount,
+          results: relevantResults,
+          totalCount: Math.max(totalCount, relevantResults.length),
           page,
           perPage,
           totalPages: Math.ceil(totalCount / perPage)
@@ -161,18 +203,25 @@ export async function searchAcademicSources(query, page = 1, perPage = 10, sortB
       }
     }
   } catch (err) {
-    console.warn("Academic API live query error, using local fallback dataset.", err);
+    console.warn("Academic API live query error.", err);
   }
 
-  // 3. Fallback: Local Curated Catalog
+  // 3. Fallback: Filter Local Curated Catalog strictly by query matching
   const lower = searchPhrase.toLowerCase();
-  const sampleFiltered = SAMPLE_PAPERS.filter(p => 
-    p.title.toLowerCase().includes(lower) || 
-    p.authors.toLowerCase().includes(lower) || 
-    p.suggestedCategory.toLowerCase().includes(lower) || 
-    p.abstractText.toLowerCase().includes(lower) ||
-    lower.length <= 2
-  );
+  const sampleFiltered = SAMPLE_PAPERS.filter(p => {
+    if (queryTokens.length === 0) return true;
+    const title = p.title.toLowerCase();
+    const authors = p.authors.toLowerCase();
+    const category = p.suggestedCategory.toLowerCase();
+    const abstract = p.abstractText.toLowerCase();
+
+    return queryTokens.some(token => 
+      title.includes(token) || 
+      authors.includes(token) || 
+      category.includes(token) || 
+      abstract.includes(token)
+    );
+  });
 
   let sortedSample = [...sampleFiltered];
   if (sortBy === 'citations') {
