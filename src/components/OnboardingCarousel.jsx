@@ -27,6 +27,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
+  const [slideDuration, setSlideDuration] = useState(5); // Default 5 seconds (selectable: 5s, 7s, 10s)
   const touchStartX = useRef(null);
 
   const slides = [
@@ -174,16 +175,23 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
 
   const totalSlides = slides.length;
 
-  // Auto-slide every 3 seconds (3000ms) unless paused or hovered
+  // Cycle speed options: 5s -> 7s -> 10s -> 5s
+  const handleCycleSpeed = () => {
+    if (slideDuration === 5) setSlideDuration(7);
+    else if (slideDuration === 7) setSlideDuration(10);
+    else setSlideDuration(5);
+  };
+
+  // Auto-slide duration (5s - 10s) unless paused or hovered
   useEffect(() => {
     if (!isPlaying || isHovered) return;
 
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % totalSlides);
-    }, 3000);
+    }, slideDuration * 1000);
 
     return () => clearInterval(timer);
-  }, [isPlaying, isHovered, totalSlides]);
+  }, [isPlaying, isHovered, totalSlides, slideDuration]);
 
   const handleNext = () => {
     setCurrentIndex((prev) => (prev + 1) % totalSlides);
@@ -231,7 +239,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}
     >
-      {/* Dynamic Animated Progress Bar (3-Second Auto-Slide Timer) */}
+      {/* Dynamic Animated Progress Bar (5s-10s Auto-Slide Timer) */}
       <div style={{
         position: 'absolute',
         top: 0,
@@ -242,12 +250,12 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
         zIndex: 20
       }}>
         <div 
-          key={`${currentIndex}-${isPlaying}-${isHovered}`}
+          key={`${currentIndex}-${isPlaying}-${isHovered}-${slideDuration}`}
           style={{
             height: '100%',
             backgroundColor: currentSlide.accentColor,
             width: isPlaying && !isHovered ? '100%' : '0%',
-            transition: isPlaying && !isHovered ? 'width 3s linear' : 'none',
+            transition: isPlaying && !isHovered ? `width ${slideDuration}s linear` : 'none',
             borderRadius: '0 2px 2px 0'
           }}
         />
@@ -292,10 +300,29 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Speed Selector Toggle Button (5s / 7s / 10s) */}
+            <button
+              onClick={handleCycleSpeed}
+              title={`Slide Duration: ${slideDuration}s. Click to switch (5s, 7s, 10s)`}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-card)',
+                color: currentSlide.accentColor,
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              ⏱️ {slideDuration}s
+            </button>
+
             {/* Auto-Slide Play/Pause Button */}
             <button
               onClick={() => setIsPlaying(!isPlaying)}
-              title={isPlaying ? "Pause 3s Auto-slide" : "Play 3s Auto-slide"}
+              title={isPlaying ? `Pause ${slideDuration}s Auto-slide` : `Play ${slideDuration}s Auto-slide`}
               style={{
                 width: '32px',
                 height: '32px',
