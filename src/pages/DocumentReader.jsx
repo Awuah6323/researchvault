@@ -59,7 +59,22 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   // --- View Mode & PDF Acquisition State Machine ---
   const isSmallScreen = useIsSmallScreen(880);
   const hasPdfSource = Boolean(resource.pdfFileData || resource.downloadUrl || resource.resolvedPdfUrl);
-  const [viewMode, setViewMode] = useState('page');
+  
+  const hasRealText = Boolean(
+    extractedFullText &&
+    extractedFullText.trim().length > 40 &&
+    extractedFullText.trim() !== PLACEHOLDER_TEXT &&
+    !extractedFullText.toLowerCase().includes('imported paper document in researchvault') &&
+    extractedFullText.trim() !== (resource.abstractText || '').trim()
+  );
+
+  // If a PDF document is attached but text hasn't been extracted yet,
+  // default viewMode to 'pdf' so the user sees the actual document immediately
+  // rather than a blank page. If full text exists, default to 'page'.
+  const [viewMode, setViewMode] = useState(() => {
+    if (hasPdfSource && !hasRealText) return 'pdf';
+    return 'page';
+  });
 
   // Reader States: 'idle' | 'resolving' | 'fetching' | 'ready' | 'failed'
   const [readerState, setReaderState] = useState('idle');
@@ -118,15 +133,14 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${ver}/pdf.worker.min.mjs`;
         }
 
-        // Pass a sliced copy so pdfUint8Data's buffer is never detached by web worker transfer
         const doc = await pdfjsLib.getDocument({ data: pdfUint8Data.slice(0) }).promise;
         if (!active) return;
         setPdfJsDoc(doc);
         setPdfJsNumPages(doc.numPages);
 
-        // Background text extraction for AI Assistant
+        // Background text extraction for AI Assistant & Pages mode
         const storedFullText = (resource.fullText || '').trim();
-        const needsFullText = !storedFullText || storedFullText === PLACEHOLDER_TEXT || storedFullText === (resource.abstractText || '').trim();
+        const needsFullText = !storedFullText || storedFullText === PLACEHOLDER_TEXT || storedFullText.toLowerCase().includes('imported paper document in researchvault');
 
         if (needsFullText) {
           setIsExtractingPdfText(true);
@@ -189,7 +203,10 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   // Text Pagination
   const rawPaperText = extractedFullText || resource.fullText || resource.abstractText || '';
   const paperPages = React.useMemo(() => {
-    if (!rawPaperText || !rawPaperText.trim()) return ['No extracted text content available for this literature record.'];
+    if (!rawPaperText || !rawPaperText.trim() || rawPaperText === PLACEHOLDER_TEXT) {
+      return ['No extracted text content available for this literature record.'];
+    }
+
     const text = rawPaperText.trim();
     const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim());
     if (paragraphs.length <= 1) {
@@ -513,6 +530,22 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           {/* MODE 2: PAGINATED TEXT VIEWER */}
           {viewMode === 'page' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
+              {/* Notice when text extraction is placeholder but a PDF file is attached */}
+              {!hasRealText && hasPdfSource && (
+                <div style={{ padding: '20px', borderRadius: '12px', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center' }}>
+                  <FileText size={28} style={{ color: 'var(--primary)' }} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)' }}>Original PDF Document Attached</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      {isExtractingPdfText ? 'Extracting readable text in the background...' : 'View the full formatted document and pages in PDF mode.'}
+                    </div>
+                  </div>
+                  <button onClick={() => setViewMode('pdf')} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', marginTop: '4px' }}>
+                    Switch to PDF Mode
+                  </button>
+                </div>
+              )}
+
               <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: '16px', fontFamily: 'var(--font-serif)', fontSize: `${fontSize}px`, lineHeight: 1.75 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
                   <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>Page {safeCurrentPage} of {totalPages}</h2>
