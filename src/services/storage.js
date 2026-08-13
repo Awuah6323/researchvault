@@ -8,7 +8,8 @@ const BASE_KEYS = {
   THEME: 'researchvault_theme',
   USERS: 'researchvault_users',
   SESSION: 'researchvault_session',
-  LAST_SYNC: 'researchvault_last_sync'
+  LAST_SYNC: 'researchvault_last_sync',
+  DELETED_IDS: 'researchvault_deleted_ids'
 };
 
 const DEFAULT_CATEGORIES = [
@@ -259,8 +260,23 @@ export const storage = {
     return list;
   },
 
+  getDeletedIds() {
+    try {
+      const key = getScopedKey(BASE_KEYS.DELETED_IDS);
+      return new Set(JSON.parse(localStorage.getItem(key) || '[]'));
+    } catch (e) {
+      return new Set();
+    }
+  },
+
   deleteResource(id) {
     const list = this.getResources().filter(r => String(r.id) !== String(id));
+    try {
+      const key = getScopedKey(BASE_KEYS.DELETED_IDS);
+      const existing = JSON.parse(localStorage.getItem(key) || '[]');
+      existing.push(String(id));
+      localStorage.setItem(key, JSON.stringify(existing));
+    } catch (e) {}
     this.saveResources(list);
     return list;
   },
@@ -617,22 +633,41 @@ export const storage = {
       const vaultPayload = await callSyncApi('GET', key);
 
       if (vaultPayload && Array.isArray(vaultPayload.resources)) {
+        const deletedIds = this.getDeletedIds();
+        const validCloudResources = vaultPayload.resources.filter(r => !deletedIds.has(String(r.id)) && !deletedIds.has(String(r.title)));
         const currentResources = this.getResources();
-        const localPdfMap = new Map(
-          currentResources.filter(r => r.pdfFileData).map(r => [r.id || r.title, r.pdfFileData])
-        );
+        const localResourceMap = new Map(currentResources.map(r => [String(r.id || r.title), r]));
+        const cloudResourceKeys = new Set(validCloudResources.map(r => String(r.id || r.title)));
 
-        // Reconstruct resources preserving local PDF attachments
-        const syncedResources = vaultPayload.resources.map(cloudRes => {
-          const itemKey = cloudRes.id || cloudRes.title;
-          const localPdf = localPdfMap.get(itemKey);
+        // 1. Build synced list starting with cloud resources merged with local PDF attachments & progress
+        const syncedResources = validCloudResources.map(cloudRes => {
+          const itemKey = String(cloudRes.id || cloudRes.title);
+          const localRes = localResourceMap.get(itemKey);
           return {
             ...cloudRes,
-            pdfFileData: cloudRes.pdfFileData || localPdf || ''
+            pdfFileData: cloudRes.pdfFileData || (localRes ? localRes.pdfFileData : '') || '',
+            fullText: cloudRes.fullText || (localRes ? localRes.fullText : '') || '',
+            readingProgressPercent: Math.max(cloudRes.readingProgressPercent || 0, localRes ? (localRes.readingProgressPercent || 0) : 0),
+            lastPageRead: Math.max(cloudRes.lastPageRead || 1, localRes ? (localRes.lastPageRead || 1) : 1),
+            isFavorite: cloudRes.isFavorite || (localRes ? localRes.isFavorite : false)
           };
         });
 
+        // 2. Preserve local resources that haven't synced to cloud payload yet
+        let needsPushBack = false;
+        for (const localRes of currentResources) {
+          const itemKey = String(localRes.id || localRes.title);
+          if (!cloudResourceKeys.has(itemKey)) {
+            syncedResources.unshift(localRes);
+            needsPushBack = true;
+          }
+        }
+
         this.saveResources(syncedResources, true);
+
+        if (needsPushBack) {
+          this.pushCloudVaultBackground();
+        }
 
         if (vaultPayload.categories && Array.isArray(vaultPayload.categories)) {
           this.saveCategories(vaultPayload.categories, true);
