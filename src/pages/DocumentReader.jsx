@@ -22,6 +22,46 @@ async function extractTextFromDataUrl(dataUrl, fileName) {
   }
 }
 
+// Papers added from search results / DOI lookup only ever come with a
+// downloadUrl (an open-access PDF link), never a locally uploaded file.
+// Fetch that PDF and run it through the same extractor so these papers can
+// be fully read too, not just their abstract.
+async function extractTextFromRemoteUrl(url, fileName) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const pdfBlob = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+    const file = new File([pdfBlob], fileName || 'document.pdf', { type: 'application/pdf' });
+    return await extractTextFromPdfFile(file);
+  } catch {
+    return '';
+  }
+}
+
+// A small screen (phone or tablet) can't reliably render an inline PDF the
+// way a laptop browser can — most mobile browsers have no embedded PDF
+// plugin, so <object>/<iframe> just shows blank space. Default those
+// devices to the extracted-text reading mode, and lay out side panels as
+// full-screen overlays instead of squeezing the reading column to nothing.
+function useIsSmallScreen(breakpoint = 880) {
+  const [isSmall, setIsSmall] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(`(max-width: ${breakpoint}px)`).matches
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const handler = (e) => setIsSmall(e.matches);
+    if (mql.addEventListener) mql.addEventListener('change', handler);
+    else mql.addListener(handler);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', handler);
+      else mql.removeListener(handler);
+    };
+  }, [breakpoint]);
+  return isSmall;
+}
+
 export default function DocumentReader({ resource, onClose, onDeleteResource }) {
   const [currentPage, setCurrentPage] = useState(resource.lastPageRead || 1);
   const [fontSize, setFontSize] = useState(16);
@@ -42,50 +82,91 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   const [aiExtractingText, setAiExtractingText] = useState(false);
   const resolvedContentRef = useRef(null);
   const aiChatEndRef = useRef(null);
+  const isExtractingPdfTextRef = useRef(false);
 
   const aiSummaryTypes = ['Executive Summary', 'Key Takeaways', 'Methodology & Proofs', 'Limitations & Critique', 'Peer Review'];
 
   // --- Auto Full Text Resolution & Background Extraction ---
   const [extractedFullText, setExtractedFullText] = useState(resource.fullText || '');
   const [isExtractingPdfText, setIsExtractingPdfText] = useState(false);
+  const extractedFullTextRef = useRef(resource.fullText || '');
+  useEffect(() => { isExtractingPdfTextRef.current = isExtractingPdfText; }, [isExtractingPdfText]);
+  useEffect(() => { extractedFullTextRef.current = extractedFullText; }, [extractedFullText]);
 
   useEffect(() => {
     let active = true;
-    const stored = resource.fullText || resource.abstractText || '';
-    const isPlaceholder =
-      !stored.trim() ||
-      stored.trim() === PLACEHOLDER_TEXT ||
-      stored.trim().toLowerCase().includes('imported paper document in researchvault');
+    const storedFullText = (resource.fullText || '').trim();
 
-    if (isPlaceholder && resource.pdfFileData) {
+    // resource.fullText is only ever set once real full-document extraction
+    // has succeeded. resource.abstractText is a short summary — from a
+    // search result, DOI lookup, or the user's own notes — and must never
+    // be mistaken for "we already have the whole paper", or extraction
+    // never runs and the reader is stuck showing just the abstract forever.
+    const alreadyHasFullText =
+      storedFullText.length > 0 &&
+      storedFullText !== PLACEHOLDER_TEXT &&
+      !storedFullText.toLowerCase().includes('imported paper document in researchvault') &&
+      storedFullText !== (resource.abstractText || '').trim();
+
+    // Search-added / DOI-added papers only ever carry a downloadUrl (an
+    // open-access PDF link), never pdfFileData — so that has to count as an
+    // extractable source too, not just a locally uploaded file.
+    const hasExtractableSource = Boolean(resource.pdfFileData || resource.downloadUrl);
+
+    if (!alreadyHasFullText && hasExtractableSource) {
       setIsExtractingPdfText(true);
-      extractTextFromDataUrl(resource.pdfFileData, resource.pdfFileName)
+      const extractPromise = resource.pdfFileData
+        ? extractTextFromDataUrl(resource.pdfFileData, resource.pdfFileName)
+        : extractTextFromRemoteUrl(resource.downloadUrl, resource.pdfFileName || `${resource.title || 'document'}.pdf`);
+
+      extractPromise
         .then(extracted => {
-          if (active && extracted && extracted.trim().length > 40) {
+          if (!active) return;
+          if (extracted && extracted.trim().length > 40) {
             const cleanText = extracted.trim();
             setExtractedFullText(cleanText);
             try {
-              storage.updateResource(resource.id, {
-                fullText: cleanText,
-                abstractText: cleanText.length > 400 ? cleanText.slice(0, 400) + '...' : cleanText
-              });
+              // Store the extracted full text without touching the
+              // original short abstract shown on the library card.
+              storage.updateResource(resource.id, { fullText: cleanText });
             } catch (e) {}
+          } else {
+            setExtractedFullText(resource.abstractText || '');
           }
+        })
+        .catch(() => {
+          if (active) setExtractedFullText(resource.abstractText || '');
         })
         .finally(() => {
           if (active) setIsExtractingPdfText(false);
         });
     } else {
-      setExtractedFullText(stored);
+      setExtractedFullText(storedFullText || resource.abstractText || '');
     }
 
     return () => { active = false; };
-  }, [resource.id, resource.pdfFileData, resource.fullText, resource.abstractText]);
+  }, [resource.id, resource.pdfFileData, resource.downloadUrl, resource.fullText, resource.abstractText]);
 
   // --- View Mode & Reader Engine ---
   // Modes: 'pdf' (PDF Viewer), 'page' (Paginated Paper Text)
+  const isSmallScreen = useIsSmallScreen(880);
   const hasPdfSource = Boolean(resource.pdfFileData || resource.downloadUrl);
-  const [viewMode, setViewMode] = useState(hasPdfSource ? 'pdf' : 'page');
+  // Most mobile browsers have no embedded PDF plugin, so <object>/<iframe>
+  // just renders blank on a phone even though it works fine on a laptop.
+  // Default small screens to the extracted-text reader; the PDF tab is
+  // still there if someone wants to try it or open it fullscreen.
+  const [viewMode, setViewMode] = useState(hasPdfSource && !isSmallScreen ? 'pdf' : 'page');
+
+  // True only once real extraction succeeded — extractedFullText falls back
+  // to the abstract when there's no PDF source or extraction failed, so
+  // comparing against the abstract is how we tell "full paper" from
+  // "abstract only" for the "continue reading at publisher" prompt below.
+  const hasFullText = Boolean(
+    extractedFullText &&
+    extractedFullText.trim() &&
+    extractedFullText.trim() !== (resource.abstractText || '').trim()
+  );
+  const publisherLink = resource.downloadUrl || resource.sourceUrl || '';
 
   const rawPaperText = extractedFullText || resource.fullText || resource.abstractText || '';
   const paperPages = React.useMemo(() => {
@@ -203,25 +284,21 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   // --- AI Assistant Logic ---
   const getResolvedContent = async () => {
     if (resolvedContentRef.current !== null) return resolvedContentRef.current;
-    const stored = resource.fullText || resource.abstractText || '';
-    const isPlaceholder =
-      !stored.trim() ||
-      stored.trim() === PLACEHOLDER_TEXT ||
-      stored.trim().toLowerCase() === 'imported paper document in researchvault digital library.';
-
-    if (isPlaceholder && resource.pdfFileData) {
+    // The background effect above already resolves the best available text
+    // (full extracted document when possible, abstract as a fallback) —
+    // reuse it instead of re-fetching/re-parsing the PDF a second time.
+    // If extraction is still running, wait briefly rather than handing the
+    // AI just the abstract.
+    if (isExtractingPdfTextRef.current) {
       setAiExtractingText(true);
-      const extracted = await extractTextFromDataUrl(
-        resource.pdfFileData,
-        resource.pdfFileName || `${resource.title}.pdf`
-      );
+      for (let i = 0; i < 20 && isExtractingPdfTextRef.current; i++) {
+        await new Promise(r => setTimeout(r, 250));
+      }
       setAiExtractingText(false);
-      const content = extracted && extracted.trim().length > 40 ? extracted.trim() : stored;
-      resolvedContentRef.current = content;
-      return content;
     }
-    resolvedContentRef.current = stored;
-    return stored;
+    const content = extractedFullTextRef.current || resource.fullText || resource.abstractText || '';
+    resolvedContentRef.current = content;
+    return content;
   };
 
   const handleAiGenerateSummary = async (type) => {
@@ -414,7 +491,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* Document Content */}
-        <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '24px max(16px, (100vw - 840px) / 2)', transition: 'all 0.3s ease' }}>
+        <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: isSmallScreen ? '16px' : '24px max(16px, (100vw - 840px) / 2)', transition: 'all 0.3s ease' }}>
           {/* Header Metadata */}
           <div style={{ marginBottom: '20px' }}>
             <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.65rem', fontWeight: 800, marginBottom: '6px', lineHeight: 1.3 }}>{resource.title}</h1>
@@ -443,7 +520,13 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                 )}
               </div>
 
-              <div style={{ height: 'calc(100vh - 200px)', minHeight: '480px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: '#1e293b' }}>
+              {isSmallScreen && (
+                <div style={{ padding: '10px 12px', borderRadius: '10px', backgroundColor: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', fontSize: '0.78rem', color: 'var(--text-main)', lineHeight: 1.4 }}>
+                  Inline PDF preview often doesn't render on phones — if this looks blank, tap <strong>Open PDF Fullscreen</strong> above, or switch to <strong>Pages</strong> to read the extracted text right here.
+                </div>
+              )}
+
+              <div style={{ height: 'calc(100dvh - 200px)', minHeight: '480px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: '#1e293b' }}>
                 {pdfLoading ? (
                   <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', color: '#fff' }}>
                     <Loader2 size={36} className="animate-spin" style={{ color: 'var(--primary)' }} />
@@ -566,6 +649,45 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                 <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'inherit' }}>
                   {activePageText}
                 </div>
+
+                {!hasFullText && !isExtractingPdfText && safeCurrentPage >= totalPages && (
+                  <div style={{
+                    marginTop: '24px',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                      <ShieldCheck size={20} style={{ color: '#10b981', flexShrink: 0, marginTop: '2px' }} />
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)', fontFamily: 'var(--font-sans, inherit)' }}>
+                          End of available text
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-sans, inherit)', lineHeight: 1.5, marginTop: '2px' }}>
+                          {publisherLink
+                            ? "This is the abstract — we couldn't pull the full text into your library (the publisher may block automatic downloads). Continue reading the rest of the paper on the publisher's site."
+                            : "This is the abstract — no PDF is attached to this paper, so the full text isn't available in your library. Attach a PDF from the library screen, or find the paper's source to keep reading."}
+                        </div>
+                      </div>
+                    </div>
+                    {publisherLink && (
+                      <a
+                        href={publisherLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-primary"
+                        style={{ padding: '8px 14px', fontSize: '0.82rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', alignSelf: 'flex-start' }}
+                      >
+                        <span>Continue Reading at Publisher</span>
+                        <ExternalLink size={13} />
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -578,14 +700,16 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           <div
             className="ai-reader-panel"
             style={{
-              width: '420px',
+              width: isSmallScreen ? '100%' : '420px',
               maxWidth: '100vw',
-              borderLeft: '1px solid var(--border-color)',
+              position: isSmallScreen ? 'fixed' : 'relative',
+              inset: isSmallScreen ? 0 : 'auto',
+              borderLeft: isSmallScreen ? 'none' : '1px solid var(--border-color)',
               backgroundColor: 'var(--bg-card)',
               display: 'flex',
               flexDirection: 'column',
               boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
-              zIndex: 110,
+              zIndex: isSmallScreen ? 600 : 110,
               animation: 'slideInRight 0.25s ease-out'
             }}
           >
@@ -786,7 +910,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           right: 0,
           top: '60px',
           bottom: '60px',
-          width: '320px',
+          width: 'min(320px, 100vw)',
           backgroundColor: 'var(--bg-card)',
           borderLeft: '1px solid var(--border-color)',
           padding: '20px',
