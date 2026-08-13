@@ -45,8 +45,10 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
 
   const aiSummaryTypes = ['Executive Summary', 'Key Takeaways', 'Methodology & Proofs', 'Limitations & Critique', 'Peer Review'];
 
-  // --- View Mode & Dynamic Text Pagination ---
-  const [viewMode, setViewMode] = useState(resource.pdfFileData ? 'pdf' : 'text'); // 'text' or 'pdf'
+  // --- View Mode & Reader Engine ---
+  // Modes: 'scroll' (Continuous Document), 'pdf' (PDF Viewer), 'page' (Paginated)
+  const hasPdfSource = Boolean(resource.pdfFileData || resource.downloadUrl);
+  const [viewMode, setViewMode] = useState(hasPdfSource ? 'pdf' : 'scroll');
 
   const rawPaperText = resource.fullText || resource.abstractText || '';
   const paperPages = React.useMemo(() => {
@@ -58,7 +60,6 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
     // Split by double newlines or chunks of ~1500 chars
     const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim());
     if (paragraphs.length <= 1) {
-      // Chunk long single string into ~1500 char blocks
       const chunks = [];
       for (let i = 0; i < text.length; i += 1500) {
         chunks.push(text.slice(i, i + 1500));
@@ -111,9 +112,13 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   const themeColors = getReaderColors();
 
   const [pdfBlobUrl, setPdfBlobUrl] = useState('');
+  const [pdfLoading, setPdfLoading] = useState(false);
 
+  // Auto-fetch PDF bytes for searched papers (downloadUrl) & convert uploaded base64 data into Blob URL
   useEffect(() => {
+    let active = true;
     let createdUrl = null;
+
     if (resource.pdfFileData) {
       if (resource.pdfFileData.startsWith('data:')) {
         try {
@@ -126,18 +131,35 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           }
           const blob = new Blob([uInt8Array], { type: contentType });
           createdUrl = URL.createObjectURL(blob);
-          setPdfBlobUrl(createdUrl);
+          if (active) setPdfBlobUrl(createdUrl);
         } catch (err) {
-          console.error("Base64 PDF conversion error:", err);
-          setPdfBlobUrl(resource.pdfFileData);
+          if (active) setPdfBlobUrl(resource.pdfFileData);
         }
       } else {
-        setPdfBlobUrl(resource.pdfFileData);
+        if (active) setPdfBlobUrl(resource.pdfFileData);
       }
     } else if (resource.downloadUrl) {
-      setPdfBlobUrl(resource.downloadUrl);
+      setPdfLoading(true);
+      fetch(resource.downloadUrl)
+        .then(res => {
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.blob();
+        })
+        .then(blob => {
+          const pdfBlob = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+          createdUrl = URL.createObjectURL(pdfBlob);
+          if (active) setPdfBlobUrl(createdUrl);
+        })
+        .catch(() => {
+          if (active) setPdfBlobUrl(resource.downloadUrl);
+        })
+        .finally(() => {
+          if (active) setPdfLoading(false);
+        });
     }
+
     return () => {
+      active = false;
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
   }, [resource.pdfFileData, resource.downloadUrl]);
@@ -254,30 +276,40 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           </button>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 700, fontSize: '0.92rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resource.title}</div>
-            <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Page {safeCurrentPage} of {totalPages} • {progressPercent}% Read</div>
+            <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>
+              {viewMode === 'scroll' ? 'Continuous Scroll Mode' : viewMode === 'pdf' ? 'PDF Document Viewer' : `Page ${safeCurrentPage} of ${totalPages}`}
+            </div>
           </div>
         </div>
 
-        {/* Reader Actions */}
+        {/* Reader Actions & View Mode Selector */}
         <div className="reader-mobile-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-          {resource.pdfFileData && (
-            <div style={{ display: 'flex', backgroundColor: 'var(--bg-card)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-color)', marginRight: '4px' }}>
-              <button
-                onClick={() => setViewMode('text')}
-                style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'text' ? 'var(--primary)' : 'transparent', color: viewMode === 'text' ? '#fff' : 'var(--text-muted)' }}
-                title="Full Paper Text Reader"
-              >
-                Text
-              </button>
+          {/* Reader View Mode Switcher */}
+          <div style={{ display: 'flex', backgroundColor: 'var(--bg-card)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-color)', marginRight: '4px' }}>
+            <button
+              onClick={() => setViewMode('scroll')}
+              style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'scroll' ? 'var(--primary)' : 'transparent', color: viewMode === 'scroll' ? '#fff' : 'var(--text-muted)' }}
+              title="Continuous Scroll Paper Reader"
+            >
+              Scroll
+            </button>
+            {hasPdfSource && (
               <button
                 onClick={() => setViewMode('pdf')}
                 style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'pdf' ? 'var(--primary)' : 'transparent', color: viewMode === 'pdf' ? '#fff' : 'var(--text-muted)' }}
-                title="Original PDF Document"
+                title="Interactive PDF Viewer"
               >
                 PDF
               </button>
-            </div>
-          )}
+            )}
+            <button
+              onClick={() => setViewMode('page')}
+              style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'page' ? 'var(--primary)' : 'transparent', color: viewMode === 'page' ? '#fff' : 'var(--text-muted)' }}
+              title="Paginated Page Turn Mode"
+            >
+              Pages
+            </button>
+          </div>
 
           <button
             onClick={handleOpenAiPanel}
@@ -300,9 +332,9 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
             <a
               href={pdfBlobUrl || resource.pdfFileData || resource.downloadUrl || resource.sourceUrl}
               download={resource.pdfFileName || `${resource.title}.pdf`}
-              target={pdfBlobUrl ? undefined : "_blank"}
-              rel={pdfBlobUrl ? undefined : "noopener noreferrer"}
-              title="Download PDF Document"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Download / Open Full PDF Document"
               style={{ padding: '6px', color: '#10b981', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <Download size={17} />
@@ -353,39 +385,51 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* Document Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px max(16px, (100vw - 840px) / 2)', transition: 'all 0.3s ease' }}>
-          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', fontWeight: 800, marginBottom: '6px' }}>{resource.title}</h1>
-          <div style={{ fontSize: '0.88rem', fontWeight: 600, opacity: 0.8, marginBottom: '12px' }}>{resource.authors} ({resource.publicationYear})</div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--primary)', marginBottom: '20px' }}>Published in: {resource.journal || 'Academic Repository'}</div>
+        <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '24px max(16px, (100vw - 840px) / 2)', transition: 'all 0.3s ease' }}>
+          {/* Header Metadata */}
+          <div style={{ marginBottom: '20px' }}>
+            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.65rem', fontWeight: 800, marginBottom: '6px', lineHeight: 1.3 }}>{resource.title}</h1>
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, opacity: 0.85, marginBottom: '8px' }}>{resource.authors} ({resource.publicationYear})</div>
+            <div style={{ fontSize: '0.82rem', color: 'var(--primary)', fontWeight: 600 }}>Published in: {resource.journal || 'Academic Repository'}</div>
+          </div>
 
-          {resource.pdfFileData && viewMode === 'pdf' ? (
+          {/* ============================================================ */}
+          {/* MODE 1: INTERACTIVE PDF DOCUMENT VIEWER                      */}
+          {/* ============================================================ */}
+          {viewMode === 'pdf' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>PDF Viewer</span>
-                {pdfBlobUrl && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>PDF Reader & Document Frame</span>
+                {(pdfBlobUrl || resource.downloadUrl || resource.pdfFileData) && (
                   <a
-                    href={pdfBlobUrl}
+                    href={pdfBlobUrl || resource.downloadUrl || resource.pdfFileData}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn-primary"
-                    style={{ padding: '6px 12px', fontSize: '0.78rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    style={{ padding: '6px 14px', fontSize: '0.8rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >
                     <ExternalLink size={14} />
-                    <span>Open Fullscreen PDF</span>
+                    <span>Open PDF Fullscreen</span>
                   </a>
                 )}
               </div>
-              <div style={{ height: 'calc(100vh - 220px)', minHeight: '450px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: '#1e293b' }}>
-                {pdfBlobUrl ? (
+
+              <div style={{ height: 'calc(100vh - 200px)', minHeight: '480px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: '#1e293b' }}>
+                {pdfLoading ? (
+                  <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', color: '#fff' }}>
+                    <Loader2 size={36} className="animate-spin" style={{ color: 'var(--primary)' }} />
+                    <div style={{ fontWeight: 700 }}>Fetching Full PDF Document...</div>
+                  </div>
+                ) : (pdfBlobUrl || resource.pdfFileData || resource.downloadUrl) ? (
                   <object
-                    data={pdfBlobUrl}
+                    data={pdfBlobUrl || resource.pdfFileData || resource.downloadUrl}
                     type="application/pdf"
                     width="100%"
                     height="100%"
                     style={{ border: 'none' }}
                   >
                     <iframe
-                      src={pdfBlobUrl}
+                      src={pdfBlobUrl || resource.pdfFileData || resource.downloadUrl}
                       title={resource.title}
                       width="100%"
                       height="100%"
@@ -395,14 +439,19 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                 ) : (
                   <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
                     <FileCode size={40} style={{ color: 'var(--primary)' }} />
-                    <div style={{ fontWeight: 700 }}>Loading PDF Document...</div>
+                    <div style={{ fontWeight: 700 }}>PDF Stream Unavailable</div>
                   </div>
                 )}
               </div>
             </div>
-          ) : (
+          )}
+
+          {/* ============================================================ */}
+          {/* MODE 2: CONTINUOUS SCROLL PAPER READER (DEFAULT READ EXPERIENCE) */}
+          {/* ============================================================ */}
+          {viewMode === 'scroll' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
-              {/* Publisher PDF Action Bar */}
+              {/* External Publisher Action Bar */}
               {(resource.downloadUrl || resource.sourceUrl) && (
                 <div style={{
                   padding: '14px 16px',
@@ -419,10 +468,10 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                     <ShieldCheck size={24} style={{ color: '#10b981' }} />
                     <div>
                       <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)' }}>
-                        Publisher Paper Document ({resource.openAccess ? 'Open Access' : 'Verified Metadata'})
+                        Verified Literature Source ({resource.openAccess ? 'Open Access PDF' : 'Academic Index'})
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Access full original publisher document:
+                        Direct publisher PDF available:
                       </div>
                     </div>
                   </div>
@@ -435,13 +484,46 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                     style={{ padding: '6px 14px', fontSize: '0.8rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >
                     <Download size={14} />
-                    <span>Open Publisher PDF</span>
+                    <span>Open / Download Publisher PDF</span>
                     <ExternalLink size={12} />
                   </a>
                 </div>
               )}
 
-              {/* Paginated Paper Text Reader */}
+              {/* Continuous Scroll Article View */}
+              <div style={{
+                borderTop: '2px solid var(--border-color)',
+                paddingTop: '20px',
+                fontFamily: 'var(--font-serif)',
+                fontSize: `${fontSize}px`,
+                lineHeight: 1.8
+              }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px', color: 'var(--primary)' }}>
+                  Abstract & Key Overview
+                </h2>
+                <p style={{ marginBottom: '28px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'inherit' }}>
+                  {resource.abstractText || rawPaperText}
+                </p>
+
+                {rawPaperText && rawPaperText !== resource.abstractText && (
+                  <>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px', color: 'var(--primary)' }}>
+                      Full Research Document Content
+                    </h2>
+                    <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'inherit' }}>
+                      {rawPaperText}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* MODE 3: PAGINATED PAGE TURN READER                            */}
+          {/* ============================================================ */}
+          {viewMode === 'page' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
               <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: '16px', fontFamily: 'var(--font-serif)', fontSize: `${fontSize}px`, lineHeight: 1.75 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
                   <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>
