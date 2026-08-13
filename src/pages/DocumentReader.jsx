@@ -59,7 +59,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   // --- View Mode & PDF Acquisition State Machine ---
   const isSmallScreen = useIsSmallScreen(880);
   const hasPdfSource = Boolean(resource.pdfFileData || resource.downloadUrl || resource.resolvedPdfUrl);
-  const [viewMode, setViewMode] = useState(hasPdfSource ? 'pdf' : 'page');
+  const [viewMode, setViewMode] = useState('page');
 
   // Reader States: 'idle' | 'resolving' | 'fetching' | 'ready' | 'failed'
   const [readerState, setReaderState] = useState('idle');
