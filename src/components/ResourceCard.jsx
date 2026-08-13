@@ -97,12 +97,12 @@ export default function ResourceCard({
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+        <div className="card-footer-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '8px' }}>
           <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
             {resource.category}
           </span>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div className="card-action-group" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             {/* Delete Button — icon only */}
             {onDeleteResource && (
               <button
@@ -170,8 +170,8 @@ export default function ResourceCard({
             {/* Read Button */}
             <button 
               onClick={() => onOpenReader(resource)}
-              className="btn-primary"
-              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+              className="btn-primary card-read-btn"
+              style={{ padding: '6px 14px', fontSize: '0.8rem', flexShrink: 0 }}
             >
               <BookOpen size={14} />
               <span>Read</span>
