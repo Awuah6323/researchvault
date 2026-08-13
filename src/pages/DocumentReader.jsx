@@ -306,71 +306,157 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 500, backgroundColor: themeColors.bg, color: themeColors.text, display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <header className="reader-mobile-header" style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--header-bg)', backdropFilter: 'blur(8px)', zIndex: 510 }}>
+      <header className="reader-mobile-header" style={{
+        padding: isSmallScreen ? '8px 12px' : '10px 16px',
+        borderBottom: '1px solid var(--border-color)',
+        display: 'flex',
+        flexDirection: isSmallScreen ? 'column' : 'row',
+        alignItems: isSmallScreen ? 'stretch' : 'center',
+        justifyContent: 'space-between',
+        gap: isSmallScreen ? '8px' : '12px',
+        backgroundColor: 'var(--header-bg)',
+        backdropFilter: 'blur(8px)',
+        zIndex: 510
+      }}>
+        {/* Row 1: Back Arrow + Paper Title (1-line Ellipsis) + Theme & Delete on Mobile */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-          <button onClick={onClose} title="Back to Library" style={{ color: 'inherit', padding: '6px', flexShrink: 0 }}>
+          <button onClick={onClose} title="Back to Library" style={{ color: 'inherit', padding: '6px', flexShrink: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
             <ArrowLeft size={20} />
           </button>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: '0.92rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resource.title}</div>
-            <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>
-              {viewMode === 'pdf' ? (pdfJsDoc ? `Page ${safePdfPage} of ${pdfJsNumPages}` : statusMessage) : `Page ${safeCurrentPage} of ${totalPages}`}
+            <div className="reader-title-text" style={{
+              fontWeight: 700,
+              fontSize: isSmallScreen ? '0.88rem' : '0.95rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              wordBreak: 'normal',
+              lineHeight: 1.2
+            }}>
+              {resource.title}
             </div>
+            {!isSmallScreen && (
+              <div style={{ fontSize: '0.72rem', opacity: 0.8, marginTop: '2px', whiteSpace: 'nowrap' }}>
+                {viewMode === 'pdf' ? (pdfJsDoc ? `Page ${safePdfPage} of ${pdfJsNumPages}` : statusMessage) : `Page ${safeCurrentPage} of ${totalPages}`}
+              </div>
+            )}
           </div>
+
+          {isSmallScreen && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              <select value={readerTheme} onChange={(e) => setReaderTheme(e.target.value)} style={{ padding: '4px 6px', borderRadius: '6px', fontSize: '0.75rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'inherit' }}>
+                <option value="light">☀️</option>
+                <option value="sepia">📜</option>
+                <option value="dark">🌙</option>
+              </select>
+              {onDeleteResource && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Delete "${resource.title}" from your library?`)) {
+                      onDeleteResource(resource.id);
+                      onClose();
+                    }
+                  }}
+                  title="Delete paper"
+                  style={{
+                    padding: '5px',
+                    borderRadius: '8px',
+                    color: '#ef4444',
+                    backgroundColor: 'rgba(239,68,68,0.1)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Trash2 size={15} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Action Controls */}
-        <div className="reader-mobile-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-          {hasPdfSource && (
-            <div style={{ display: 'flex', backgroundColor: 'var(--bg-card)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-color)', marginRight: '4px' }}>
-              <button onClick={() => setViewMode('pdf')} style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'pdf' ? 'var(--primary)' : 'transparent', color: viewMode === 'pdf' ? '#fff' : 'var(--text-muted)' }}>PDF</button>
-              <button onClick={() => setViewMode('page')} style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'page' ? 'var(--primary)' : 'transparent', color: viewMode === 'page' ? '#fff' : 'var(--text-muted)' }}>Pages</button>
+        {/* Row 2 (Mobile) / Right Actions (Desktop): Status Badge & Reader Mode Switcher */}
+        <div className="reader-mobile-actions" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: isSmallScreen ? 'space-between' : 'flex-end',
+          gap: '6px',
+          flexShrink: 0,
+          width: isSmallScreen ? '100%' : 'auto',
+          borderTop: isSmallScreen ? '1px solid var(--border-color)' : 'none',
+          paddingTop: isSmallScreen ? '6px' : 0
+        }}>
+          {isSmallScreen && (
+            <div style={{
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              padding: '3px 8px',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(16, 185, 129, 0.12)',
+              color: 'var(--primary)',
+              whiteSpace: 'nowrap'
+            }}>
+              {viewMode === 'pdf' ? (pdfJsDoc ? `Page ${safePdfPage} of ${pdfJsNumPages}` : 'PDF Stream') : `Page ${safeCurrentPage} of ${totalPages}`}
             </div>
           )}
 
-          <button onClick={handleOpenAiPanel} className="btn-primary" style={{ padding: '6px 10px', fontSize: '0.78rem', backgroundColor: showAiPanel ? 'var(--secondary)' : undefined, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <Sparkles size={15} /> <span className="btn-text">AI</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
+            {hasPdfSource && (
+              <div style={{ display: 'flex', backgroundColor: 'var(--bg-card)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <button onClick={() => setViewMode('pdf')} style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'pdf' ? 'var(--primary)' : 'transparent', color: viewMode === 'pdf' ? '#fff' : 'var(--text-muted)', border: 'none', cursor: 'pointer' }}>PDF</button>
+                <button onClick={() => setViewMode('page')} style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'page' ? 'var(--primary)' : 'transparent', color: viewMode === 'page' ? '#fff' : 'var(--text-muted)', border: 'none', cursor: 'pointer' }}>Pages</button>
+              </div>
+            )}
 
-          {(pdfMeta.resolvedUrl || resource.downloadUrl || resource.sourceUrl) && (
-            <a href={pdfMeta.resolvedUrl || resource.downloadUrl || resource.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '6px', color: '#10b981', display: 'inline-flex', alignItems: 'center' }}>
-              <Download size={17} />
-            </a>
-          )}
-
-          <button onClick={() => { setShowNotesDrawer(!showNotesDrawer); setShowAiPanel(false); }} style={{ padding: '6px', color: 'inherit' }}>
-            <FileText size={17} />
-          </button>
-
-          {onDeleteResource && (
-            <button
-              onClick={() => {
-                if (window.confirm(`Delete "${resource.title}" from your library?`)) {
-                  onDeleteResource(resource.id);
-                  onClose();
-                }
-              }}
-              title="Delete paper"
-              style={{
-                padding: '6px',
-                borderRadius: '8px',
-                color: '#ef4444',
-                backgroundColor: 'rgba(239,68,68,0.1)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <Trash2 size={15} />
+            <button onClick={handleOpenAiPanel} className="btn-primary" style={{ padding: '5px 9px', fontSize: '0.78rem', backgroundColor: showAiPanel ? 'var(--secondary)' : undefined, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <Sparkles size={14} /> <span className="btn-text">AI</span>
             </button>
-          )}
 
-          <select value={readerTheme} onChange={(e) => setReaderTheme(e.target.value)} style={{ padding: '4px 6px', borderRadius: '6px', fontSize: '0.75rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'inherit' }}>
-            <option value="light">☀️</option>
-            <option value="sepia">📜</option>
-            <option value="dark">🌙</option>
-          </select>
+            {(pdfMeta.resolvedUrl || resource.downloadUrl || resource.sourceUrl) && (
+              <a href={pdfMeta.resolvedUrl || resource.downloadUrl || resource.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '5px', color: '#10b981', display: 'inline-flex', alignItems: 'center' }} title="Download PDF">
+                <Download size={16} />
+              </a>
+            )}
+
+            <button onClick={() => { setShowNotesDrawer(!showNotesDrawer); setShowAiPanel(false); }} style={{ padding: '5px', color: 'inherit', border: 'none', background: 'none', cursor: 'pointer' }} title="Notes">
+              <FileText size={16} />
+            </button>
+
+            {!isSmallScreen && (
+              <>
+                {onDeleteResource && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Delete "${resource.title}" from your library?`)) {
+                        onDeleteResource(resource.id);
+                        onClose();
+                      }
+                    }}
+                    title="Delete paper"
+                    style={{
+                      padding: '5px',
+                      borderRadius: '8px',
+                      color: '#ef4444',
+                      backgroundColor: 'rgba(239,68,68,0.1)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
+
+                <select value={readerTheme} onChange={(e) => setReaderTheme(e.target.value)} style={{ padding: '4px 6px', borderRadius: '6px', fontSize: '0.75rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'inherit' }}>
+                  <option value="light">☀️</option>
+                  <option value="sepia">📜</option>
+                  <option value="dark">🌙</option>
+                </select>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
