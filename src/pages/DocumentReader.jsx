@@ -151,16 +151,11 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   // Modes: 'pdf' (PDF Viewer), 'page' (Paginated Paper Text)
   const isSmallScreen = useIsSmallScreen(880);
   const hasPdfSource = Boolean(resource.pdfFileData || resource.downloadUrl);
-  // Most mobile browsers have no embedded PDF plugin, so <object>/<iframe>
-  // just renders blank on a phone even though it works fine on a laptop.
-  // Default small screens to the extracted-text reader; the PDF tab is
-  // still there if someone wants to try it or open it fullscreen.
-  const [viewMode, setViewMode] = useState(hasPdfSource && !isSmallScreen ? 'pdf' : 'page');
+  // pdf.js canvas rendering works smoothly on phones and laptops alike.
+  const [viewMode, setViewMode] = useState(hasPdfSource ? 'pdf' : 'page');
 
   // True only once real extraction succeeded — extractedFullText falls back
-  // to the abstract when there's no PDF source or extraction failed, so
-  // comparing against the abstract is how we tell "full paper" from
-  // "abstract only" for the "continue reading at publisher" prompt below.
+  // to the abstract when there's no PDF source or extraction failed.
   const hasFullText = Boolean(
     extractedFullText &&
     extractedFullText.trim() &&
@@ -230,13 +225,6 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
 
   const [pdfBlobUrl, setPdfBlobUrl] = useState('');
   const [pdfLoading, setPdfLoading] = useState(false);
-  // True once we've tried and failed to get an embeddable copy of the PDF
-  // (fetch/CORS failure, or the publisher blocks framing outright). We stop
-  // short of ever putting the raw external URL directly into the
-  // <object>/<iframe> src, because that's exactly what produces the
-  // browser's "This content is blocked. Contact the site owner." message —
-  // most publishers send X-Frame-Options/CSP headers that forbid their
-  // pages being framed by anyone, open access or not.
   const [pdfEmbedBlocked, setPdfEmbedBlocked] = useState(false);
 
   // Auto-fetch PDF bytes for searched papers (downloadUrl) & convert uploaded base64 data into Blob URL
@@ -259,8 +247,6 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           createdUrl = URL.createObjectURL(blob);
           if (active) setPdfBlobUrl(createdUrl);
         } catch (err) {
-          // A locally uploaded file is same-origin data, so it's still
-          // safe to use directly here even if the blob conversion failed.
           if (active) setPdfBlobUrl(resource.pdfFileData);
         }
       } else {
@@ -293,14 +279,87 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
     };
   }, [resource.pdfFileData, resource.downloadUrl]);
 
+  // --- True in-app PDF page rendering (pdf.js -> <canvas>) ---
+  const [pdfJsDoc, setPdfJsDoc] = useState(null);
+  const [pdfJsNumPages, setPdfJsNumPages] = useState(0);
+  const [pdfJsPageNum, setPdfJsPageNum] = useState(1);
+  const [pdfJsScale, setPdfJsScale] = useState(1.2);
+  const [pdfJsLoading, setPdfJsLoading] = useState(false);
+  const [pdfJsError, setPdfJsError] = useState('');
+  const pdfCanvasRef = useRef(null);
+  const pdfRenderTaskRef = useRef(null);
+
+  useEffect(() => {
+    let active = true;
+    setPdfJsDoc(null);
+    setPdfJsNumPages(0);
+    setPdfJsPageNum(1);
+    setPdfJsError('');
+
+    if (!pdfBlobUrl) return;
+
+    setPdfJsLoading(true);
+    (async () => {
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+        try {
+          const workerUrl = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url);
+          pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl.href;
+        } catch {
+          const ver = pdfjsLib.version || '4.0.379';
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${ver}/pdf.worker.min.mjs`;
+        }
+
+        const res = await fetch(pdfBlobUrl);
+        const buf = await res.arrayBuffer();
+        const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+        if (!active) return;
+        setPdfJsDoc(doc);
+        setPdfJsNumPages(doc.numPages);
+      } catch (err) {
+        console.warn('pdf.js render setup failed:', err);
+        if (active) setPdfJsError("Couldn't render this PDF page-by-page — try Open PDF Fullscreen, or read the extracted text in Pages.");
+      } finally {
+        if (active) setPdfJsLoading(false);
+      }
+    })();
+
+    return () => { active = false; };
+  }, [pdfBlobUrl]);
+
+  const safePdfPage = Math.min(Math.max(1, pdfJsPageNum), Math.max(1, pdfJsNumPages || 1));
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!pdfJsDoc || !pdfCanvasRef.current) return;
+
+    (async () => {
+      try {
+        if (pdfRenderTaskRef.current) {
+          pdfRenderTaskRef.current.cancel();
+        }
+        const page = await pdfJsDoc.getPage(safePdfPage);
+        if (cancelled) return;
+        const viewport = page.getViewport({ scale: pdfJsScale });
+        const canvas = pdfCanvasRef.current;
+        if (!canvas) return;
+        const context = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const renderTask = page.render({ canvasContext: context, viewport });
+        pdfRenderTaskRef.current = renderTask;
+        await renderTask.promise;
+      } catch (err) {
+        // Render-cancelled errors are expected when flipping pages quickly.
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [pdfJsDoc, safePdfPage, pdfJsScale]);
+
   // --- AI Assistant Logic ---
   const getResolvedContent = async () => {
     if (resolvedContentRef.current !== null) return resolvedContentRef.current;
-    // The background effect above already resolves the best available text
-    // (full extracted document when possible, abstract as a fallback) —
-    // reuse it instead of re-fetching/re-parsing the PDF a second time.
-    // If extraction is still running, wait briefly rather than handing the
-    // AI just the abstract.
     if (isExtractingPdfTextRef.current) {
       setAiExtractingText(true);
       for (let i = 0; i < 20 && isExtractingPdfTextRef.current; i++) {
@@ -402,7 +461,9 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 700, fontSize: '0.92rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resource.title}</div>
             <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>
-              {viewMode === 'pdf' ? 'PDF Document Viewer' : `Page ${safeCurrentPage} of ${totalPages}`}
+              {viewMode === 'pdf'
+                ? (pdfJsDoc ? `Page ${safePdfPage} of ${pdfJsNumPages}` : 'PDF Document Viewer')
+                : `Page ${safeCurrentPage} of ${totalPages}`}
             </div>
           </div>
         </div>
@@ -532,37 +593,53 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                 )}
               </div>
 
-              {isSmallScreen && (
-                <div style={{ padding: '10px 12px', borderRadius: '10px', backgroundColor: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', fontSize: '0.78rem', color: 'var(--text-main)', lineHeight: 1.4 }}>
-                  Inline PDF preview often doesn't render on phones — if this looks blank, tap <strong>Open PDF Fullscreen</strong> above, or switch to <strong>Pages</strong> to read the extracted text right here.
+              {isSmallScreen && pdfJsLoading && (
+                <div style={{ padding: '10px 12px', borderRadius: '10px', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', fontSize: '0.78rem', color: 'var(--text-main)', lineHeight: 1.4 }}>
+                  Rendering pages for a smooth reading experience on this device — this only takes a moment.
                 </div>
               )}
 
-              <div style={{ height: 'calc(100dvh - 200px)', minHeight: '480px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: '#1e293b' }}>
+              <div style={{ height: 'calc(100dvh - 200px)', minHeight: '480px', width: '100%', borderRadius: '12px', overflow: 'auto', border: '1px solid var(--border-color)', backgroundColor: '#1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: pdfJsDoc ? '20px 0' : 0 }}>
                 {pdfLoading ? (
                   <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', color: '#fff' }}>
                     <Loader2 size={36} className="animate-spin" style={{ color: 'var(--primary)' }} />
                     <div style={{ fontWeight: 700 }}>Fetching Full PDF Document...</div>
                   </div>
                 ) : pdfBlobUrl ? (
-                  // pdfBlobUrl is always a local blob: (or data:) URL we
-                  // created ourselves — never the publisher's raw URL — so
-                  // it can't be rejected by their framing headers.
-                  <object
-                    data={pdfBlobUrl}
-                    type="application/pdf"
-                    width="100%"
-                    height="100%"
-                    style={{ border: 'none' }}
-                  >
-                    <iframe
-                      src={pdfBlobUrl}
-                      title={resource.title}
-                      width="100%"
-                      height="100%"
-                      style={{ border: 'none' }}
+                  pdfJsLoading ? (
+                    <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', color: '#fff' }}>
+                      <Loader2 size={36} className="animate-spin" style={{ color: 'var(--primary)' }} />
+                      <div style={{ fontWeight: 700 }}>Rendering PDF pages...</div>
+                    </div>
+                  ) : pdfJsError ? (
+                    <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px', color: '#fff' }}>
+                      <FileCode size={40} style={{ color: 'var(--primary)' }} />
+                      <div style={{ fontSize: '0.85rem', maxWidth: '360px', lineHeight: 1.5, opacity: 0.85 }}>{pdfJsError}</div>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        <a
+                          href={pdfBlobUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary"
+                          style={{ padding: '8px 16px', fontSize: '0.82rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <ExternalLink size={14} />
+                          <span>Open PDF Fullscreen</span>
+                        </a>
+                        <button
+                          onClick={() => setViewMode('page')}
+                          style={{ padding: '8px 16px', fontSize: '0.82rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', backgroundColor: 'transparent' }}
+                        >
+                          Switch to Pages
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <canvas
+                      ref={pdfCanvasRef}
+                      style={{ maxWidth: '100%', height: 'auto', boxShadow: '0 4px 18px rgba(0,0,0,0.45)', borderRadius: '4px' }}
                     />
-                  </object>
+                  )
                 ) : pdfEmbedBlocked ? (
                   <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px', color: '#fff' }}>
                     <FileCode size={40} style={{ color: 'var(--primary)' }} />
@@ -600,11 +677,10 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           )}
 
           {/* ============================================================ */}
-          {/* MODE 2: CONTINUOUS SCROLL PAPER READER (DEFAULT READ EXPERIENCE) */}
+          {/* MODE 2: CONTINUOUS SCROLL PAPER READER                       */}
           {/* ============================================================ */}
           {viewMode === 'scroll' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
-              {/* External Publisher Action Bar */}
               {(resource.downloadUrl || resource.sourceUrl) && (
                 <div style={{
                   padding: '14px 16px',
@@ -643,7 +719,6 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                 </div>
               )}
 
-              {/* Continuous Scroll Article View */}
               <div style={{
                 borderTop: '2px solid var(--border-color)',
                 paddingTop: '20px',
@@ -920,28 +995,57 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
         justifyContent: 'space-between',
         backgroundColor: 'var(--header-bg)'
       }}>
-        <button 
-          disabled={safeCurrentPage <= 1} 
-          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-          style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: safeCurrentPage <= 1 ? 0.4 : 1 }}
-        >
-          <ChevronLeft size={20} /> <span className="btn-text">Previous</span>
-        </button>
+        {viewMode === 'pdf' && pdfJsDoc ? (
+          <>
+            <button
+              disabled={safePdfPage <= 1}
+              onClick={() => setPdfJsPageNum(p => Math.max(1, p - 1))}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: safePdfPage <= 1 ? 0.4 : 1 }}
+            >
+              <ChevronLeft size={20} /> <span className="btn-text">Previous</span>
+            </button>
 
-        {/* Font Zoom Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
-          <button onClick={() => setFontSize(prev => Math.max(12, prev - 2))} style={{ fontWeight: 800, padding: '2px 6px' }}>A-</button>
-          <span>{fontSize}pt</span>
-          <button onClick={() => setFontSize(prev => Math.min(28, prev + 2))} style={{ fontWeight: 800, padding: '2px 6px' }}>A+</button>
-        </div>
+            {/* PDF Zoom Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
+              <button onClick={() => setPdfJsScale(s => Math.max(0.6, +(s - 0.2).toFixed(2)))} style={{ fontWeight: 800, padding: '2px 6px' }}>-</button>
+              <span>{Math.round(pdfJsScale * 100)}%</span>
+              <button onClick={() => setPdfJsScale(s => Math.min(3, +(s + 0.2).toFixed(2)))} style={{ fontWeight: 800, padding: '2px 6px' }}>+</button>
+            </div>
 
-        <button 
-          disabled={safeCurrentPage >= totalPages} 
-          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-          style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: safeCurrentPage >= totalPages ? 0.4 : 1 }}
-        >
-          <span className="btn-text">Next</span> <ChevronRight size={20} />
-        </button>
+            <button
+              disabled={safePdfPage >= pdfJsNumPages}
+              onClick={() => setPdfJsPageNum(p => Math.min(pdfJsNumPages, p + 1))}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: safePdfPage >= pdfJsNumPages ? 0.4 : 1 }}
+            >
+              <span className="btn-text">Next</span> <ChevronRight size={20} />
+            </button>
+          </>
+        ) : (
+          <>
+            <button 
+              disabled={safeCurrentPage <= 1} 
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: safeCurrentPage <= 1 ? 0.4 : 1 }}
+            >
+              <ChevronLeft size={20} /> <span className="btn-text">Previous</span>
+            </button>
+
+            {/* Font Zoom Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
+              <button onClick={() => setFontSize(prev => Math.max(12, prev - 2))} style={{ fontWeight: 800, padding: '2px 6px' }}>A-</button>
+              <span>{fontSize}pt</span>
+              <button onClick={() => setFontSize(prev => Math.min(28, prev + 2))} style={{ fontWeight: 800, padding: '2px 6px' }}>A+</button>
+            </div>
+
+            <button 
+              disabled={safeCurrentPage >= totalPages} 
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: safeCurrentPage >= totalPages ? 0.4 : 1 }}
+            >
+              <span className="btn-text">Next</span> <ChevronRight size={20} />
+            </button>
+          </>
+        )}
       </footer>
 
       {/* Notes Drawer */}
