@@ -58,7 +58,13 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
 
   // --- View Mode & PDF Acquisition State Machine ---
   const isSmallScreen = useIsSmallScreen(880);
-  const hasPdfSource = Boolean(resource.pdfFileData || resource.downloadUrl || resource.resolvedPdfUrl);
+  const hasPdfSource = Boolean(
+    resource.pdfFileData ||
+    resource.downloadUrl ||
+    resource.resolvedPdfUrl ||
+    resource.sourceUrl ||
+    resource.doi
+  );
   
   const hasRealText = Boolean(
     extractedFullText &&
@@ -68,9 +74,9 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
     extractedFullText.trim() !== (resource.abstractText || '').trim()
   );
 
-  // If a PDF document is attached but text hasn't been extracted yet,
-  // default viewMode to 'pdf' so the user sees the actual document immediately
-  // rather than a blank page. If full text exists, default to 'page'.
+  // If a PDF source exists but full text hasn't been extracted yet,
+  // default viewMode to 'pdf' so users see the document canvas immediately.
+  // If full text is already present, default to 'page'.
   const [viewMode, setViewMode] = useState(() => {
     if (hasPdfSource && !hasRealText) return 'pdf';
     return 'page';
@@ -114,7 +120,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
     if (hasPdfSource) {
       loadPdfDocument();
     }
-  }, [resource.id, resource.downloadUrl, resource.pdfFileData]);
+  }, [resource.id, resource.downloadUrl, resource.pdfFileData, resource.sourceUrl, resource.doi]);
 
   // Render PDF via PDF.js when uint8 byte stream is ready
   useEffect(() => {
@@ -530,14 +536,25 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           {/* MODE 2: PAGINATED TEXT VIEWER */}
           {viewMode === 'page' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
-              {/* Notice when text extraction is placeholder but a PDF file is attached */}
-              {!hasRealText && hasPdfSource && (
+              {/* Active Extraction Loading Spinner */}
+              {(isExtractingPdfText || readerState === 'resolving') && (
+                <div style={{ padding: '24px 16px', borderRadius: '12px', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center' }}>
+                  <Loader2 size={28} className="animate-spin" style={{ color: 'var(--primary)' }} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)' }}>Extracting Paper Pages & Text...</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>Retrieving research document content for your device</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Prompt when text extraction is placeholder but a PDF file/source is attached */}
+              {!hasRealText && !isExtractingPdfText && readerState !== 'resolving' && hasPdfSource && (
                 <div style={{ padding: '20px', borderRadius: '12px', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center' }}>
                   <FileText size={28} style={{ color: 'var(--primary)' }} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)' }}>Original PDF Document Attached</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {isExtractingPdfText ? 'Extracting readable text in the background...' : 'View the full formatted document and pages in PDF mode.'}
+                      View the full formatted document and pages in PDF mode.
                     </div>
                   </div>
                   <button onClick={() => setViewMode('pdf')} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', marginTop: '4px' }}>
