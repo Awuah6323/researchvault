@@ -544,17 +544,35 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                 </div>
               )}
 
-              {/* Prompt when text extraction is placeholder but a PDF file/source is attached */}
+              {/* Compact prompt when text extraction is placeholder but a PDF file/source is attached */}
               {!hasRealText && !isExtractingPdfText && readerState !== 'resolving' && hasPdfSource && (
-                <div style={{ padding: '20px', borderRadius: '12px', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center' }}>
-                  <FileText size={28} style={{ color: 'var(--primary)' }} />
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)' }}>Original PDF Document Attached</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      View the full formatted document and pages in PDF mode.
-                    </div>
+                <div style={{
+                  margin: '8px 0 12px',
+                  padding: '8px 14px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '10px',
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <FileText size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                    <span>Original PDF Document Attached</span>
                   </div>
-                  <button onClick={() => setViewMode('pdf')} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', marginTop: '4px' }}>
+                  <button
+                    onClick={() => setViewMode('pdf')}
+                    className="btn-primary"
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '7px',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      marginLeft: 'auto'
+                    }}
+                  >
                     Switch to PDF Mode
                   </button>
                 </div>
