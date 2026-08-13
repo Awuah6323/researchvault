@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Search, Filter, ArrowUpDown, Grid, List, UploadCloud, RefreshCw, Loader2 } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, Grid, List, UploadCloud, RefreshCw, Loader2, Download, FileText } from 'lucide-react';
 import ResourceCard from '../components/ResourceCard';
+import { exportLibraryCitationsPdf } from '../services/citationPdfExporter';
 
 export default function MyLibrary({ 
   resources, 
@@ -25,72 +26,77 @@ export default function MyLibrary({
     if (selectedCategory && r.category !== selectedCategory) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      return r.title.toLowerCase().includes(q) || r.authors.toLowerCase().includes(q) || r.abstractText.toLowerCase().includes(q);
+      const matchTitle = (r.title || '').toLowerCase().includes(q);
+      const matchAuthor = (r.authors || '').toLowerCase().includes(q);
+      const matchCat = (r.category || '').toLowerCase().includes(q);
+      if (!matchTitle && !matchAuthor && !matchCat) return false;
     }
     return true;
   });
 
-  filtered.sort((a, b) => {
-    if (sortOption === 'TITLE') return a.title.localeCompare(b.title);
-    if (sortOption === 'YEAR') return b.publicationYear - a.publicationYear;
-    if (sortOption === 'CITATIONS') return (b.citationCount || 0) - (a.citationCount || 0);
-    return new Date(b.addedAt || 0) - new Date(a.addedAt || 0);
-  });
+  if (sortOption === 'RECENT') {
+    filtered.sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
+  } else if (sortOption === 'TITLE') {
+    filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+  } else if (sortOption === 'YEAR') {
+    filtered.sort((a, b) => (b.publicationYear || 0) - (a.publicationYear || 0));
+  } else if (sortOption === 'CITATIONS') {
+    filtered.sort((a, b) => (b.citationCount || 0) - (a.citationCount || 0));
+  }
+
+  const handleManualSync = async () => {
+    if (!onSyncCloud || syncing) return;
+    setSyncing(true);
+    try {
+      await onSyncCloud();
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Header Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 800 }}>My Academic Library</h1>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Manage, filter, cite, and read your saved research collection.</p>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Literature Library</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>
+            Manage, read, and analyze your research papers ({resources.length} saved records)
+          </p>
         </div>
 
-        {/* Tab Filters & Batch Export */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '6px', backgroundColor: 'var(--bg-card)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-            <button
-              onClick={() => setActiveTabFilter('ALL')}
-              style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, backgroundColor: activeTabFilter === 'ALL' ? 'var(--primary)' : 'transparent', color: activeTabFilter === 'ALL' ? '#fff' : 'var(--text-muted)' }}
-            >
-              All ({resources.length})
-            </button>
-            <button
-              onClick={() => setActiveTabFilter('FAVORITES')}
-              style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, backgroundColor: activeTabFilter === 'FAVORITES' ? 'var(--primary)' : 'transparent', color: activeTabFilter === 'FAVORITES' ? '#fff' : 'var(--text-muted)' }}
-            >
-              Starred ({resources.filter(r => r.isFavorite).length})
-            </button>
-          </div>
-
-          {onOpenAddModal && (
-            <button
-              onClick={onOpenAddModal}
-              className="btn-primary"
-              style={{ padding: '6px 14px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              <UploadCloud size={16} />
-              <span>Upload PDF from Device</span>
-            </button>
-          )}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            onClick={onOpenAddModal}
+            className="btn-primary"
+            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+          >
+            <UploadCloud size={16} />
+            <span>Add Paper</span>
+          </button>
 
           {onSyncCloud && (
             <button
-              onClick={async () => {
-                if (syncing) return;
-                setSyncing(true);
-                try {
-                  await onSyncCloud();
-                } catch (e) {}
-                setSyncing(false);
-              }}
+              onClick={handleManualSync}
               className="btn-secondary"
-              style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              disabled={syncing}
+              style={{ padding: '8px 14px', fontSize: '0.85rem' }}
               title="Sync library across devices"
             >
               {syncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
               <span>{syncing ? 'Syncing...' : 'Sync Cloud'}</span>
             </button>
           )}
+
+          <button
+            onClick={() => exportLibraryCitationsPdf(filtered, 'APA')}
+            className="btn-secondary"
+            style={{ padding: '8px 14px', fontSize: '0.85rem', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)', backgroundColor: 'rgba(16, 185, 129, 0.08)' }}
+            title="Export filtered papers as formatted PDF citation document"
+          >
+            <Download size={15} />
+            <span>Export PDF Citations</span>
+          </button>
 
           <button
             onClick={() => {
@@ -104,10 +110,10 @@ export default function MyLibrary({
               a.click();
             }}
             className="btn-secondary"
-            style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-            title="Export filtered papers as BibTeX citation library"
+            style={{ padding: '8px 12px', fontSize: '0.8rem', opacity: 0.8 }}
+            title="Export as raw BibTeX (.bib) file"
           >
-            Export .BIB Citations
+            .BIB
           </button>
         </div>
       </div>

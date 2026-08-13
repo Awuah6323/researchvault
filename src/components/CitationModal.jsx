@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Copy, Check } from 'lucide-react';
+import { X, Copy, Check, Download, FileText } from 'lucide-react';
 import { STYLES, generateCitation } from '../services/citationGenerator';
+import { exportSingleCitationPdf } from '../services/citationPdfExporter';
 
 export default function CitationModal({ resource, onClose }) {
   const [selectedStyle, setSelectedStyle] = useState('APA');
@@ -16,11 +17,15 @@ export default function CitationModal({ resource, onClose }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleExportPdf = () => {
+    exportSingleCitationPdf(resource, selectedStyle);
+  };
+
   return (
     <div style={{
       position: 'fixed',
       inset: 0,
-      zIndex: 50,
+      zIndex: 500,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       backdropFilter: 'blur(4px)',
       display: 'flex',
@@ -75,15 +80,27 @@ export default function CitationModal({ resource, onClose }) {
           {citationText}
         </div>
 
-        {/* Copy Button */}
-        <button
-          onClick={handleCopy}
-          className="btn-primary"
-          style={{ width: '100%' }}
-        >
-          {copied ? <Check size={18} /> : <Copy size={18} />}
-          <span>{copied ? 'Citation Copied!' : 'Copy to Clipboard'}</span>
-        </button>
+        {/* Action Buttons: Download PDF & Copy */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <button
+            onClick={handleExportPdf}
+            className="btn-primary"
+            style={{ width: '100%' }}
+            title="Download citation formatted directly as a PDF document"
+          >
+            <Download size={18} />
+            <span>Export as PDF</span>
+          </button>
+
+          <button
+            onClick={handleCopy}
+            className="btn-secondary"
+            style={{ width: '100%' }}
+          >
+            {copied ? <Check size={18} /> : <Copy size={18} />}
+            <span>{copied ? 'Citation Copied!' : 'Copy Text'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );
