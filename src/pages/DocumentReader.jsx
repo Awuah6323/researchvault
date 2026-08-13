@@ -563,23 +563,20 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
               {/* External Link Banner when only abstract/summary is available in Pages mode */}
               {isAbstractOnly && !isExtractingPdfText && (resource.sourceUrl || resource.downloadUrl || resource.doi) && (
                 <div style={{
-                  margin: '10px 0 16px',
-                  padding: '18px 20px',
-                  borderRadius: '12px',
+                  margin: '8px 0 12px',
+                  padding: '8px 14px',
+                  borderRadius: '10px',
                   backgroundColor: 'rgba(59, 130, 246, 0.08)',
                   border: '1px solid rgba(59, 130, 246, 0.25)',
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: '10px',
-                  textAlign: 'center'
+                  flexWrap: 'wrap'
                 }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <ExternalLink size={18} style={{ color: 'var(--primary)' }} />
-                    Full Research Publication Available Online
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '460px', lineHeight: 1.45 }}>
-                    This record currently displays the paper's summary abstract in Pages mode. Tap below to access the full complete document on the official publisher site.
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ExternalLink size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                    <span>Viewing Abstract Summary</span>
                   </div>
                   <a
                     href={resource.sourceUrl || resource.downloadUrl || (resource.doi ? `https://doi.org/${resource.doi}` : '#')}
@@ -587,18 +584,19 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                     rel="noopener noreferrer"
                     className="btn-primary"
                     style={{
-                      padding: '9px 18px',
-                      borderRadius: '8px',
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
+                      padding: '5px 12px',
+                      borderRadius: '7px',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
                       textDecoration: 'none',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      marginTop: '4px'
+                      gap: '5px',
+                      whiteSpace: 'nowrap',
+                      marginLeft: 'auto'
                     }}
                   >
-                    <ExternalLink size={15} /> Read Full Paper on Publisher Site
+                    <ExternalLink size={13} /> Read Full Paper
                   </a>
                 </div>
               )}
