@@ -11,13 +11,14 @@ export async function extractTextFromPdfFile(file) {
   try {
     const arrayBuffer = await file.arrayBuffer();
 
-    // 1. Primary Extractor: pdfjs-dist (v6+)
+    if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+      return '';
+    }
+
+    // 1. Primary Extractor: pdfjs-dist
     try {
       const pdfjsLib = await import('pdfjs-dist');
       if (pdfjsLib) {
-        // pdfjs-dist v6 ships .mjs workers. Point to the bundled worker
-        // from the npm package so the CDN version mismatch issue is avoided.
-        // Vite resolves this import to a URL at build time.
         try {
           const workerUrl = new URL(
             'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -25,14 +26,13 @@ export async function extractTextFromPdfFile(file) {
           );
           pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl.href;
         } catch {
-          // If the URL constructor approach fails (e.g. in some bundler configs),
-          // try the CDN fallback matching the installed version
           const ver = pdfjsLib.version || '4.0.379';
           pdfjsLib.GlobalWorkerOptions.workerSrc =
             `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${ver}/pdf.worker.min.mjs`;
         }
 
-        const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+        // Pass a sliced copy so arrayBuffer is never detached by worker transfer
+        const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer.slice(0)) });
         const pdf = await loadingTask.promise;
         let extractedPages = [];
         const pagesToRead = Math.min(pdf.numPages, 30); // Read up to first 30 pages
@@ -52,7 +52,7 @@ export async function extractTextFromPdfFile(file) {
         }
       }
     } catch (pdfJsErr) {
-      console.warn("pdfjs-dist extraction fallback activated:", pdfJsErr);
+      // Non-fatal, fallthrough to binary snippet extractor
     }
 
     // 2. Fallback Extractor: Binary Text Stream Matcher

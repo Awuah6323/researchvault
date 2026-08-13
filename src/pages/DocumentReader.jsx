@@ -118,7 +118,8 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${ver}/pdf.worker.min.mjs`;
         }
 
-        const doc = await pdfjsLib.getDocument({ data: pdfUint8Data }).promise;
+        // Pass a sliced copy so pdfUint8Data's buffer is never detached by web worker transfer
+        const doc = await pdfjsLib.getDocument({ data: pdfUint8Data.slice(0) }).promise;
         if (!active) return;
         setPdfJsDoc(doc);
         setPdfJsNumPages(doc.numPages);
@@ -129,7 +130,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
 
         if (needsFullText) {
           setIsExtractingPdfText(true);
-          const pdfFile = new File([pdfUint8Data], resource.pdfFileName || 'document.pdf', { type: 'application/pdf' });
+          const pdfFile = new File([pdfUint8Data.slice(0)], resource.pdfFileName || 'document.pdf', { type: 'application/pdf' });
           extractTextFromPdfFile(pdfFile)
             .then(extracted => {
               if (active && extracted && extracted.trim().length > 40) {
