@@ -83,9 +83,9 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   }, [resource.id, resource.pdfFileData, resource.fullText, resource.abstractText]);
 
   // --- View Mode & Reader Engine ---
-  // Modes: 'scroll' (Continuous Document), 'pdf' (PDF Viewer), 'page' (Paginated)
+  // Modes: 'pdf' (PDF Viewer), 'page' (Paginated Paper Text)
   const hasPdfSource = Boolean(resource.pdfFileData || resource.downloadUrl);
-  const [viewMode, setViewMode] = useState('scroll'); // Default to scroll mode so every paper is immediately readable!
+  const [viewMode, setViewMode] = useState(hasPdfSource ? 'pdf' : 'page');
 
   const rawPaperText = extractedFullText || resource.fullText || resource.abstractText || '';
   const paperPages = React.useMemo(() => {
@@ -313,7 +313,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 700, fontSize: '0.92rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resource.title}</div>
             <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>
-              {viewMode === 'scroll' ? 'Continuous Scroll Mode' : viewMode === 'pdf' ? 'PDF Document Viewer' : `Page ${safeCurrentPage} of ${totalPages}`}
+              {viewMode === 'pdf' ? 'PDF Document Viewer' : `Page ${safeCurrentPage} of ${totalPages}`}
             </div>
           </div>
         </div>
@@ -321,15 +321,8 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
         {/* Reader Actions & View Mode Selector */}
         <div className="reader-mobile-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
           {/* Reader View Mode Switcher */}
-          <div style={{ display: 'flex', backgroundColor: 'var(--bg-card)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-color)', marginRight: '4px' }}>
-            <button
-              onClick={() => setViewMode('scroll')}
-              style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'scroll' ? 'var(--primary)' : 'transparent', color: viewMode === 'scroll' ? '#fff' : 'var(--text-muted)' }}
-              title="Continuous Scroll Paper Reader"
-            >
-              Scroll
-            </button>
-            {hasPdfSource && (
+          {hasPdfSource && (
+            <div style={{ display: 'flex', backgroundColor: 'var(--bg-card)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-color)', marginRight: '4px' }}>
               <button
                 onClick={() => setViewMode('pdf')}
                 style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'pdf' ? 'var(--primary)' : 'transparent', color: viewMode === 'pdf' ? '#fff' : 'var(--text-muted)' }}
@@ -337,15 +330,15 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
               >
                 PDF
               </button>
-            )}
-            <button
-              onClick={() => setViewMode('page')}
-              style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'page' ? 'var(--primary)' : 'transparent', color: viewMode === 'page' ? '#fff' : 'var(--text-muted)' }}
-              title="Paginated Page Turn Mode"
-            >
-              Pages
-            </button>
-          </div>
+              <button
+                onClick={() => setViewMode('page')}
+                style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'page' ? 'var(--primary)' : 'transparent', color: viewMode === 'page' ? '#fff' : 'var(--text-muted)' }}
+                title="Paginated Page Turn Mode"
+              >
+                Pages
+              </button>
+            </div>
+          )}
 
           <button
             onClick={handleOpenAiPanel}
