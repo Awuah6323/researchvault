@@ -74,13 +74,8 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
     extractedFullText.trim() !== (resource.abstractText || '').trim()
   );
 
-  // If a PDF source exists but full text hasn't been extracted yet,
-  // default viewMode to 'pdf' so users see the document canvas immediately.
-  // If full text is already present, default to 'page'.
-  const [viewMode, setViewMode] = useState(() => {
-    if (hasPdfSource && !hasRealText) return 'pdf';
-    return 'page';
-  });
+  // Always default viewMode to 'page' (Pages mode) across laptop, phone, and tablet.
+  const [viewMode, setViewMode] = useState('page');
 
   // Reader States: 'idle' | 'resolving' | 'fetching' | 'ready' | 'failed'
   const [readerState, setReaderState] = useState('idle');
