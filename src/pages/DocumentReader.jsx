@@ -230,11 +230,20 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
 
   const [pdfBlobUrl, setPdfBlobUrl] = useState('');
   const [pdfLoading, setPdfLoading] = useState(false);
+  // True once we've tried and failed to get an embeddable copy of the PDF
+  // (fetch/CORS failure, or the publisher blocks framing outright). We stop
+  // short of ever putting the raw external URL directly into the
+  // <object>/<iframe> src, because that's exactly what produces the
+  // browser's "This content is blocked. Contact the site owner." message —
+  // most publishers send X-Frame-Options/CSP headers that forbid their
+  // pages being framed by anyone, open access or not.
+  const [pdfEmbedBlocked, setPdfEmbedBlocked] = useState(false);
 
   // Auto-fetch PDF bytes for searched papers (downloadUrl) & convert uploaded base64 data into Blob URL
   useEffect(() => {
     let active = true;
     let createdUrl = null;
+    setPdfEmbedBlocked(false);
 
     if (resource.pdfFileData) {
       if (resource.pdfFileData.startsWith('data:')) {
@@ -250,6 +259,8 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           createdUrl = URL.createObjectURL(blob);
           if (active) setPdfBlobUrl(createdUrl);
         } catch (err) {
+          // A locally uploaded file is same-origin data, so it's still
+          // safe to use directly here even if the blob conversion failed.
           if (active) setPdfBlobUrl(resource.pdfFileData);
         }
       } else {
@@ -257,6 +268,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
       }
     } else if (resource.downloadUrl) {
       setPdfLoading(true);
+      setPdfBlobUrl('');
       fetch(resource.downloadUrl)
         .then(res => {
           if (!res.ok) throw new Error("HTTP " + res.status);
@@ -268,7 +280,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           if (active) setPdfBlobUrl(createdUrl);
         })
         .catch(() => {
-          if (active) setPdfBlobUrl(resource.downloadUrl);
+          if (active) setPdfEmbedBlocked(true);
         })
         .finally(() => {
           if (active) setPdfLoading(false);
@@ -532,22 +544,51 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                     <Loader2 size={36} className="animate-spin" style={{ color: 'var(--primary)' }} />
                     <div style={{ fontWeight: 700 }}>Fetching Full PDF Document...</div>
                   </div>
-                ) : (pdfBlobUrl || resource.pdfFileData || resource.downloadUrl) ? (
+                ) : pdfBlobUrl ? (
+                  // pdfBlobUrl is always a local blob: (or data:) URL we
+                  // created ourselves — never the publisher's raw URL — so
+                  // it can't be rejected by their framing headers.
                   <object
-                    data={pdfBlobUrl || resource.pdfFileData || resource.downloadUrl}
+                    data={pdfBlobUrl}
                     type="application/pdf"
                     width="100%"
                     height="100%"
                     style={{ border: 'none' }}
                   >
                     <iframe
-                      src={pdfBlobUrl || resource.pdfFileData || resource.downloadUrl}
+                      src={pdfBlobUrl}
                       title={resource.title}
                       width="100%"
                       height="100%"
                       style={{ border: 'none' }}
                     />
                   </object>
+                ) : pdfEmbedBlocked ? (
+                  <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px', color: '#fff' }}>
+                    <FileCode size={40} style={{ color: 'var(--primary)' }} />
+                    <div style={{ fontWeight: 700, maxWidth: '360px' }}>This publisher doesn't allow their PDF to be previewed inside another app</div>
+                    <div style={{ fontSize: '0.8rem', opacity: 0.75, maxWidth: '360px', lineHeight: 1.5 }}>
+                      That's a restriction on their site, not on your access to the paper — it's still open access. Open it directly instead, or read the extracted text here.
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                      <a
+                        href={resource.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-primary"
+                        style={{ padding: '8px 16px', fontSize: '0.82rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <ExternalLink size={14} />
+                        <span>Open PDF in New Tab</span>
+                      </a>
+                      <button
+                        onClick={() => setViewMode('page')}
+                        style={{ padding: '8px 16px', fontSize: '0.82rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', backgroundColor: 'transparent' }}
+                      >
+                        Switch to Pages
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
                     <FileCode size={40} style={{ color: 'var(--primary)' }} />
