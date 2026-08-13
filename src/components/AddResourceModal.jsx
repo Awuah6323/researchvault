@@ -100,13 +100,19 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
     e.preventDefault();
     if (!title.trim()) return;
 
+    const rawExtracted = abstractText.trim();
+    const shortAbstract = rawExtracted.length > 400 
+      ? rawExtracted.slice(0, 400) + '...' 
+      : (rawExtracted || 'Imported paper document in ResearchVault digital library.');
+
     onAdd({
       title: title.trim(),
       authors: authors.trim() || 'User Imported Author',
       publicationYear: parseInt(publicationYear) || 2024,
       category,
       resourceType,
-      abstractText: abstractText.trim() || 'Imported paper document in ResearchVault digital library.',
+      abstractText: shortAbstract,
+      fullText: rawExtracted || shortAbstract,
       pdfFileName,
       pdfFileData,
       openAccess: true,

@@ -45,18 +45,59 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
 
   const aiSummaryTypes = ['Executive Summary', 'Key Takeaways', 'Methodology & Proofs', 'Limitations & Critique', 'Peer Review'];
 
-  const totalPages = 10;
-  const progressPercent = Math.round((currentPage / totalPages) * 100);
+  // --- View Mode & Dynamic Text Pagination ---
+  const [viewMode, setViewMode] = useState(resource.pdfFileData ? 'pdf' : 'text'); // 'text' or 'pdf'
+
+  const rawPaperText = resource.fullText || resource.abstractText || '';
+  const paperPages = React.useMemo(() => {
+    if (!rawPaperText || !rawPaperText.trim()) {
+      return ['No extracted text content available for this literature record.'];
+    }
+
+    const text = rawPaperText.trim();
+    // Split by double newlines or chunks of ~1500 chars
+    const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim());
+    if (paragraphs.length <= 1) {
+      // Chunk long single string into ~1500 char blocks
+      const chunks = [];
+      for (let i = 0; i < text.length; i += 1500) {
+        chunks.push(text.slice(i, i + 1500));
+      }
+      return chunks.length > 0 ? chunks : [text];
+    }
+
+    const pages = [];
+    let currentPageText = '';
+    
+    for (const p of paragraphs) {
+      if ((currentPageText + '\n\n' + p).length > 1600 && currentPageText.trim().length > 0) {
+        pages.push(currentPageText.trim());
+        currentPageText = p;
+      } else {
+        currentPageText = currentPageText ? currentPageText + '\n\n' + p : p;
+      }
+    }
+    if (currentPageText.trim()) {
+      pages.push(currentPageText.trim());
+    }
+
+    return pages.length > 0 ? pages : [text];
+  }, [rawPaperText]);
+
+  const totalPages = Math.max(1, paperPages.length);
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const activePageText = paperPages[safeCurrentPage - 1] || paperPages[0] || '';
+  const progressPercent = Math.round((safeCurrentPage / totalPages) * 100);
 
   useEffect(() => {
-    storage.updateReadingProgress(resource.id, progressPercent, currentPage);
+    storage.updateReadingProgress(resource.id, progressPercent, safeCurrentPage);
     setNotes(storage.getNotes(resource.id));
-  }, [currentPage]);
+  }, [safeCurrentPage]);
 
   const handleAddNote = (e) => {
     e.preventDefault();
     if (!newNote.trim()) return;
-    const updated = storage.addNote(resource.id, newNote.trim(), currentPage);
+    const updated = storage.addNote(resource.id, newNote.trim(), safeCurrentPage);
     setNotes(updated);
     setNewNote('');
   };
@@ -104,7 +145,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   // --- AI Assistant Logic ---
   const getResolvedContent = async () => {
     if (resolvedContentRef.current !== null) return resolvedContentRef.current;
-    const stored = resource.abstractText || '';
+    const stored = resource.fullText || resource.abstractText || '';
     const isPlaceholder =
       !stored.trim() ||
       stored.trim() === PLACEHOLDER_TEXT ||
@@ -153,7 +194,6 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   const handleOpenAiPanel = () => {
     setShowAiPanel(true);
     setShowNotesDrawer(false);
-    // Auto-generate summary on first open
     if (!aiSummaryResult && !aiLoading) {
       handleAiGenerateSummary(aiSummaryType);
     }
@@ -183,7 +223,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   }, [aiChatHistory, aiLoading]);
 
   const handleAiSaveNote = (text) => {
-    storage.addNote(resource.id, text, currentPage);
+    storage.addNote(resource.id, text, safeCurrentPage);
     setNotes(storage.getNotes(resource.id));
   };
 
@@ -191,45 +231,69 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
     <div style={{
       position: 'fixed',
       inset: 0,
-      zIndex: 100,
+      zIndex: 500,
       backgroundColor: themeColors.bg,
       color: themeColors.text,
       display: 'flex',
       flexDirection: 'column'
     }}>
       {/* Reader Header */}
-      <header style={{
-        padding: '12px 24px',
+      <header className="reader-mobile-header" style={{
+        padding: '10px 16px',
         borderBottom: '1px solid var(--border-color)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: 'var(--header-bg)',
-        backdropFilter: 'blur(8px)'
+        backdropFilter: 'blur(8px)',
+        zIndex: 510
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0, flex: 1 }}>
-          <button onClick={onClose} style={{ color: 'inherit', padding: '6px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+          <button onClick={onClose} title="Back to Library" style={{ color: 'inherit', padding: '6px', flexShrink: 0 }}>
             <ArrowLeft size={20} />
           </button>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: '1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resource.title}</div>
-            <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Page {currentPage} of {totalPages} • {progressPercent}% Completed</div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.92rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resource.title}</div>
+            <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>Page {safeCurrentPage} of {totalPages} • {progressPercent}% Read</div>
           </div>
         </div>
 
         {/* Reader Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+        <div className="reader-mobile-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          {resource.pdfFileData && (
+            <div style={{ display: 'flex', backgroundColor: 'var(--bg-card)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-color)', marginRight: '4px' }}>
+              <button
+                onClick={() => setViewMode('text')}
+                style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'text' ? 'var(--primary)' : 'transparent', color: viewMode === 'text' ? '#fff' : 'var(--text-muted)' }}
+                title="Full Paper Text Reader"
+              >
+                Text
+              </button>
+              <button
+                onClick={() => setViewMode('pdf')}
+                style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'pdf' ? 'var(--primary)' : 'transparent', color: viewMode === 'pdf' ? '#fff' : 'var(--text-muted)' }}
+                title="Original PDF Document"
+              >
+                PDF
+              </button>
+            </div>
+          )}
+
           <button
             onClick={handleOpenAiPanel}
             className="btn-primary"
+            title="Gemini AI Assistant"
             style={{
-              padding: '6px 14px',
-              fontSize: '0.8rem',
+              padding: '6px 10px',
+              fontSize: '0.78rem',
               backgroundColor: showAiPanel ? 'var(--secondary)' : undefined,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
             }}
           >
-            <Sparkles size={16} />
-            <span>AI Assistant</span>
+            <Sparkles size={15} />
+            <span className="btn-text">AI</span>
           </button>
 
           {(pdfBlobUrl || resource.pdfFileData || resource.downloadUrl || resource.sourceUrl) && (
@@ -239,17 +303,16 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
               target={pdfBlobUrl ? undefined : "_blank"}
               rel={pdfBlobUrl ? undefined : "noopener noreferrer"}
               title="Download PDF Document"
-              style={{ padding: '8px', color: '#10b981', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ padding: '6px', color: '#10b981', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <Download size={18} />
+              <Download size={17} />
             </a>
           )}
 
-          <button onClick={() => { setShowNotesDrawer(!showNotesDrawer); setShowAiPanel(false); }} style={{ padding: '8px', color: 'inherit' }}>
-            <FileText size={18} />
+          <button onClick={() => { setShowNotesDrawer(!showNotesDrawer); setShowAiPanel(false); }} title="Notes" style={{ padding: '6px', color: 'inherit' }}>
+            <FileText size={17} />
           </button>
 
-          {/* Delete Paper Button */}
           {onDeleteResource && (
             <button
               onClick={() => {
@@ -258,35 +321,30 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                   onClose();
                 }
               }}
-              title="Delete paper from library"
+              title="Delete paper"
               style={{
-                padding: '6px 10px',
+                padding: '6px',
                 borderRadius: '8px',
                 color: '#ef4444',
                 backgroundColor: 'rgba(239,68,68,0.1)',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '4px',
-                fontSize: '0.78rem',
-                fontWeight: 700,
                 border: 'none',
                 cursor: 'pointer'
               }}
             >
-              <Trash2 size={14} />
-              <span>Delete</span>
+              <Trash2 size={15} />
             </button>
           )}
 
-          {/* Theme Selector */}
           <select
             value={readerTheme}
             onChange={(e) => setReaderTheme(e.target.value)}
-            style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.8rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'inherit' }}
+            style={{ padding: '4px 6px', borderRadius: '6px', fontSize: '0.75rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'inherit' }}
           >
-            <option value="light">Light</option>
-            <option value="sepia">Sepia</option>
-            <option value="dark">Dark</option>
+            <option value="light">☀️</option>
+            <option value="sepia">📜</option>
+            <option value="dark">🌙</option>
           </select>
         </div>
       </header>
@@ -295,42 +353,59 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* Document Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '30px max(20px, (100vw - 840px) / 2)', transition: 'all 0.3s ease' }}>
-          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2rem', fontWeight: 800, marginBottom: '8px' }}>{resource.title}</h1>
-          <div style={{ fontSize: '0.95rem', fontWeight: 600, opacity: 0.8, marginBottom: '16px' }}>{resource.authors} ({resource.publicationYear})</div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--primary)', marginBottom: '24px' }}>Published in: {resource.journal || 'Academic Repository'}</div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px max(16px, (100vw - 840px) / 2)', transition: 'all 0.3s ease' }}>
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', fontWeight: 800, marginBottom: '6px' }}>{resource.title}</h1>
+          <div style={{ fontSize: '0.88rem', fontWeight: 600, opacity: 0.8, marginBottom: '12px' }}>{resource.authors} ({resource.publicationYear})</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--primary)', marginBottom: '20px' }}>Published in: {resource.journal || 'Academic Repository'}</div>
 
-          {resource.pdfFileData ? (
-            <div style={{ height: '700px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', marginBottom: '24px', backgroundColor: '#1e293b' }}>
-              {pdfBlobUrl ? (
-                <object
-                  data={pdfBlobUrl}
-                  type="application/pdf"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 'none' }}
-                >
-                  <iframe
-                    src={pdfBlobUrl}
-                    title={resource.title}
+          {resource.pdfFileData && viewMode === 'pdf' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>PDF Viewer</span>
+                {pdfBlobUrl && (
+                  <a
+                    href={pdfBlobUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary"
+                    style={{ padding: '6px 12px', fontSize: '0.78rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <ExternalLink size={14} />
+                    <span>Open Fullscreen PDF</span>
+                  </a>
+                )}
+              </div>
+              <div style={{ height: 'calc(100vh - 220px)', minHeight: '450px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: '#1e293b' }}>
+                {pdfBlobUrl ? (
+                  <object
+                    data={pdfBlobUrl}
+                    type="application/pdf"
                     width="100%"
                     height="100%"
                     style={{ border: 'none' }}
-                  />
-                </object>
-              ) : (
-                <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                  <FileCode size={40} style={{ color: 'var(--primary)' }} />
-                  <div style={{ fontWeight: 700 }}>Loading PDF Document...</div>
-                </div>
-              )}
+                  >
+                    <iframe
+                      src={pdfBlobUrl}
+                      title={resource.title}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 'none' }}
+                    />
+                  </object>
+                ) : (
+                  <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                    <FileCode size={40} style={{ color: 'var(--primary)' }} />
+                    <div style={{ fontWeight: 700 }}>Loading PDF Document...</div>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
               {/* Publisher PDF Action Bar */}
               {(resource.downloadUrl || resource.sourceUrl) && (
                 <div style={{
-                  padding: '20px',
+                  padding: '14px 16px',
                   borderRadius: '12px',
                   backgroundColor: 'rgba(16, 185, 129, 0.08)',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
@@ -338,53 +413,48 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   flexWrap: 'wrap',
-                  gap: '14px'
+                  gap: '10px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <ShieldCheck size={28} style={{ color: '#10b981' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <ShieldCheck size={24} style={{ color: '#10b981' }} />
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)' }}>
                         Publisher Paper Document ({resource.openAccess ? 'Open Access' : 'Verified Metadata'})
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        External academic sources (arXiv, IEEE, OpenAlex) protect iframe embedding. Access full PDF directly:
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Access full original publisher document:
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    {(resource.downloadUrl || resource.sourceUrl) && (
-                      <a
-                        href={resource.downloadUrl || resource.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-primary"
-                        style={{ padding: '8px 16px', fontSize: '0.85rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        <Download size={16} />
-                        <span>Open / Download Full PDF</span>
-                        <ExternalLink size={14} />
-                      </a>
-                    )}
-                  </div>
+                  <a
+                    href={resource.downloadUrl || resource.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary"
+                    style={{ padding: '6px 14px', fontSize: '0.8rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Download size={14} />
+                    <span>Open Publisher PDF</span>
+                    <ExternalLink size={12} />
+                  </a>
                 </div>
               )}
 
-              {/* Abstract Text Reader */}
-              <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: '20px', fontFamily: 'var(--font-serif)', fontSize: `${fontSize}px`, lineHeight: 1.7 }}>
-                <h2 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Abstract</h2>
-                <p style={{ marginBottom: '24px' }}>{resource.abstractText}</p>
+              {/* Paginated Paper Text Reader */}
+              <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: '16px', fontFamily: 'var(--font-serif)', fontSize: `${fontSize}px`, lineHeight: 1.75 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+                  <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>
+                    Section / Page {safeCurrentPage} of {totalPages}
+                  </h2>
+                  <span style={{ fontSize: '0.78rem', opacity: 0.7 }}>
+                    {activePageText.length} characters
+                  </span>
+                </div>
 
-                <h2 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Chapter {currentPage}: Research Background & Methodology</h2>
-                <p style={{ marginBottom: '16px' }}>
-                  Academic research requires methodical literature synthesis, persistent document storage, and flexible citation management. ResearchVault provides direct access to open-access scholarly materials.
-                </p>
-                <p style={{ marginBottom: '16px' }}>
-                  In recent years, scholarly publications have accelerated in volume. Modern researchers require built-in annotation tools, citation formatting engines, and categorized collection managers to streamline their study workflows.
-                </p>
-                <p style={{ marginBottom: '16px' }}>
-                  Experimental results confirm a significant reduction in citation assembly time and enhanced literature synthesis when utilizing structured data representation models.
-                </p>
+                <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'inherit' }}>
+                  {activePageText}
+                </div>
               </div>
             </div>
           )}
@@ -575,26 +645,26 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
         backgroundColor: 'var(--header-bg)'
       }}>
         <button 
-          disabled={currentPage <= 1} 
+          disabled={safeCurrentPage <= 1} 
           onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-          style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: currentPage <= 1 ? 0.4 : 1 }}
+          style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: safeCurrentPage <= 1 ? 0.4 : 1 }}
         >
-          <ChevronLeft size={20} /> Previous Page
+          <ChevronLeft size={20} /> <span className="btn-text">Previous</span>
         </button>
 
         {/* Font Zoom Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.85rem' }}>
-          <button onClick={() => setFontSize(prev => Math.max(12, prev - 2))} style={{ fontWeight: 800 }}>A-</button>
-          <span>{fontSize} pt</span>
-          <button onClick={() => setFontSize(prev => Math.min(28, prev + 2))} style={{ fontWeight: 800 }}>A+</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
+          <button onClick={() => setFontSize(prev => Math.max(12, prev - 2))} style={{ fontWeight: 800, padding: '2px 6px' }}>A-</button>
+          <span>{fontSize}pt</span>
+          <button onClick={() => setFontSize(prev => Math.min(28, prev + 2))} style={{ fontWeight: 800, padding: '2px 6px' }}>A+</button>
         </div>
 
         <button 
-          disabled={currentPage >= totalPages} 
+          disabled={safeCurrentPage >= totalPages} 
           onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-          style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: currentPage >= totalPages ? 0.4 : 1 }}
+          style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: safeCurrentPage >= totalPages ? 0.4 : 1 }}
         >
-          Next Page <ChevronRight size={20} />
+          <span className="btn-text">Next</span> <ChevronRight size={20} />
         </button>
       </footer>
 

@@ -859,10 +859,29 @@ html, body {
   }
 
   main {
-    padding: 12px 10px !important;
+    padding: 14px 12px 120px 12px !important;
     width: 100vw !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;
+  }
+
+  /* Reader Mobile Header & Container fixes */
+  .reader-mobile-header {
+    padding: 8px 12px !important;
+    gap: 8px !important;
+  }
+
+  .reader-mobile-actions {
+    gap: 4px !important;
+  }
+
+  .reader-mobile-actions button, .reader-mobile-actions a {
+    padding: 6px 8px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .reader-mobile-actions .btn-text {
+    display: none !important;
   }
 
   header {

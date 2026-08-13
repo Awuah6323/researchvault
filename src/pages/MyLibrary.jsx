@@ -156,7 +156,7 @@ export default function MyLibrary({
           <div style={{ fontSize: '0.85rem' }}>Try clearing your filters or search query.</div>
         </div>
       ) : (
-        <div className="paper-card-grid">
+        <div className="paper-card-grid" style={{ paddingBottom: '40px' }}>
           {filtered.map(r => (
             <ResourceCard
               key={r.id}
