@@ -97,20 +97,12 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
     let active = true;
     const storedFullText = (resource.fullText || '').trim();
 
-    // resource.fullText is only ever set once real full-document extraction
-    // has succeeded. resource.abstractText is a short summary — from a
-    // search result, DOI lookup, or the user's own notes — and must never
-    // be mistaken for "we already have the whole paper", or extraction
-    // never runs and the reader is stuck showing just the abstract forever.
     const alreadyHasFullText =
       storedFullText.length > 0 &&
       storedFullText !== PLACEHOLDER_TEXT &&
       !storedFullText.toLowerCase().includes('imported paper document in researchvault') &&
       storedFullText !== (resource.abstractText || '').trim();
 
-    // Search-added / DOI-added papers only ever carry a downloadUrl (an
-    // open-access PDF link), never pdfFileData — so that has to count as an
-    // extractable source too, not just a locally uploaded file.
     const hasExtractableSource = Boolean(resource.pdfFileData || resource.downloadUrl);
 
     if (!alreadyHasFullText && hasExtractableSource) {
@@ -126,8 +118,6 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
             const cleanText = extracted.trim();
             setExtractedFullText(cleanText);
             try {
-              // Store the extracted full text without touching the
-              // original short abstract shown on the library card.
               storage.updateResource(resource.id, { fullText: cleanText });
             } catch (e) {}
           } else {
@@ -148,14 +138,10 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   }, [resource.id, resource.pdfFileData, resource.downloadUrl, resource.fullText, resource.abstractText]);
 
   // --- View Mode & Reader Engine ---
-  // Modes: 'pdf' (PDF Viewer), 'page' (Paginated Paper Text)
   const isSmallScreen = useIsSmallScreen(880);
   const hasPdfSource = Boolean(resource.pdfFileData || resource.downloadUrl);
-  // pdf.js canvas rendering works smoothly on phones and laptops alike.
   const [viewMode, setViewMode] = useState(hasPdfSource ? 'pdf' : 'page');
 
-  // True only once real extraction succeeded — extractedFullText falls back
-  // to the abstract when there's no PDF source or extraction failed.
   const hasFullText = Boolean(
     extractedFullText &&
     extractedFullText.trim() &&
@@ -643,9 +629,9 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                 ) : pdfEmbedBlocked ? (
                   <div style={{ padding: '40px', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px', color: '#fff' }}>
                     <FileCode size={40} style={{ color: 'var(--primary)' }} />
-                    <div style={{ fontWeight: 700, maxWidth: '360px' }}>This publisher doesn't allow their PDF to be previewed inside another app</div>
+                    <div style={{ fontWeight: 700, maxWidth: '360px' }}>Couldn't load this PDF's content directly into the app</div>
                     <div style={{ fontSize: '0.8rem', opacity: 0.75, maxWidth: '360px', lineHeight: 1.5 }}>
-                      That's a restriction on their site, not on your access to the paper — it's still open access. Open it directly instead, or read the extracted text here.
+                      This publisher's server doesn't allow another website's code to download the file directly (a common browser security default, not a deliberate block on you) — it's still open access and fully downloadable. Open it directly to read it, or switch to Pages for the abstract and a link back to the source (the same restriction usually means full text couldn't be pulled in either).
                     </div>
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
                       <a
