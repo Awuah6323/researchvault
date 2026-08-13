@@ -241,6 +241,15 @@ export default function App() {
   const handleDeleteResource = (id) => {
     const updated = storage.deleteResource(id);
     setResources(updated);
+    if (activeReaderResource && String(activeReaderResource.id) === String(id)) {
+      setActiveReaderResource(null);
+    }
+    if (citationModalResource && String(citationModalResource.id) === String(id)) {
+      setCitationModalResource(null);
+    }
+    if (aiModalResource && String(aiModalResource.id) === String(id)) {
+      setAiModalResource(null);
+    }
   };
 
   const handleImportBackup = (importedList) => {

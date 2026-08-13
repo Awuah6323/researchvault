@@ -254,25 +254,25 @@ export const storage = {
   },
 
   toggleFavorite(id) {
-    const list = this.getResources().map(r => r.id === id ? { ...r, isFavorite: !r.isFavorite } : r);
+    const list = this.getResources().map(r => String(r.id) === String(id) ? { ...r, isFavorite: !r.isFavorite } : r);
     this.saveResources(list);
     return list;
   },
 
   deleteResource(id) {
-    const list = this.getResources().filter(r => r.id !== id);
+    const list = this.getResources().filter(r => String(r.id) !== String(id));
     this.saveResources(list);
     return list;
   },
 
   updateReadingProgress(id, progress, page) {
-    const list = this.getResources().map(r => r.id === id ? { ...r, readingProgressPercent: progress, lastPageRead: page } : r);
+    const list = this.getResources().map(r => String(r.id) === String(id) ? { ...r, readingProgressPercent: progress, lastPageRead: page } : r);
     this.saveResources(list);
     return list;
   },
 
   updateResource(id, updates) {
-    const list = this.getResources().map(r => r.id === id ? { ...r, ...updates } : r);
+    const list = this.getResources().map(r => String(r.id) === String(id) ? { ...r, ...updates } : r);
     this.saveResources(list);
     return list;
   },
