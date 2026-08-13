@@ -74,6 +74,9 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
     extractedFullText.trim() !== (resource.abstractText || '').trim()
   );
 
+  const rawPaperText = extractedFullText || resource.fullText || resource.abstractText || '';
+  const isAbstractOnly = !hasRealText || (rawPaperText || '').length < 800 || rawPaperText === (resource.abstractText || '').trim();
+
   // Always default viewMode to 'page' (Pages mode) across laptop, phone, and tablet.
   const [viewMode, setViewMode] = useState('page');
 
@@ -202,7 +205,6 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   }, [pdfJsDoc, safePdfPage, pdfJsScale]);
 
   // Text Pagination
-  const rawPaperText = extractedFullText || resource.fullText || resource.abstractText || '';
   const paperPages = React.useMemo(() => {
     if (!rawPaperText || !rawPaperText.trim() || rawPaperText === PLACEHOLDER_TEXT) {
       return ['No extracted text content available for this literature record.'];
@@ -555,6 +557,49 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                   <button onClick={() => setViewMode('pdf')} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', marginTop: '4px' }}>
                     Switch to PDF Mode
                   </button>
+                </div>
+              )}
+
+              {/* External Link Banner when only abstract/summary is available in Pages mode */}
+              {isAbstractOnly && !isExtractingPdfText && (resource.sourceUrl || resource.downloadUrl || resource.doi) && (
+                <div style={{
+                  margin: '10px 0 16px',
+                  padding: '18px 20px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '10px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ExternalLink size={18} style={{ color: 'var(--primary)' }} />
+                    Full Research Publication Available Online
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '460px', lineHeight: 1.45 }}>
+                    This record currently displays the paper's summary abstract in Pages mode. Tap below to access the full complete document on the official publisher site.
+                  </div>
+                  <a
+                    href={resource.sourceUrl || resource.downloadUrl || (resource.doi ? `https://doi.org/${resource.doi}` : '#')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary"
+                    style={{
+                      padding: '9px 18px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      marginTop: '4px'
+                    }}
+                  >
+                    <ExternalLink size={15} /> Read Full Paper on Publisher Site
+                  </a>
                 </div>
               )}
 

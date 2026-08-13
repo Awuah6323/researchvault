@@ -321,11 +321,31 @@ function reconstructAbstract(invertedIndex) {
   return map.filter(Boolean).join(' ');
 }
 
-function suggestCategory(title) {
-  const t = title.toLowerCase();
-  if (t.includes('ai') || t.includes('learning') || t.includes('transformer')) return 'Artificial Intelligence';
-  if (t.includes('security') || t.includes('crypto')) return 'Cybersecurity';
-  if (t.includes('data') || t.includes('graph')) return 'Data Science';
+export function suggestCategory(title = '', abstractText = '') {
+  const text = (title + ' ' + abstractText).toLowerCase();
+  
+  if (text.match(/medici|health|clinic|patient|cancer|disease|vaccine|therapy|biomed|pharma|hospital|tumor|cell|gene|dna|surgery|doctor|covid|virus|infection|nurs/i)) {
+    return 'Medicine & Healthcare';
+  }
+  if (text.match(/ai\b|artificial intelligence|machine learning|deep learning|neural|transformer|llm|gpt|large language|reinforcement|computer vision|nlp|natural language|robot|classifier|supervised|unsupervised|clustering|backpropagation/i)) {
+    return 'Artificial Intelligence';
+  }
+  if (text.match(/cyber|security|crypto|steganography|vulnerab|threat|malware|ransomware|privacy|authentication|encryption|firewall|intrusion|phishing|attack|defense|zero-trust/i)) {
+    return 'Cybersecurity';
+  }
+  if (text.match(/data science|big data|analytics|statistical|statistics|data mining|graph neural|dataset|forecast|time series|regression|dataframe|data visualization/i)) {
+    return 'Data Science';
+  }
+  if (text.match(/cloud|distributed system|serverless|container|docker|kubernetes|microservice|virtualization|aws|azure|edge computing|fog computing/i)) {
+    return 'Cloud Computing';
+  }
+  if (text.match(/software|refactoring|design pattern|agile|devops|source code|git|testing|bug|defect|programming language|compiler|api design|framework|architecture/i)) {
+    return 'Software Engineering';
+  }
+  if (text.match(/literature review|meta-analysis|systematic review|survey|methodology|qualitative|quantitative|mixed-methods|bibliometric|empirical study/i)) {
+    return 'Research Methods';
+  }
+  
   return 'Computer Science';
 }
 

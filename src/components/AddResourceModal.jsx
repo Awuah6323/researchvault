@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Link2, FileText, Search, Loader2, UploadCloud, Check } from 'lucide-react';
-import { searchAcademicSources } from '../services/academicSearch';
+import { searchAcademicSources, suggestCategory } from '../services/academicSearch';
 import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 
 export default function AddResourceModal({ onClose, onAdd, categories, onNavigateSearch }) {
@@ -28,9 +28,10 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
       setReadingFile(true);
       setExtractionStatus('Extracting text content from PDF...');
 
+      const cleanName = file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ');
+      const autoTitle = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
       if (!title) {
-        const cleanName = file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ');
-        setTitle(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
+        setTitle(autoTitle);
       }
 
       // Extract real text from the PDF file for Gemini AI
@@ -39,12 +40,18 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
         if (extractedText && extractedText.trim()) {
           setAbstractText(extractedText.trim());
           setExtractionStatus('Extracted text content from PDF successfully!');
+          const autoCat = suggestCategory(title || autoTitle, extractedText);
+          setCategory(autoCat);
         } else {
           setExtractionStatus('PDF attached.');
+          const autoCat = suggestCategory(title || autoTitle, '');
+          setCategory(autoCat);
         }
       } catch (err) {
         console.warn("PDF extraction warning:", err);
         setExtractionStatus('PDF attached.');
+        const autoCat = suggestCategory(title || autoTitle, '');
+        setCategory(autoCat);
       }
 
       const reader = new FileReader();
@@ -70,6 +77,7 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
       const results = Array.isArray(response) ? response : (response?.results || []);
       if (results && results.length > 0) {
         const item = results[0];
+        const autoCat = suggestCategory(item.title || '', item.abstractText || '');
         onAdd({
           title: item.title,
           authors: item.authors,
@@ -80,7 +88,7 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
           sourceUrl: item.sourceUrl,
           downloadUrl: item.downloadUrl,
           resourceType: item.resourceType,
-          category: item.suggestedCategory || category,
+          category: item.suggestedCategory || autoCat || category,
           openAccess: item.openAccess,
           citationCount: item.citationCount,
           downloadStatus: 'COMPLETED'
@@ -105,11 +113,13 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
       ? rawExtracted.slice(0, 400) + '...' 
       : (rawExtracted || 'Imported paper document in ResearchVault digital library.');
 
+    const finalCategory = (category && category !== 'Computer Science') ? category : suggestCategory(title.trim(), rawExtracted);
+
     onAdd({
       title: title.trim(),
       authors: authors.trim() || 'User Imported Author',
       publicationYear: parseInt(publicationYear) || 2024,
-      category,
+      category: finalCategory,
       resourceType,
       abstractText: shortAbstract,
       fullText: rawExtracted || shortAbstract,
