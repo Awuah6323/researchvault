@@ -271,6 +271,12 @@ export const storage = {
     return list;
   },
 
+  updateResource(id, updates) {
+    const list = this.getResources().map(r => r.id === id ? { ...r, ...updates } : r);
+    this.saveResources(list);
+    return list;
+  },
+
   getCategories() {
     const key = getScopedKey(BASE_KEYS.CATEGORIES);
     const data = localStorage.getItem(key);

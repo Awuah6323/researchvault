@@ -45,19 +45,55 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
 
   const aiSummaryTypes = ['Executive Summary', 'Key Takeaways', 'Methodology & Proofs', 'Limitations & Critique', 'Peer Review'];
 
+  // --- Auto Full Text Resolution & Background Extraction ---
+  const [extractedFullText, setExtractedFullText] = useState(resource.fullText || '');
+  const [isExtractingPdfText, setIsExtractingPdfText] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const stored = resource.fullText || resource.abstractText || '';
+    const isPlaceholder =
+      !stored.trim() ||
+      stored.trim() === PLACEHOLDER_TEXT ||
+      stored.trim().toLowerCase().includes('imported paper document in researchvault');
+
+    if (isPlaceholder && resource.pdfFileData) {
+      setIsExtractingPdfText(true);
+      extractTextFromDataUrl(resource.pdfFileData, resource.pdfFileName)
+        .then(extracted => {
+          if (active && extracted && extracted.trim().length > 40) {
+            const cleanText = extracted.trim();
+            setExtractedFullText(cleanText);
+            try {
+              storage.updateResource(resource.id, {
+                fullText: cleanText,
+                abstractText: cleanText.length > 400 ? cleanText.slice(0, 400) + '...' : cleanText
+              });
+            } catch (e) {}
+          }
+        })
+        .finally(() => {
+          if (active) setIsExtractingPdfText(false);
+        });
+    } else {
+      setExtractedFullText(stored);
+    }
+
+    return () => { active = false; };
+  }, [resource.id, resource.pdfFileData, resource.fullText, resource.abstractText]);
+
   // --- View Mode & Reader Engine ---
   // Modes: 'scroll' (Continuous Document), 'pdf' (PDF Viewer), 'page' (Paginated)
   const hasPdfSource = Boolean(resource.pdfFileData || resource.downloadUrl);
-  const [viewMode, setViewMode] = useState(hasPdfSource ? 'pdf' : 'scroll');
+  const [viewMode, setViewMode] = useState('scroll'); // Default to scroll mode so every paper is immediately readable!
 
-  const rawPaperText = resource.fullText || resource.abstractText || '';
+  const rawPaperText = extractedFullText || resource.fullText || resource.abstractText || '';
   const paperPages = React.useMemo(() => {
     if (!rawPaperText || !rawPaperText.trim()) {
       return ['No extracted text content available for this literature record.'];
     }
 
     const text = rawPaperText.trim();
-    // Split by double newlines or chunks of ~1500 chars
     const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim());
     if (paragraphs.length <= 1) {
       const chunks = [];
