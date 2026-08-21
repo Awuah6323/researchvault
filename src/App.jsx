@@ -21,6 +21,7 @@ import ProfileSettings from './pages/ProfileSettings';
 import NotesManager from './pages/NotesManager';
 import AiChat from './pages/AiChat';
 import AuthPage from './pages/AuthPage';
+import PasswordResetModal from './components/PasswordResetModal';
 
 import { storage } from './services/storage';
 
@@ -53,6 +54,10 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUserGuideModal, setShowUserGuideModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Set when the app is opened from a password-reset email, which signs the
+  // user in with a session whose only purpose is choosing a new password.
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
 
   // PWA Install State
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -137,10 +142,39 @@ export default function App() {
       pullIfActive();
     };
 
-    // Background sync. 15s was aggressive enough to clobber in-progress edits
-    // and re-render the tree four times a minute while idle; 60s while visible
-    // is still well inside "feels live" for cross-device use.
-    const autoSyncInterval = setInterval(pullIfActive, 60000);
+    /**
+     * Restores a stored Supabase session and watches for auth changes.
+     *
+     * Three things depend on this: a returning visitor staying signed in, the
+     * Google redirect landing back here with a session in the URL, and the
+     * password-reset link opening the app in recovery mode.
+     */
+    let disposeAuth = () => {};
+    storage
+      .initAuth((event, user) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          setShowPasswordReset(true);
+          return;
+        }
+        if (event === 'SIGNED_OUT') {
+          setUserProfile(null);
+          return;
+        }
+        if (user) {
+          setUserProfile(storage.getSession());
+          refreshAppData();
+        }
+      })
+      .then((dispose) => {
+        disposeAuth = dispose || (() => {});
+        // Realtime needs a session, so it can only start once one exists.
+        storage.startRealtimeSync();
+      });
+
+    // Safety net, not the primary mechanism. Another device's change arrives
+    // over the realtime subscription within about a second; this only covers a
+    // socket that dropped without us noticing, so it can be slow and cheap.
+    const autoSyncInterval = setInterval(pullIfActive, 180000);
 
     // Sync immediately when the tab becomes visible again rather than waiting
     // out the remainder of the interval.
@@ -169,6 +203,8 @@ export default function App() {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(autoSyncInterval);
+      storage.stopRealtimeSync();
+      disposeAuth();
       unsubscribeSync();
     };
   }, []);
@@ -485,6 +521,19 @@ export default function App() {
         <AuthModal
           onClose={() => setShowAuthModal(false)}
           onLoginSuccess={handleLoginSuccess}
+        />
+      )}
+
+      {/* Shown when the app is opened from a password-reset email. Rendered
+          above everything else because the recovery session is only good for
+          this one task. */}
+      {showPasswordReset && (
+        <PasswordResetModal
+          onDone={() => {
+            setShowPasswordReset(false);
+            setUserProfile(storage.getSession());
+            refreshAppData();
+          }}
         />
       )}
 

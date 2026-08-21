@@ -6,7 +6,11 @@
          maximum-scale or user-scalable=no: this is a document reader, and
          low-vision users depend on zooming the page. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https: http: blob: data:; frame-src 'self' https://accounts.google.com blob:; object-src 'self' blob:; worker-src 'self' blob: https://cdnjs.cloudflare.com; manifest-src 'self';" />
+    <!-- connect-src must list wss: explicitly. Supabase Realtime runs over a
+         WebSocket, and the https: source expression does NOT cover the wss:
+         scheme — without it the socket is blocked and cross-device updates
+         silently fall back to the slow polling safety net. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https: wss: blob: data:; frame-src 'self' blob:; object-src 'self' blob:; worker-src 'self' blob: https://cdnjs.cloudflare.com; manifest-src 'self';" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="theme-color" content="#10b981" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -22,11 +26,13 @@
     <title>ResearchVault | Smart Academic Library & Literature Synthesis</title>
     <meta name="description" content="Organize academic research, generate citations, read documents offline, and synthesize literature with Gemini AI." />
     
-    <!-- Google Fonts & Google Identity Services -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet" />
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- The Google Identity Services script is gone: Google sign-in is now a
+         plain redirect handled by Supabase, so there is no third-party script
+         and no injected iframe to make keyboard-accessible. -->
   </head>
   <body>
     <div id="root"></div>

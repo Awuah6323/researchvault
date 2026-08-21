@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, LogIn, UserPlus, Shield, Check, Lock, Mail, User, Building } from 'lucide-react';
 import { storage } from '../services/storage';
-import { waitForGoogleIdentity } from '../utils/googleIdentity';
 import Modal from './Modal';
 
 export default function AuthModal({ onClose, onLoginSuccess }) {
@@ -50,6 +49,20 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
           institution.trim() || 'University / Institution',
           fieldOfStudy.trim() || 'Computer Science'
         );
+
+        // Email confirmation is on by default, so the account exists but has no
+        // session yet. Closing the modal here would look like success and then
+        // silently fail to sync.
+        if (user.needsEmailConfirmation) {
+          setSuccess(
+            `Almost there — we sent a confirmation link to ${email.trim()}. Open it, then sign in.`
+          );
+          setMode('login');
+          setPassword('');
+          setSubmitting(false);
+          return;
+        }
+
         setSuccess(`Account registered successfully for ${user.name}! Synchronizing vault...`);
         onLoginSuccess(storage.getProfile());
         onClose();
@@ -63,77 +76,34 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
 
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const googleClientId =
-    import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-    '73859989622-gfnm64hfcom43l064d0gf19f8losasrh.apps.googleusercontent.com';
-
   /**
-   * Real Google sign-in.
+   * Google sign-in, handed off to Supabase.
    *
-   * This replaces a hardcoded account picker plus a free-text form that called
-   * loginWithGoogle() with whatever name and email were typed in. That was a
-   * complete authentication bypass: entering someone's address signed you in as
-   * them and pulled their vault. Only a Google-issued ID token is accepted now,
-   * and the server verifies it before issuing a sync token.
+   * Navigates to Google and does not return on success — the session arrives
+   * after the redirect, where storage.initAuth() adopts it.
+   *
+   * What this replaced: a hardcoded account picker plus a free-text form that
+   * called loginWithGoogle() with whatever email was typed in. That was a
+   * complete authentication bypass — entering someone's address signed you in
+   * as them and pulled their vault.
    */
-  const handleGoogleCredential = async (response) => {
-    if (!response || !response.credential) {
-      setError('Google did not return a credential. Please try again.');
-      setGoogleLoading(false);
-      return;
-    }
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setSuccess('');
+    setGoogleLoading(true);
 
     try {
-      const user = await storage.loginWithGoogle(response.credential);
-      setSuccess(`Signed in with Google as ${user.name}! Synchronizing vault...`);
-      onLoginSuccess(storage.getProfile());
-      if (onClose) onClose();
+      await storage.loginWithGoogle();
+      // Not reached on success — the browser has navigated to Google.
     } catch (err) {
-      setError(err.message || 'Google sign-in failed.');
-    } finally {
       setGoogleLoading(false);
+      setError(
+        /unreachable|not configured/i.test((err && err.message) || '')
+          ? 'Google sign-in is unavailable: this build has no Supabase credentials configured.'
+          : (err && err.message) || 'Google sign-in failed.'
+      );
     }
   };
-
-  useEffect(() => {
-    let isMounted = true;
-
-    waitForGoogleIdentity()
-      .then((google) => {
-        if (!isMounted) return;
-        try {
-          google.accounts.id.initialize({
-            client_id: googleClientId,
-            callback: handleGoogleCredential,
-            auto_select: false,
-            cancel_on_tap_outside: true
-          });
-
-          const container = document.getElementById('authModalGsiButton');
-          if (container) {
-            container.innerHTML = '';
-            google.accounts.id.renderButton(container, {
-              theme: 'outline',
-              size: 'large',
-              text: 'continue_with',
-              shape: 'rectangular',
-              logo_alignment: 'left'
-            });
-          }
-        } catch (err) {
-          console.error('Google Sign-In initialization failed:', err);
-        }
-      })
-      .catch((err) => {
-        console.warn('Google Identity Services unavailable:', err.message);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [googleClientId]);
-
 
   return (
     <Modal
@@ -161,16 +131,46 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
               )}
             </div>
 
-        {/* Google Sign In — rendered by Google Identity Services so the app
-            only ever receives a real, signed ID token. */}
-        <div
-          id="authModalGsiButton"
-          style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px', minHeight: '40px' }}
-        />
+        {/* Google Sign In — a real <button>, not Google's injected iframe
+            widget, which could not be reached by keyboard and carried no
+            accessible name of ours. */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading || submitting}
+            aria-label="Continue with Google"
+            style={{
+              width: '100%',
+              minHeight: '42px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              padding: '10px 14px',
+              borderRadius: '10px',
+              border: '1px solid var(--border-color)',
+              backgroundColor: 'var(--bg-card)',
+              color: 'var(--text-main)',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              cursor: googleLoading || submitting ? 'wait' : 'pointer',
+              opacity: googleLoading || submitting ? 0.6 : 1
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92a8.78 8.78 0 0 0 2.68-6.62Z" />
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86a5.32 5.32 0 0 1-5-3.68H1.02v2.34A8.99 8.99 0 0 0 9 18Z" />
+              <path fill="#FBBC05" d="M4 10.74a5.4 5.4 0 0 1 0-3.44V4.96H1.02a9 9 0 0 0 0 8.08L4 10.74Z" />
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58A8.98 8.98 0 0 0 1.02 4.96L4 7.3A5.32 5.32 0 0 1 9 3.58Z" />
+            </svg>
+            {googleLoading ? 'Redirecting to Google…' : 'Continue with Google'}
+          </button>
+        </div>
 
         {googleLoading && (
           <div role="status" style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--primary)', marginBottom: '10px' }}>
-            Verifying your Google account...
+            Taking you to Google to sign in...
           </div>
         )}
 

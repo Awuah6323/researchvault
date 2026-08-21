@@ -1,33 +1,37 @@
 // src/services/storage.js
 // Account-scoped local persistence plus cross-device sync for ResearchVault.
 //
-// Design, and what it replaced:
+// Design:
 //
 //   localStorage is the source of truth for every read. Nothing in the UI
-//   waits on the network, and the app works fully offline. That part is
-//   unchanged — it was already the right call.
+//   waits on the network, and the app works fully offline.
 //
-//   Sync is now (a) authenticated with a bearer token from /api/auth, (b)
-//   debounced instead of firing on every single mutation, and (c) version
-//   checked, so a poll that finds nothing new costs one small response and
-//   zero localStorage writes.
+//   Sync runs on Supabase: auth and session handling are its job, each user's
+//   library is one row behind Row Level Security, and a realtime subscription
+//   tells this device the moment another one commits. Writes are debounced and
+//   version checked, so a change that lands while you are mid-edit is merged
+//   rather than overwriting you.
 //
-//   Previously: every saveResources/saveNotes/saveProfile call triggered a
-//   full-vault upload including base64 PDFs, a 15s timer re-pulled and
-//   rewrote all of localStorage whether or not anything had changed, and
-//   passwords were hashed with a single SHA-256 round and published to a
-//   public bucket keyed by email address.
+//   What this replaced: every saveResources/saveNotes/saveProfile call fired a
+//   full-vault upload including base64 PDFs; a 15s timer re-pulled and rewrote
+//   all of localStorage whether or not anything had changed; and passwords were
+//   hashed with a single SHA-256 round and published to a public bucket keyed
+//   by email address.
 
 import {
-  getToken,
-  setToken,
+  hasSyncSession,
+  initSyncSession,
   apiRegister,
   apiLogin,
-  apiGoogleLogin,
+  startGoogleSignIn,
+  apiRequestPasswordReset,
+  apiUpdatePassword,
   apiLogout,
   fetchRemoteVersion,
   fetchRemoteVault,
   pushRemoteVault,
+  subscribeToVaultChanges,
+  unsubscribeFromVaultChanges,
   createPushScheduler,
   AuthExpiredError,
   BackendUnavailableError
@@ -179,10 +183,10 @@ function setSyncedFingerprint(fingerprint) {
   }
 }
 
-/** True when a signed-in account exists and we hold a sync token. */
+/** True when a signed-in account exists and we hold a live Supabase session. */
 function canSync() {
   const email = getActiveUserEmail();
-  return email !== 'guest_user' && !!getToken();
+  return email !== 'guest_user' && hasSyncSession();
 }
 
 // ---------------------------------------------------------------------------
@@ -262,7 +266,9 @@ function stampSyncTime() {
 }
 
 async function handleAuthExpired() {
-  setToken(null);
+  // supabase-js owns the session; clearing it is its job, not ours. All we do
+  // is stop trying to sync and let the UI say so.
+  unsubscribeFromVaultChanges();
   notifySyncListeners('error', storage.getLastSyncTime());
 }
 
@@ -593,11 +599,27 @@ export const storage = {
     fieldOfStudy = 'General Research'
   ) {
     try {
-      const { user } = await apiRegister({ name, email, password, institution, fieldOfStudy });
+      const { user, needsEmailConfirmation } = await apiRegister({
+        name,
+        email,
+        password,
+        institution,
+        fieldOfStudy
+      });
+
       this.cacheUserLocally(user);
+
+      // With email confirmation enabled the account is not usable yet: there is
+      // no session, so signing them in would produce an app that silently fails
+      // to sync. Hand the flag back and let the UI say "check your email".
+      if (needsEmailConfirmation) {
+        return { ...user, needsEmailConfirmation: true };
+      }
+
       this.saveSession(user);
+      this.startRealtimeSync();
       await this.pullCloudVault(user.email, { force: true });
-      return user;
+      return { ...user, needsEmailConfirmation: false };
     } catch (err) {
       // A validation failure (weak password, email taken) must surface as-is.
       // Only an unreachable backend falls through to local-only mode.
@@ -616,6 +638,7 @@ export const storage = {
       const { user } = await apiLogin({ email, password });
       this.cacheUserLocally(user);
       this.saveSession(user);
+      this.startRealtimeSync();
       await this.pullCloudVault(user.email, { force: true });
       return user;
     } catch (err) {
@@ -623,7 +646,7 @@ export const storage = {
 
       // Offline sign-in is only offered for an account this device has already
       // seen. It unlocks the local vault; it grants no server access, because
-      // there is no token to grant. An unknown email gets a clear message
+      // there is no session to grant. An unknown email gets a clear message
       // instead of silently creating an empty account.
       const known = this.getUsers().find(
         (u) => String(u.email).toLowerCase() === String(email).toLowerCase().trim()
@@ -642,16 +665,47 @@ export const storage = {
   },
 
   /**
-   * Signs in with a Google ID token. The token is verified server-side against
-   * Google's tokeninfo endpoint — the browser no longer decides who it belongs
-   * to by base64-decoding the payload.
+   * Starts Google sign-in by handing off to Supabase.
+   *
+   * This navigates away and does not return a user — the session arrives after
+   * Google redirects back, and adoptSession() picks it up from the SIGNED_IN
+   * event. Verification is entirely server-side; the browser never decides who
+   * a token belongs to, which is how an earlier build of this app let anyone
+   * sign in as anyone by typing their email address.
    */
-  async loginWithGoogle(credential) {
-    if (!credential) throw new Error('Google sign-in did not return a credential.');
-    const { user } = await apiGoogleLogin(credential);
+  async loginWithGoogle() {
+    await startGoogleSignIn();
+  },
+
+  /** Emails a password-reset link. Resolves whether or not the account exists. */
+  async requestPasswordReset(email) {
+    await apiRequestPasswordReset(email);
+  },
+
+  /** Sets a new password using the recovery session from the emailed link. */
+  async completePasswordReset(newPassword) {
+    await apiUpdatePassword(newPassword);
+  },
+
+  /**
+   * Adopts a Supabase session that arrived outside a sign-in call — the Google
+   * redirect landing, or a stored session being restored on page load.
+   *
+   * Idempotent: called on every auth event, and does nothing if this account is
+   * already the active local session.
+   */
+  async adoptSession(user) {
+    if (!user || !user.email) return null;
+
+    const existing = this.getSession();
+    const alreadyActive =
+      existing && String(existing.email).toLowerCase() === String(user.email).toLowerCase();
+
     this.cacheUserLocally(user);
-    this.saveSession(user);
-    await this.pullCloudVault(user.email, { force: true });
+    if (!alreadyActive) this.saveSession(user);
+
+    this.startRealtimeSync();
+    await this.pullCloudVault(user.email, { force: !alreadyActive });
     return user;
   },
 
@@ -682,12 +736,13 @@ export const storage = {
   },
 
   async logoutUser() {
-    // Give any pending edits a chance to reach the server before the token dies.
+    // Give any pending edits a chance to reach the server before the session dies.
     try {
       if (pushScheduler.isPending()) await pushScheduler.flushNow();
     } catch (e) {
       /* leaving is more important than the last push landing */
     }
+    unsubscribeFromVaultChanges();
     await apiLogout();
     try {
       localStorage.removeItem(BASE_KEYS.SESSION);
@@ -698,6 +753,55 @@ export const storage = {
   },
 
   // ------------------------------------------------------------------- SYNC
+
+  /**
+   * Restores any stored Supabase session and starts watching for auth changes.
+   *
+   * Call once, at app start. It is what makes three separate things work:
+   * a returning user staying signed in, the Google redirect landing back here,
+   * and the password-reset link opening the app in recovery mode.
+   *
+   * `onEvent(eventName, user)` lets the UI react. Returns an unsubscribe fn.
+   */
+  async initAuth(onEvent) {
+    return initSyncSession(async (event, user) => {
+      if (event === 'SIGNED_OUT') {
+        unsubscribeFromVaultChanges();
+        if (onEvent) onEvent(event, null);
+        return;
+      }
+
+      // The recovery link signs the user in with a limited session whose only
+      // purpose is setting a new password. Don't treat it as a normal login.
+      if (event === 'PASSWORD_RECOVERY') {
+        if (onEvent) onEvent(event, user);
+        return;
+      }
+
+      if (user) await this.adoptSession(user);
+      if (onEvent) onEvent(event, user);
+    });
+  },
+
+  /**
+   * Subscribes to this account's vault row so another device's commit arrives
+   * as a push instead of being waited for.
+   *
+   * The event carries only the new version number. If it is not ahead of what
+   * we last synced it is our own write echoing back, and costs nothing.
+   */
+  startRealtimeSync() {
+    if (!canSync()) return;
+
+    subscribeToVaultChanges((remoteVersion) => {
+      if (remoteVersion && remoteVersion <= getSyncedVersion()) return;
+      this.pullCloudVault(undefined, { force: true });
+    });
+  },
+
+  stopRealtimeSync() {
+    unsubscribeFromVaultChanges();
+  },
 
   /** Queues a debounced push. Safe to call from anywhere, as often as you like. */
   pushCloudVaultBackground() {

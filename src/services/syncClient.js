@@ -1,63 +1,50 @@
 // src/services/syncClient.js
-// Network half of the sync engine. localStorage stays the source of truth for
-// every read in the app; this module only moves changes between devices.
+// Network half of the sync engine, backed by Supabase.
 //
-// Three ideas keep it off the critical path:
+// localStorage stays the source of truth for every read in the app; this module
+// only moves changes between devices. Nothing in the UI awaits anything here.
+//
+// Four ideas keep it off the critical path:
 //
 //  1. Writes are debounced. Starring a paper or typing a note used to fire a
-//     full-vault upload per action. Changes now coalesce into one request a
-//     couple of seconds after you stop.
+//     full-vault upload per action. Changes coalesce into one request a couple
+//     of seconds after you stop.
 //
-//  2. Polls are two-stage. A poll first asks for {version} only. When nothing
-//     changed — the normal case — the answer is a few dozen bytes and the
-//     client does no parsing, no merging and no localStorage writes at all.
+//  2. Other devices are notified, not polled. A Postgres realtime subscription
+//     delivers the new version number the moment another device commits, so an
+//     idle app makes no requests at all. The slow poll that remains is a safety
+//     net for a dropped socket, not the primary mechanism.
 //
-//  3. PDF bytes never leave the device. The server strips pdfFileData/fullText
-//     too, so a large attachment can't make sync slow no matter what a client
-//     sends.
+//  3. The realtime event is a doorbell, not a delivery. It carries the version;
+//     the vault itself is fetched over HTTPS. That keeps one code path for
+//     reading and stays correct if a payload ever exceeds the socket's limit.
+//
+//  4. PDF bytes never leave the device. buildLocalVault() strips them and a
+//     database CHECK constraint caps a vault at 3 MB, so a large attachment
+//     cannot make sync slow no matter what a client sends.
+//
+// Replaced a hand-rolled /api/auth (scrypt + bearer tokens) that worked but had
+// no password reset, no email verification and no rate limiting — so a user who
+// forgot their password was permanently locked out of their library.
 
-const TOKEN_KEY = 'researchvault_sync_token';
+import { supabase, isSupabaseConfigured, VAULT_TABLE } from './supabaseClient';
 
 const PUSH_DEBOUNCE_MS = 2000;
 // Longest a change can sit unsent while you keep making more changes.
 const PUSH_MAX_WAIT_MS = 10000;
 
-export function getToken() {
-  try {
-    return localStorage.getItem(TOKEN_KEY) || null;
-  } catch (e) {
-    return null;
-  }
-}
+// ------------------------------------------------------------------- ERRORS
 
-export function setToken(token) {
-  try {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
-  } catch (e) {
-    /* private mode / storage disabled */
-  }
-}
-
-function authHeaders(extra) {
-  const token = getToken();
-  const headers = { ...(extra || {}) };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  return headers;
-}
-
-/** Distinguishes "your token is bad" from "the network is down". */
+/** The stored session is gone or rejected — sign in again. */
 export class AuthExpiredError extends Error {
   constructor(message) {
-    super(message || 'Sync session expired');
+    super(message || 'Your session has expired. Please sign in again.');
     this.name = 'AuthExpiredError';
   }
 }
 
 /**
- * The sync backend could not be reached at all — offline, or running `vite dev`
- * without the serverless functions (plain Vite does not execute /api routes;
- * that needs `vercel dev`).
+ * Supabase could not be reached, or this build has no credentials.
  *
  * Kept separate from a credential rejection so the app can fall back to
  * local-only mode instead of telling someone their password is wrong.
@@ -69,133 +56,423 @@ export class BackendUnavailableError extends Error {
   }
 }
 
-async function request(path, options = {}) {
-  let res;
+/**
+ * Sorts a Supabase error into one of the two above, or passes it through.
+ *
+ * The distinction matters: showing "invalid password" to someone whose wifi
+ * dropped sends them chasing a problem that isn't theirs.
+ */
+function classifyError(error) {
+  if (!error) return null;
+
+  const name = error.name || '';
+  const message = String(error.message || '');
+  const status = Number(error.status || 0);
+
+  // supabase-js raises AuthRetryableFetchError for transport failures; a raw
+  // fetch rejection surfaces as TypeError: Failed to fetch.
+  if (
+    name === 'AuthRetryableFetchError' ||
+    name === 'TypeError' ||
+    /failed to fetch|networkerror|load failed|fetch failed/i.test(message) ||
+    status === 0 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504
+  ) {
+    return new BackendUnavailableError();
+  }
+
+  if (status === 401) return new AuthExpiredError();
+
+  return error;
+}
+
+/** Throws BackendUnavailableError when this build has no Supabase credentials. */
+function requireBackend() {
+  if (!isSupabaseConfigured() || !supabase) throw new BackendUnavailableError();
+}
+
+// ------------------------------------------------------------------ SESSION
+//
+// canSync() in storage.js is called on hot paths and has to answer
+// synchronously, so the live session is mirrored here rather than awaited.
+// supabase-js is the owner of the real thing; this is only a cache.
+
+let cachedSession = null;
+let sessionReady = false;
+
+export function isSyncConfigured() {
+  return isSupabaseConfigured();
+}
+
+/** Current user id, or null. Synchronous. */
+export function getCurrentUserId() {
+  return cachedSession?.user?.id || null;
+}
+
+/** True when a real Supabase session is held. Synchronous. */
+export function hasSyncSession() {
+  return !!(cachedSession && cachedSession.user);
+}
+
+/** True once the initial session lookup has finished. */
+export function isSessionReady() {
+  return sessionReady;
+}
+
+/**
+ * Shapes a Supabase user into the profile the rest of the app already expects.
+ * The extra fields live in user_metadata, set at signup, so no profiles table
+ * is needed for them.
+ */
+export function mapUser(user) {
+  if (!user) return null;
+  const meta = user.user_metadata || {};
+  return {
+    id: user.id,
+    email: String(user.email || '').toLowerCase().trim(),
+    name: meta.name || meta.full_name || String(user.email || '').split('@')[0],
+    institution: meta.institution || 'University / Institution',
+    fieldOfStudy: meta.fieldOfStudy || meta.field_of_study || 'General Research',
+    researchInterests: meta.researchInterests || 'Academic Literature, Data Analysis',
+    createdAt: user.created_at || new Date().toISOString()
+  };
+}
+
+/**
+ * Loads any stored session and starts watching for changes.
+ *
+ * `onEvent(eventName, user)` fires for SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED
+ * and PASSWORD_RECOVERY. The Google redirect and the password-reset link both
+ * arrive as one of these, which is why the app hydrates from this rather than
+ * from the return value of a sign-in call.
+ *
+ * Returns an unsubscribe function.
+ */
+export async function initSyncSession(onEvent) {
+  if (!isSupabaseConfigured() || !supabase) {
+    sessionReady = true;
+    return () => {};
+  }
+
   try {
-    res = await fetch(path, {
-      ...options,
-      headers: authHeaders({
-        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(options.headers || {})
-      })
-    });
+    const { data } = await supabase.auth.getSession();
+    cachedSession = data?.session || null;
   } catch (e) {
-    // fetch only rejects for network-level failures.
-    throw new BackendUnavailableError();
+    cachedSession = null;
+  }
+  sessionReady = true;
+
+  const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+    cachedSession = session || null;
+    if (typeof onEvent === 'function') {
+      try {
+        onEvent(event, mapUser(session?.user));
+      } catch (e) {
+        /* a listener must not break auth */
+      }
+    }
+  });
+
+  // Report the session that already existed, so a returning user is restored.
+  if (cachedSession && typeof onEvent === 'function') {
+    try {
+      onEvent('INITIAL_SESSION', mapUser(cachedSession.user));
+    } catch (e) {
+      /* ignore */
+    }
   }
 
-  // 404/501 means the function isn't deployed; 5xx means it's broken. Neither
-  // is a statement about the user's credentials.
-  if (res.status === 404 || res.status === 501 || res.status === 502 || res.status === 503) {
-    throw new BackendUnavailableError();
-  }
-
-  if (res.status === 401) {
-    throw new AuthExpiredError();
-  }
-
-  let payload = null;
-  try {
-    payload = await res.json();
-  } catch (e) {
-    payload = null;
-  }
-
-  return { ok: res.ok, status: res.status, payload };
+  return () => {
+    try {
+      sub?.subscription?.unsubscribe();
+    } catch (e) {
+      /* ignore */
+    }
+  };
 }
 
 // --------------------------------------------------------------------- AUTH
 
 export async function apiRegister({ name, email, password, institution, fieldOfStudy }) {
-  const { ok, payload } = await request('/api/auth', {
-    method: 'POST',
-    body: JSON.stringify({ action: 'register', name, email, password, institution, fieldOfStudy })
+  requireBackend();
+
+  const { data, error } = await supabase.auth.signUp({
+    email: String(email || '').toLowerCase().trim(),
+    password,
+    options: {
+      // Stored on the auth user, so there is no second table to keep in step.
+      data: {
+        name: String(name || '').trim(),
+        institution: institution || 'University / Institution',
+        fieldOfStudy: fieldOfStudy || 'General Research'
+      },
+      emailRedirectTo: `${window.location.origin}/`
+    }
   });
-  if (!ok) throw new Error((payload && payload.error) || 'Could not create your account.');
-  setToken(payload.token);
-  return payload;
+
+  if (error) throw classifyError(error);
+
+  // With email confirmation on (Supabase's default) signUp succeeds but returns
+  // no session — the account is not usable until the link is clicked. Saying so
+  // is much better than appearing to work and then failing to sync.
+  if (!data.session) {
+    return {
+      user: mapUser(data.user),
+      needsEmailConfirmation: true
+    };
+  }
+
+  cachedSession = data.session;
+  return { user: mapUser(data.user), needsEmailConfirmation: false };
 }
 
 export async function apiLogin({ email, password }) {
-  const { ok, payload } = await request('/api/auth', {
-    method: 'POST',
-    body: JSON.stringify({ action: 'login', email, password })
-  }).catch((err) => {
-    // A 401 here means wrong credentials, not an expired session, so surface it
-    // as a normal failure rather than triggering a session-expiry path.
-    if (err instanceof AuthExpiredError) {
-      return { ok: false, payload: { error: 'Invalid email address or password.' } };
-    }
-    throw err;
+  requireBackend();
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: String(email || '').toLowerCase().trim(),
+    password
   });
 
-  if (!ok) throw new Error((payload && payload.error) || 'Could not sign you in.');
-  setToken(payload.token);
-  return payload;
+  if (error) {
+    const classified = classifyError(error);
+    // A 400 here means the credentials were rejected. Surface it as an ordinary
+    // failure rather than an expired session, which would trigger a sign-out.
+    if (classified instanceof AuthExpiredError) {
+      throw new Error('Invalid email address or password.');
+    }
+    throw classified;
+  }
+
+  cachedSession = data.session;
+  return { user: mapUser(data.user) };
 }
 
-export async function apiGoogleLogin(credential) {
-  const { ok, payload } = await request('/api/auth', {
-    method: 'POST',
-    body: JSON.stringify({ action: 'google', credential })
-  }).catch((err) => {
-    if (err instanceof AuthExpiredError) {
-      return { ok: false, payload: { error: 'Google sign-in could not be verified.' } };
+/**
+ * Starts Google sign-in.
+ *
+ * Unlike the rest of these, this does not resolve with a user: it navigates the
+ * browser to Google. The session arrives after the redirect back, via the
+ * SIGNED_IN event from initSyncSession(). Verification is Supabase's job now —
+ * the browser never inspects the token itself, which is how an earlier version
+ * of this app let anyone sign in as anyone by typing their address.
+ */
+export async function startGoogleSignIn() {
+  requireBackend();
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/`,
+      queryParams: { prompt: 'select_account' }
     }
-    throw err;
   });
 
-  if (!ok) throw new Error((payload && payload.error) || 'Google sign-in failed.');
-  setToken(payload.token);
-  return payload;
+  if (error) throw classifyError(error);
+}
+
+/** Sends a reset link. Resolves the same way whether or not the email exists. */
+export async function apiRequestPasswordReset(email) {
+  requireBackend();
+
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    String(email || '').toLowerCase().trim(),
+    { redirectTo: `${window.location.origin}/` }
+  );
+
+  if (error) throw classifyError(error);
+}
+
+/** Sets a new password. Requires the recovery session from the emailed link. */
+export async function apiUpdatePassword(newPassword) {
+  requireBackend();
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw classifyError(error);
+}
+
+/** Updates the profile fields kept on the auth user. */
+export async function apiUpdateProfile({ name, institution, fieldOfStudy, researchInterests }) {
+  requireBackend();
+
+  const { error } = await supabase.auth.updateUser({
+    data: { name, institution, fieldOfStudy, researchInterests }
+  });
+  if (error) throw classifyError(error);
 }
 
 export async function apiLogout() {
   try {
-    await request('/api/auth', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'logout' })
-    });
+    if (supabase) await supabase.auth.signOut();
   } catch (e) {
-    /* logging out locally matters more than the server acknowledging it */
+    /* leaving locally matters more than the server acknowledging it */
   }
-  setToken(null);
+  cachedSession = null;
 }
 
 // --------------------------------------------------------------------- SYNC
 
+function requireSession() {
+  requireBackend();
+  const uid = getCurrentUserId();
+  if (!uid) throw new AuthExpiredError();
+  return uid;
+}
+
 /** Cheap poll. Returns { version, updatedAt } and nothing else. */
 export async function fetchRemoteVersion() {
-  const { ok, payload } = await request('/api/sync?meta=1');
-  if (!ok || !payload) return null;
-  return { version: payload.version || 0, updatedAt: payload.updatedAt || null, durable: payload.durable };
+  const uid = requireSession();
+
+  const { data, error } = await supabase
+    .from(VAULT_TABLE)
+    .select('version, updated_at')
+    .eq('user_id', uid)
+    .maybeSingle();
+
+  if (error) throw classifyError(error);
+  if (!data) return { version: 0, updatedAt: null };
+
+  return { version: data.version || 0, updatedAt: data.updated_at || null, durable: true };
 }
 
 export async function fetchRemoteVault() {
-  const { ok, payload } = await request('/api/sync');
-  if (!ok || !payload) return null;
-  return payload; // { version, updatedAt, vault, durable }
+  const uid = requireSession();
+
+  const { data, error } = await supabase
+    .from(VAULT_TABLE)
+    .select('vault, version, updated_at')
+    .eq('user_id', uid)
+    .maybeSingle();
+
+  if (error) throw classifyError(error);
+  if (!data) return { version: 0, updatedAt: null, vault: null, durable: true };
+
+  return {
+    version: data.version || 0,
+    updatedAt: data.updated_at || null,
+    vault: data.vault || null,
+    durable: true
+  };
 }
 
 /**
- * Commits a vault. Resolves to:
+ * Commits a vault, refusing to overwrite a newer one.
+ *
+ * The UPDATE is filtered on the version we read, so Postgres itself rejects a
+ * stale write: matching zero rows means another device committed in between.
+ * That is the whole conflict detection — one statement, no transaction, no
+ * locking, and impossible to race.
+ *
+ * Resolves to:
  *   { status: 'ok', version }
  *   { status: 'conflict', version, vault }   caller merges and retries
  *   { status: 'failed', error }
  */
 export async function pushRemoteVault({ vault, baseVersion }) {
-  const { ok, status, payload } = await request('/api/sync', {
-    method: 'POST',
-    body: JSON.stringify({ vault, baseVersion })
-  });
+  const uid = requireSession();
+  const base = Number(baseVersion) || 0;
+  const updatedAt = new Date().toISOString();
 
-  if (ok && payload) {
-    return { status: 'ok', version: payload.version, updatedAt: payload.updatedAt, durable: payload.durable };
+  const { data, error } = await supabase
+    .from(VAULT_TABLE)
+    .update({ vault, version: base + 1, updated_at: updatedAt })
+    .eq('user_id', uid)
+    .eq('version', base)
+    .select('version, updated_at');
+
+  if (error) {
+    const classified = classifyError(error);
+    if (classified instanceof BackendUnavailableError || classified instanceof AuthExpiredError) {
+      throw classified;
+    }
+    return { status: 'failed', error: classified.message || 'Sync failed' };
   }
-  if (status === 409 && payload) {
-    return { status: 'conflict', version: payload.version, vault: payload.vault || null };
+
+  if (data && data.length) {
+    return { status: 'ok', version: data[0].version, updatedAt: data[0].updated_at, durable: true };
   }
-  return { status: 'failed', error: (payload && payload.error) || `Sync failed (${status})` };
+
+  // Zero rows updated. Either someone else wrote first, or this account has no
+  // vault row yet (an account created before the schema was installed).
+  const remote = await fetchRemoteVault();
+
+  if (!remote || remote.version === 0) {
+    const { data: inserted, error: insertError } = await supabase
+      .from(VAULT_TABLE)
+      .upsert(
+        { user_id: uid, vault, version: 1, updated_at: updatedAt },
+        { onConflict: 'user_id' }
+      )
+      .select('version, updated_at');
+
+    if (insertError) {
+      const classified = classifyError(insertError);
+      if (classified instanceof BackendUnavailableError) throw classified;
+      return { status: 'failed', error: classified.message || 'Sync failed' };
+    }
+    if (inserted && inserted.length) {
+      return { status: 'ok', version: inserted[0].version, updatedAt: inserted[0].updated_at, durable: true };
+    }
+  }
+
+  return { status: 'conflict', version: remote.version, vault: remote.vault };
+}
+
+// ----------------------------------------------------------------- REALTIME
+
+let vaultChannel = null;
+
+/**
+ * Notifies this device when another one commits.
+ *
+ * `onRemoteChange(version)` receives the new version number. The vault itself
+ * is not taken from the event: storage.js compares the version against what it
+ * last synced, which also means our own write echoing back costs nothing.
+ *
+ * Realtime honours the RLS policies, so this only ever delivers our own row.
+ */
+export function subscribeToVaultChanges(onRemoteChange) {
+  if (!isSupabaseConfigured() || !supabase) return () => {};
+
+  const uid = getCurrentUserId();
+  if (!uid) return () => {};
+
+  unsubscribeFromVaultChanges();
+
+  vaultChannel = supabase
+    .channel(`vault-changes-${uid}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: VAULT_TABLE,
+        filter: `user_id=eq.${uid}`
+      },
+      (payload) => {
+        const version = Number(payload?.new?.version) || 0;
+        try {
+          onRemoteChange(version);
+        } catch (e) {
+          /* a listener must not kill the subscription */
+        }
+      }
+    )
+    .subscribe();
+
+  return unsubscribeFromVaultChanges;
+}
+
+export function unsubscribeFromVaultChanges() {
+  if (!vaultChannel) return;
+  try {
+    supabase.removeChannel(vaultChannel);
+  } catch (e) {
+    /* ignore */
+  }
+  vaultChannel = null;
 }
 
 // ------------------------------------------------------- DEBOUNCED SCHEDULER

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   BookOpen,
   Sparkles,
@@ -14,7 +14,6 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { storage } from '../services/storage';
-import { waitForGoogleIdentity } from '../utils/googleIdentity';
 
 /**
  * Turns an auth failure into a message that points at the actual cause.
@@ -25,16 +24,22 @@ import { waitForGoogleIdentity } from '../utils/googleIdentity';
 function resolveAuthErrorMessage(err) {
   const raw = (err && err.message) || '';
 
-  if (/already exists/i.test(raw)) {
+  if (/already registered|already exists|User already/i.test(raw)) {
     return 'An account with this email already exists. Try signing in instead.';
   }
-  if (/Invalid email address or password/i.test(raw)) {
+  if (/Invalid email address or password|Invalid login credentials/i.test(raw)) {
     return 'That email and password combination doesn’t match an account. Check for typos, or create an account if you haven’t yet.';
   }
-  if (/Web Crypto/i.test(raw)) {
-    return 'Your browser blocked the secure hashing needed to sign in. This usually means the page is not on HTTPS.';
+  if (/Email not confirmed/i.test(raw)) {
+    return 'This account still needs confirming. Open the link in the email we sent you, then sign in.';
   }
-  if (/fetch|network|Failed to fetch|NetworkError|timeout/i.test(raw)) {
+  if (/Password should be at least|password.*6 characters/i.test(raw)) {
+    return 'Please choose a longer password — at least 8 characters.';
+  }
+  if (/rate limit|too many requests/i.test(raw)) {
+    return 'Too many attempts in a short time. Wait a minute and try again.';
+  }
+  if (/fetch|network|Failed to fetch|NetworkError|timeout|unreachable/i.test(raw)) {
     return 'Couldn’t reach the ResearchVault cloud vault. Check your connection and try again — your password is fine.';
   }
 
@@ -57,88 +62,60 @@ export default function AuthPage({ onLoginSuccess }) {
   const [success, setSuccess] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Google Client ID from .env with registered default fallback
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '73859989622-gfnm64hfcom43l064d0gf19f8losasrh.apps.googleusercontent.com';
-
-  /**
-   * Initialize Google Identity Services safely after script loads
-   */
-  useEffect(() => {
-    let isMounted = true;
-
-    waitForGoogleIdentity()
-      .then((google) => {
-        if (!isMounted) return;
-        const activeClientId = googleClientId || '73859989622-gfnm64hfcom43l064d0gf19f8losasrh.apps.googleusercontent.com';
-
-        try {
-          google.accounts.id.initialize({
-            client_id: activeClientId,
-            callback: handleGoogleCredential,
-            auto_select: false,
-            cancel_on_tap_outside: true,
-          });
-
-          const container = document.getElementById('googleGsiButtonContainer');
-          if (container) {
-            container.innerHTML = '';
-            google.accounts.id.renderButton(container, {
-              theme: 'outline',
-              size: 'large',
-              width: 400,
-              text: 'continue_with',
-              shape: 'rectangular',
-              logo_alignment: 'left',
-            });
-          }
-        } catch (err) {
-          console.error('Google Sign-In initialization failed:', err);
-        }
-      })
-      .catch((err) => {
-        console.warn('Google Identity Services setup warning:', err.message);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [googleClientId]);
-
   const [submitting, setSubmitting] = useState(false);
 
   /**
-   * Handle successful Google login.
+   * Google sign-in, handed off to Supabase.
    *
-   * The raw credential is handed straight to the server, which verifies it
-   * against Google's tokeninfo endpoint. This used to base64-decode the JWT
-   * here and trust the email inside it, with no signature or audience check —
-   * a hand-crafted token could claim to be anyone.
+   * This navigates the browser to Google and does not return on success: the
+   * session arrives after the redirect back, where storage.initAuth() picks it
+   * up. There is deliberately no credential to inspect here. An earlier build
+   * base64-decoded the token in the browser and trusted the email inside it
+   * with no signature or audience check, so a hand-crafted token could claim
+   * to be anyone.
    */
-  const handleGoogleCredential = async (response) => {
+  const handleGoogleSignIn = async () => {
     try {
       setError('');
+      setSuccess('');
       setGoogleLoading(true);
-
-      if (!response || !response.credential) {
-        throw new Error('Google did not return a valid credential.');
-      }
-
-      const user = await storage.loginWithGoogle(response.credential);
-
-      setSuccess(
-        `Signed in with Google as ${user.name}! Synchronizing vault...`
-      );
-
-      onLoginSuccess(storage.getProfile());
+      await storage.loginWithGoogle();
+      // Not reached on success — the browser has navigated to Google.
     } catch (err) {
-      console.error('Google Sign-In Error:', err);
-
-      setError(
-        err.message ||
-        'Google Sign-In failed. Please try again.'
-      );
-    } finally {
       setGoogleLoading(false);
+      setError(
+        /unreachable|not configured/i.test((err && err.message) || '')
+          ? 'Google sign-in is unavailable: this build has no Supabase credentials configured.'
+          : resolveAuthErrorMessage(err)
+      );
+    }
+  };
+
+  /**
+   * Emails a reset link.
+   *
+   * Reports the same outcome whether or not the address has an account, so the
+   * form cannot be used to discover who is registered.
+   */
+  const handleForgotPassword = async () => {
+    setError('');
+    setSuccess('');
+
+    if (!email.trim()) {
+      setError('Enter your email address first, then choose “Forgot password?”.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await storage.requestPasswordReset(email.trim());
+      setSuccess(
+        `If an account exists for ${email.trim()}, a password reset link is on its way. Check your inbox, then follow the link back here.`
+      );
+    } catch (err) {
+      setError(resolveAuthErrorMessage(err));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -201,6 +178,19 @@ export default function AuthPage({ onLoginSuccess }) {
           fieldOfStudy.trim() ||
           'Computer Science'
         );
+
+        // Supabase confirms email addresses by default, which means the account
+        // exists but has no session yet. Entering the app here would produce
+        // something that looks signed in and silently fails to sync, so stop
+        // and say what has to happen next.
+        if (user.needsEmailConfirmation) {
+          setSuccess(
+            `Almost there — we sent a confirmation link to ${email.trim()}. Open it, then sign in.`
+          );
+          setActiveTab('login');
+          setPassword('');
+          return;
+        }
 
         setSuccess(
           `Account created successfully for ${user.name}! Synchronizing vault...`
@@ -649,7 +639,10 @@ export default function AuthPage({ onLoginSuccess }) {
             </button>
           </div>
 
-          {/* GOOGLE SIGN-IN */}
+          {/* GOOGLE SIGN-IN
+              A real <button>, not Google's injected iframe widget. The iframe
+              could not be reached by keyboard from this page and carried no
+              accessible name of our own. */}
           <div
             style={{
               width: '100%',
@@ -663,9 +656,55 @@ export default function AuthPage({ onLoginSuccess }) {
               marginBottom: '16px',
             }}
           >
-            <div
-              id="googleGsiButtonContainer"
-            />
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={googleLoading || submitting}
+              aria-label="Continue with Google"
+              style={{
+                width: '100%',
+                minHeight: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                padding: '11px 16px',
+                borderRadius: '10px',
+                border: '1px solid var(--border-color, #1e293b)',
+                backgroundColor: 'var(--bg-card, #0b1120)',
+                color: 'var(--text-main, #f0fdf4)',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                cursor: googleLoading || submitting ? 'wait' : 'pointer',
+                opacity: googleLoading || submitting ? 0.6 : 1,
+              }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 18 18"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path
+                  fill="#4285F4"
+                  d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92a8.78 8.78 0 0 0 2.68-6.62Z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86a5.32 5.32 0 0 1-5-3.68H1.02v2.34A8.99 8.99 0 0 0 9 18Z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M4 10.74a5.4 5.4 0 0 1 0-3.44V4.96H1.02a9 9 0 0 0 0 8.08L4 10.74Z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58A8.98 8.98 0 0 0 1.02 4.96L4 7.3A5.32 5.32 0 0 1 9 3.58Z"
+                />
+              </svg>
+              {googleLoading ? 'Redirecting to Google…' : 'Continue with Google'}
+            </button>
           </div>
 
           {/* DIVIDER */}
@@ -1192,16 +1231,42 @@ export default function AuthPage({ onLoginSuccess }) {
                 <span>Syncing Vault...</span>
               ) : activeTab === 'login' ? (
                 <>
-                  <LogIn size={18} />
+                  <LogIn size={18} aria-hidden="true" />
                   <span>Sign In to ResearchVault</span>
                 </>
               ) : (
                 <>
-                  <UserPlus size={18} />
+                  <UserPlus size={18} aria-hidden="true" />
                   <span>Create Scholar Account</span>
                 </>
               )}
             </button>
+
+            {/* FORGOT PASSWORD — login only.
+                Before this there was no recovery path at all: forgetting your
+                password meant permanently losing access to your library. */}
+            {activeTab === 'login' && (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={submitting || googleLoading}
+                className="text-button"
+                style={{
+                  display: 'block',
+                  margin: '14px auto 0',
+                  background: 'none',
+                  border: 'none',
+                  padding: '4px 8px',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  textDecoration: 'underline',
+                  cursor: submitting || googleLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Forgot password?
+              </button>
+            )}
           </form>
         </div>
       </div>
