@@ -54,8 +54,6 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
             setTimeout(() => setImportStatus(''), 4000);
           }
         } else {
-          // Was a window.alert(): blocking, unstyled, and unreliable in an
-          // installed iOS PWA.
           notify({
             message: 'That file isn’t a ResearchVault backup. Expected a JSON file containing a list of papers.',
             tone: 'error'

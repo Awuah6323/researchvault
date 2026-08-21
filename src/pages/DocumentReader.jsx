@@ -39,7 +39,6 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   const readerRef = useRef(null);
   const restoreFocusRef = useRef(null);
 
-  // --- AI Assistant Panel State ---
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [aiSummaryType, setAiSummaryType] = useState('Executive Summary');
   const [aiLoading, setAiLoading] = useState(false);
@@ -55,14 +54,12 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
 
   const aiSummaryTypes = ['Executive Summary', 'Key Takeaways', 'Methodology & Proofs', 'Limitations & Critique', 'Peer Review'];
 
-  // --- Auto Full Text Resolution & Background Extraction ---
   const [extractedFullText, setExtractedFullText] = useState(resource.fullText || '');
   const [isExtractingPdfText, setIsExtractingPdfText] = useState(false);
   const extractedFullTextRef = useRef(resource.fullText || '');
   useEffect(() => { isExtractingPdfTextRef.current = isExtractingPdfText; }, [isExtractingPdfText]);
   useEffect(() => { extractedFullTextRef.current = extractedFullText; }, [extractedFullText]);
 
-  // --- View Mode & PDF Acquisition State Machine ---
   const isSmallScreen = useIsSmallScreen(880);
   const hasPdfSource = Boolean(
     resource.pdfFileData ||
@@ -83,16 +80,13 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   const rawPaperText = extractedFullText || resource.fullText || resource.abstractText || '';
   const isAbstractOnly = !hasRealText || (rawPaperText || '').length < 800 || rawPaperText === (resource.abstractText || '').trim();
 
-  // Always default viewMode to 'page' (Pages mode) across laptop, phone, and tablet.
   const [viewMode, setViewMode] = useState('page');
 
-  // Reader States: 'idle' | 'resolving' | 'fetching' | 'ready' | 'failed'
   const [readerState, setReaderState] = useState('idle');
   const [statusMessage, setStatusMessage] = useState('Finding the PDF...');
   const [pdfUint8Data, setPdfUint8Data] = useState(null);
   const [pdfMeta, setPdfMeta] = useState({ sourceType: '', resolvedUrl: null, sourceName: '' });
 
-  // PDF.js State
   const [pdfJsDoc, setPdfJsDoc] = useState(null);
   const [pdfJsNumPages, setPdfJsNumPages] = useState(0);
   const [pdfJsPageNum, setPdfJsPageNum] = useState(1);

@@ -109,14 +109,12 @@ export default function Modal({
         try {
           previous.focus({ preventScroll: true });
         } catch (e) {
-          /* the opener was unmounted along with the dialog */
+          /* element unmounted */
         }
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- Escape closes only the topmost dialog -------------------------------
   useEffect(() => {
     if (!closeOnEscape) return undefined;
 
@@ -132,7 +130,6 @@ export default function Modal({
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [closeOnEscape, onClose]);
 
-  // --- Keep Tab inside the panel -------------------------------------------
   const handlePanelKeyDown = useCallback((e) => {
     if (e.key !== 'Tab') return;
 

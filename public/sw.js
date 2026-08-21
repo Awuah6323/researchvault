@@ -1,39 +1,4 @@
-// public/sw.js
-// Offline shell for the PWA.
-//
-// This file is copied verbatim into the build (it lives in public/, which Vite
-// does not transform), so it cannot read import.meta.env. Everything here has
-// to hold without a build-time substitution.
-//
-// What the previous version got wrong, and why a rebuild did not fix it:
-//
-//   const CACHE_NAME = 'researchvault-v1';   // never changed
-//   ...
-//   .filter((name) => name !== CACHE_NAME)   // so this deleted nothing
-//
-// The name was a constant, and activate() only evicted caches whose name
-// DIFFERED from it. One cache therefore survived every deploy. Worse, the fetch
-// handler answered *every* request cache-first, navigations included — so a
-// stale index.html was served on first paint, and because index.html is what
-// names the content-hashed bundles, that old HTML pulled the old asset URLs,
-// which were sitting in the same cache. The whole app froze at whatever version
-// was cached first, and no number of rebuilds could dislodge it. That is how a
-// pre-Supabase build kept rendering the removed Google One Tap widget.
-//
-// Two changes fix it, and each one is load-bearing:
-//
-//   1. Navigations are network-first. The newest index.html always wins when the
-//      network answers, so a deploy is picked up on the next load. The cache is
-//      the offline fallback, not the default source.
-//
-//   2. The cache names carry a VERSION, and activate() deletes every cache
-//      outside the current set rather than every cache with a different name.
-//      Bumping VERSION now discards the poisoned v1 cache on existing installs.
-//
-// (1) is what makes this durable: correctness no longer depends on remembering
-// to bump (2) each release. Content-hashed assets stay cache-first because their
-// URL changes whenever their bytes do, which makes them safe to keep forever.
-
+// public/sw.js - Service worker offline cache shell
 const VERSION = 'v2';
 
 // Split so a version bump can discard immutable bundles without throwing away

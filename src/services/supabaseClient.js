@@ -1,18 +1,4 @@
 // src/services/supabaseClient.js
-// The one place a Supabase client is created.
-//
-// Both values below are PUBLIC by design — the anon key is meant to ship in the
-// browser bundle. It is not a password: on its own it grants nothing, because
-// every table is behind Row Level Security that filters on auth.uid() from the
-// caller's verified JWT (see supabase/schema.sql). The key identifies the
-// project; the JWT identifies the person.
-//
-// If the two variables are absent the app does NOT crash and does NOT show an
-// error. It runs in local-only mode: localStorage still works, the library still
-// works, and the sync badge says "This device only". That keeps `npm run dev`
-// usable with no credentials at all, and it means a misconfigured deploy
-// degrades instead of breaking.
-
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';

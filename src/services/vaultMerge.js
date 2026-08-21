@@ -1,24 +1,3 @@
-// src/services/vaultMerge.js
-// Deterministic three-way-ish merge for a vault arriving from another device.
-//
-// The previous merge preferred the cloud copy wholesale and used Math.max on a
-// couple of numeric fields. That loses edits: rename a paper on your phone,
-// and the next laptop pull would quietly overwrite the new title with the old
-// one, because "cloud wins" had no notion of which edit was newer.
-//
-// Rules here, in order:
-//   * A tombstone wins over any copy of that item, from either side. Deleting
-//     on one device must not be resurrected by the other still having it.
-//   * For an item both sides have, the higher `updatedAt` wins. Ties keep the
-//     local copy, so a device never appears to lose its own work on a no-op.
-//   * Fields that only exist locally (pdfFileData, fullText) are always carried
-//     across, because the server strips them and the remote copy never has them.
-//   * Reading position takes the furthest of the two — the useful answer when
-//     you read on your phone and then open your laptop.
-//
-// Pure functions, no localStorage access, so this is straightforward to test.
-
-/** Stable identity for a resource. Falls back to title for legacy rows. */
 export function resourceKey(resource) {
   if (!resource) return '';
   return String(resource.id != null ? resource.id : resource.title || '');
@@ -31,10 +10,6 @@ function timeOf(item) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-/**
- * Merges one resource pair, preferring the newer edit but never dropping
- * device-local attachments or losing reading progress.
- */
 function mergeResource(local, remote) {
   if (!remote) return local;
   if (!local) return remote;
@@ -46,17 +21,14 @@ function mergeResource(local, remote) {
   return {
     ...loser,
     ...winner,
-    // Attachments live only on the device that added them.
     pdfFileData: local.pdfFileData || '',
     fullText: local.fullText || '',
     hasPdf: !!(local.pdfFileData || local.hasPdf || remote.hasPdf),
-    // Furthest-read wins regardless of which edit was newer.
     readingProgressPercent: Math.max(
       Number(local.readingProgressPercent) || 0,
       Number(remote.readingProgressPercent) || 0
     ),
     lastPageRead: Math.max(Number(local.lastPageRead) || 1, Number(remote.lastPageRead) || 1),
-    // Starring is intentional on either device; keep it if either has it.
     isFavorite: !!(local.isFavorite || remote.isFavorite)
   };
 }
@@ -84,13 +56,11 @@ export function mergeResources(localList, remoteList, deletedIds) {
   (localList || []).forEach(take);
   (remoteList || []).forEach(take);
 
-  // Newest first, which matches how the app has always presented the library.
   return order
     .map((k) => byKey.get(k))
     .sort((a, b) => timeOf(b) - timeOf(a));
 }
 
-/** Union of note lists for one resource, de-duplicated by note id. */
 export function mergeNoteList(localNotes, remoteNotes) {
   const byId = new Map();
   const order = [];
@@ -110,10 +80,6 @@ export function mergeNoteList(localNotes, remoteNotes) {
   return order.map((k) => byId.get(k)).sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
 }
 
-/**
- * Merges category lists by name, since ids are generated per-device with
- * Date.now() and therefore differ for the same category on two devices.
- */
 export function mergeCategories(localList, remoteList) {
   const byName = new Map();
   const order = [];
@@ -136,11 +102,6 @@ export function mergeCategories(localList, remoteList) {
   return order.map((k) => byName.get(k));
 }
 
-/**
- * Whether a local vault differs from what the remote holds, used to skip
- * pointless pushes. Compares the synced projection only — a change to
- * pdfFileData is not a reason to talk to the server.
- */
 export function vaultFingerprint(vault) {
   if (!vault) return '0';
 

@@ -14,7 +14,7 @@ export default function MyLibrary({
   onOpenAddModal,
   onSyncCloud
 }) {
-  const [activeTabFilter, setActiveTabFilter] = useState('ALL'); // ALL, FAVORITES, COMPLETED
+  const [activeTabFilter, setActiveTabFilter] = useState('ALL');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [sortOption, setSortOption] = useState('RECENT');
   const [searchQuery, setSearchQuery] = useState('');

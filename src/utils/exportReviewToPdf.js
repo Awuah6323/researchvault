@@ -14,42 +14,22 @@ const SPACE_BEFORE_HEADING = [10, 8, 6, 4, 4, 4];
 const SPACE_AFTER_HEADING = [6, 4, 3, 2, 2, 2];
 const HEADING_SIZE = [FONT_H1, FONT_H2, FONT_H3, FONT_H4, FONT_H4, FONT_H4];
 
-/**
- * Flatten inline Markdown to plain text.
- *
- * jsPDF has no inline formatting — a run of bold text inside a paragraph cannot
- * be expressed — so the markers are removed and the words kept. The alternative
- * is printing them literally, which is what used to happen and is what made
- * exported reviews look like source code.
- */
 function stripInline(text) {
   return String(text)
-    // [label](url) -> label (url). The destination is worth keeping in a
-    // document that may be read on paper, where a link cannot be clicked.
     .replace(/!?\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g, (_match, label, url) =>
       label ? `${label} (${url})` : url
     )
-    // `code` -> code
     .replace(/`{1,3}([^`]+)`{1,3}/g, "$1")
-    // **bold** and __bold__
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/__([^_]+)__/g, "$1")
-    // *italic* — two guards, both load-bearing. The leading boundary group
-    // stops a mid-word asterisk from opening a span, and requiring the content
-    // to begin and end with a non-space is what keeps arithmetic intact:
-    // "5 * 3 = 15 and 2 * 4" would otherwise read as one emphasised span and
-    // lose both operators.
     .replace(
       /(^|[\s(["'])\*([^\s*][^*\n]*[^\s*]|[^\s*])\*(?=[\s.,;:!?)\]"'-]|$)/g,
       "$1$2"
     )
-    // _italic_ — same two guards. Here the leading boundary is what protects
-    // `snake_case_variable`, which would otherwise come out as one word.
     .replace(
       /(^|[\s(["'])_([^\s_][^_\n]*[^\s_]|[^\s_])_(?=[\s.,;:!?)\]"'-]|$)/g,
       "$1$2"
     )
-    // ~~strikethrough~~
     .replace(/~~([^~]+)~~/g, "$1");
 }
 
@@ -138,9 +118,6 @@ export function exportReviewToPdf(reviewText, documentTitle = "Literature Review
     const line = rawLines[i].trimEnd();
     const trimmed = line.trim();
 
-    // ---- Fenced code blocks --------------------------------------------
-    // Inside a fence nothing is interpreted: the point of a code block is
-    // that its asterisks and hashes are content, not formatting.
     if (/^```/.test(trimmed)) {
       inCodeFence = !inCodeFence;
       cursorY += LINE_HEIGHT / 3;
@@ -148,8 +125,6 @@ export function exportReviewToPdf(reviewText, documentTitle = "Literature Review
     }
 
     if (inCodeFence) {
-      // splitTextToSize word-wraps, which drops leading whitespace, so the
-      // indentation is moved into the x offset instead of the string.
       const lead = (line.match(/^ */) || [""])[0].length;
       writeWrappedText(
         line.trimStart() || " ",
@@ -166,21 +141,11 @@ export function exportReviewToPdf(reviewText, documentTitle = "Literature Review
       continue;
     }
 
-    // ---- GFM table -> indented "Header: value" lines --------------------
-    // The synthesis prompt forbids tables, but chat mode explicitly allows
-    // them and this exporter is shared. Pipe rows re-wrap into unreadable
-    // garbage at PDF width, so a table is flattened rather than printed.
-    // Only a row followed by a divider counts, so a sentence that merely
-    // contains pipes is left alone.
+    // Convert GFM tables to indented key-value pairs for PDF width
     if (isTableRow(line) && isTableDivider(rawLines[i + 1])) {
       const headers = splitRow(line);
       let j = i + 2;
 
-      // Inside a confirmed table any line with a pipe is a body row. This is
-      // looser than isTableRow on purpose: a two-column row written without
-      // edge pipes ("Sample | 120") holds only one pipe, and the strict test
-      // would end the table early and silently drop the rest of its rows.
-      // A blank line has no pipe, so it still terminates the table.
       while (j < rawLines.length && rawLines[j].includes("|")) {
         if (isTableDivider(rawLines[j])) {
           j++;
@@ -189,8 +154,6 @@ export function exportReviewToPdf(reviewText, documentTitle = "Literature Review
 
         const cells = splitRow(rawLines[j]);
 
-        // Keep the row's label with at least its first value rather than
-        // letting a page break separate them.
         ensureSpace(LINE_HEIGHT * 2);
         writeWrappedText(cells[0] || "—", FONT_BODY, true);
 
@@ -207,13 +170,11 @@ export function exportReviewToPdf(reviewText, documentTitle = "Literature Review
       continue;
     }
 
-    // ---- Horizontal rule ------------------------------------------------
     if (/^([-*_])\1{2,}$/.test(trimmed)) {
       writeRule();
       continue;
     }
 
-    // ---- Headings, # through ###### -------------------------------------
     const heading = /^(#{1,6})\s+(.*)$/.exec(trimmed);
     if (heading) {
       const level = heading[1].length;
@@ -225,14 +186,12 @@ export function exportReviewToPdf(reviewText, documentTitle = "Literature Review
       continue;
     }
 
-    // ---- Blockquote -----------------------------------------------------
     const quote = /^>\s?(.*)$/.exec(trimmed);
     if (quote) {
       writeWrappedText(stripInline(quote[1]), FONT_BODY, false, INDENT_STEP);
       continue;
     }
 
-    // ---- Bullet list, nesting by leading indentation --------------------
     const bullet = /^(\s*)[-*+]\s+(.*)$/.exec(line);
     if (bullet) {
       const depth = Math.min(Math.floor(bullet[1].length / 2), 3);
@@ -246,7 +205,6 @@ export function exportReviewToPdf(reviewText, documentTitle = "Literature Review
       continue;
     }
 
-    // ---- Numbered list --------------------------------------------------
     const numbered = /^(\s*)(\d+[.)])\s+(.*)$/.exec(line);
     if (numbered) {
       const depth = Math.min(Math.floor(numbered[1].length / 2), 3);
@@ -259,7 +217,6 @@ export function exportReviewToPdf(reviewText, documentTitle = "Literature Review
       continue;
     }
 
-    // ---- A line that is nothing but bold text is a heading in disguise --
     const boldOnly = /^\*\*(.+?)\*\*:?$/.exec(trimmed);
     if (boldOnly) {
       cursorY += 4;

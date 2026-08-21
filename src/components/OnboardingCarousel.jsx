@@ -175,14 +175,12 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
 
   const totalSlides = slides.length;
 
-  // Cycle speed options: 5s -> 7s -> 10s -> 5s
   const handleCycleSpeed = () => {
     if (slideDuration === 5) setSlideDuration(7);
     else if (slideDuration === 7) setSlideDuration(10);
     else setSlideDuration(5);
   };
 
-  // Auto-slide duration (5s - 10s) unless paused or hovered
   useEffect(() => {
     if (!isPlaying || isHovered) return;
 
@@ -218,7 +216,6 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
     touchStartX.current = null;
   };
 
-  // Keyboard Navigation Support (Left / Right Arrow Keys)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'ArrowRight') handleNext();

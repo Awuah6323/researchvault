@@ -6,7 +6,7 @@ import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 import MarkdownMessage from '../components/MarkdownMessage';
 
 export default function LiteratureSynthesis({ resources }) {
-  const [mode, setMode] = useState('synthesis'); // 'synthesis', 'peer_review'
+  const [mode, setMode] = useState('synthesis');
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [reviewResult, setReviewResult] = useState('');
@@ -14,8 +14,6 @@ export default function LiteratureSynthesis({ resources }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const abortRef = useRef(null);
 
-  // A full review runs for the best part of a minute. Stop needs to actually
-  // stop it — both when the user asks and when they navigate away mid-run.
   const stopGenerating = () => {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -58,9 +56,6 @@ export default function LiteratureSynthesis({ resources }) {
     return content || paper.title;
   };
 
-  // Synthesis is a comparison, so it needs at least two papers — asked to
-  // compare one paper against nothing, the model has to invent the other half.
-  // A peer review is a single-paper report.
   const minPapers = mode === 'synthesis' ? 2 : 1;
   const canGenerate = selectedIds.length >= minPapers;
 
@@ -68,13 +63,11 @@ export default function LiteratureSynthesis({ resources }) {
     if (!canGenerate || loading) return;
     setLoading(true);
     setReviewResult('');
-    setIsExpanded(true); // Automatically expand to full width reading mode
+    setIsExpanded(true);
 
     const controller = new AbortController();
     abortRef.current = controller;
 
-    // Sections appear as the model writes them rather than all at once at the
-    // end. The generation is no faster; it just stops being invisible.
     const options = {
       onChunk: (chunk) => setReviewResult(prev => prev + chunk),
       signal: controller.signal
@@ -83,7 +76,6 @@ export default function LiteratureSynthesis({ resources }) {
     try {
       if (mode === 'synthesis') {
         const selectedPapers = resources.filter(r => selectedIds.includes(r.id));
-        // Ensure each paper has extracted content
         const processedPapers = await Promise.all(selectedPapers.map(async p => ({
           ...p,
           abstractText: await getPaperContent(p)
@@ -105,9 +97,6 @@ export default function LiteratureSynthesis({ resources }) {
         }
       }
     } catch (err) {
-      // Stop is not a failure, and a review that died halfway is still worth
-      // reading — so the error text only replaces an empty panel, never text
-      // the user can already see.
       if (err?.name !== 'AbortError') {
         setReviewResult(prev => prev || 'Failed to generate evaluation. Please verify Gemini API connectivity.');
       }
@@ -125,9 +114,6 @@ export default function LiteratureSynthesis({ resources }) {
     exportReviewToPdf(reviewResult, title);
   };
 
-  // The spinner only owns the panel until the first words land; after that the
-  // text itself is the progress indicator, and covering it with a spinner would
-  // hide the thing the user is waiting for.
   const awaitingFirstToken = loading && !reviewResult.trim();
 
   return (

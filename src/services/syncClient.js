@@ -1,32 +1,4 @@
-// src/services/syncClient.js
-// Network half of the sync engine, backed by Supabase.
-//
-// localStorage stays the source of truth for every read in the app; this module
-// only moves changes between devices. Nothing in the UI awaits anything here.
-//
-// Four ideas keep it off the critical path:
-//
-//  1. Writes are debounced. Starring a paper or typing a note used to fire a
-//     full-vault upload per action. Changes coalesce into one request a couple
-//     of seconds after you stop.
-//
-//  2. Other devices are notified, not polled. A Postgres realtime subscription
-//     delivers the new version number the moment another device commits, so an
-//     idle app makes no requests at all. The slow poll that remains is a safety
-//     net for a dropped socket, not the primary mechanism.
-//
-//  3. The realtime event is a doorbell, not a delivery. It carries the version;
-//     the vault itself is fetched over HTTPS. That keeps one code path for
-//     reading and stays correct if a payload ever exceeds the socket's limit.
-//
-//  4. PDF bytes never leave the device. buildLocalVault() strips them and a
-//     database CHECK constraint caps a vault at 3 MB, so a large attachment
-//     cannot make sync slow no matter what a client sends.
-//
-// Replaced a hand-rolled /api/auth (scrypt + bearer tokens) that worked but had
-// no password reset, no email verification and no rate limiting — so a user who
-// forgot their password was permanently locked out of their library.
-
+// src/services/syncClient.js - Network sync engine backed by Supabase
 import { supabase, isSupabaseConfigured, VAULT_TABLE } from './supabaseClient';
 
 const PUSH_DEBOUNCE_MS = 2000;

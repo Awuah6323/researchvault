@@ -1,30 +1,5 @@
 // src/components/MarkdownMessage.jsx
-//
-// The one place AI output is turned into formatted text.
-//
-// Every AI surface in the app used to render the model's reply as raw text
-// inside a `white-space: pre-wrap` div, so the Markdown the prompts explicitly
-// ask for was printed literally — `**bold**` showed its asterisks and `* point`
-// showed a stray `*` instead of a bullet. That was the whole of the "I don't
-// like how it presents the answers" complaint: a rendering gap, not a prompting
-// one.
-//
-// Two deliberate choices here:
-//
-//   1. remark-gfm is enabled, so tables, strikethrough and task lists work. The
-//      chat prompt is allowed to use a table when comparing things, and without
-//      GFM those would render as raw `|` pipes.
-//
-//   2. rehype-raw is deliberately NOT installed. react-markdown ignores raw
-//      HTML in its input by default, and that default is load-bearing: the
-//      string being rendered is model output that can quote arbitrary text from
-//      a user's PDF. Keeping HTML inert means a paper containing `<script>` is
-//      displayed, not executed. Do not add rehype-raw to this component.
-//
-// Presentation lives in index.css under `.md-body` rather than inline styles,
-// because there are ~15 element types to cover and the surrounding pages'
-// inline-style approach does not scale to that. Only the two overrides below
-// need JavaScript.
+// Renders AI Markdown output with GFM support while keeping raw HTML inert for security.
 
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';

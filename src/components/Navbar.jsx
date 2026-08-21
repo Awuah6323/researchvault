@@ -2,9 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Search, BookOpen, Moon, Sun, Sparkles, User, Palette, Menu, Cloud, CheckCircle2, RefreshCw, Download, Compass, HelpCircle } from 'lucide-react';
 import { storage } from '../services/storage';
 
-// Human-readable sync states. The badge previously said "Synced" for every
-// state except "syncing", so an offline or failed sync looked identical to a
-// successful one.
 const SYNC_LABELS = {
   synced: 'Synced',
   syncing: 'Syncing...',
@@ -13,8 +10,6 @@ const SYNC_LABELS = {
   'local-only': 'This device only'
 };
 
-// Long-form text for the tooltip and screen-reader label, so the state is
-// explained rather than just colour-coded.
 const SYNC_DETAIL = {
   synced: 'Your library is backed up and available on your other devices.',
   syncing: 'Saving your latest changes.',

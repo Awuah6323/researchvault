@@ -1,29 +1,3 @@
-// ResearchVault AI Service Engine
-// Gemini AI + Friendly Academic Fallback Engine
-//
-// Nothing here talks to Google directly. Every request goes through
-// /api/gemini, which holds the key server-side and also decides the model name
-// and the generation settings — so if Google retires the model again, the one
-// place to change it is MODEL in api/gemini.js, not this file.
-//
-// This module's job is the prompts, and there are three distinct jobs among
-// them (see MODE_1_CHAT / MODE_2_REVIEW / MODE_3_SYNTHESIS below):
-//
-//   Mode 1  conversation — answer length matches the question asked
-//   Mode 2  one paper     — a formal, fixed-structure professional review
-//   Mode 3  many papers   — a comparative synthesis across them
-//
-// Modes 2 and 3 emit a rigid section order because their output is a document
-// someone exports to PDF. Mode 1 deliberately does not: a chat that answers
-// "what is a p-value?" with a ten-section report is worse, not better.
-
-/**
- * Rules that apply to everything the model writes, in every mode.
- *
- * Kept as one constant rather than repeated in five template literals, because
- * previously each prompt carried its own slightly different wording of "do not
- * make things up" and they had already drifted apart from each other.
- */
 const CORE_RULES = `
 ACCURACY RULES — these apply without exception:
 
@@ -272,17 +246,6 @@ async function callGeminiApi(
 
   if (streamed.trim()) return streamed;
 
-  // No client-side API key path.
-  //
-  // This used to fall back to calling Gemini directly with
-  // import.meta.env.VITE_GEMINI_API_KEY. Vite inlines every VITE_-prefixed
-  // variable at build time, so that key shipped inside the public JavaScript
-  // bundle — anyone loading the site could extract it and spend against the
-  // account. The key now lives only in GEMINI_API_KEY (no VITE_ prefix), read
-  // server-side by /api/gemini.
-  //
-  // When the proxy is unreachable we degrade to the scripted fallback below
-  // rather than reintroducing a browser-visible credential.
   const fallback = generateScholarlyFallbackResponse(
     promptText,
     userName,
