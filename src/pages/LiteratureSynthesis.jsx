@@ -380,8 +380,8 @@ export default function LiteratureSynthesis({ resources }) {
               backgroundColor: 'var(--bg-main)',
               fontSize: '0.92rem',
               overflowY: 'auto',
-              maxHeight: isExpanded ? 'calc(100vh - 250px)' : '480px',
-              minHeight: isExpanded ? '450px' : 'auto'
+              maxHeight: isExpanded ? 'calc(100vh - 220px)' : '480px',
+              minHeight: isExpanded ? '320px' : 'auto'
             }}>
               <MarkdownMessage>{reviewResult}</MarkdownMessage>
               {loading && (
