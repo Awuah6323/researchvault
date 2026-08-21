@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, CheckSquare, Square, StopCircle, Copy, Check, Download, FileText, Layers, CheckCircle } from 'lucide-react';
+import { Sparkles, CheckSquare, Square, StopCircle, Copy, Check, Download, FileText, Layers, CheckCircle, Maximize2, Minimize2 } from 'lucide-react';
 import { synthesizeLiteratureReview, generatePeerReview } from '../services/geminiService';
 import { exportReviewToPdf } from '../utils/exportReviewToPdf';
 import { extractTextFromPdfFile } from '../utils/pdfExtractor';
@@ -11,6 +11,7 @@ export default function LiteratureSynthesis({ resources }) {
   const [loading, setLoading] = useState(false);
   const [reviewResult, setReviewResult] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const abortRef = useRef(null);
 
   // A full review runs for the best part of a minute. Stop needs to actually
@@ -67,6 +68,7 @@ export default function LiteratureSynthesis({ resources }) {
     if (!canGenerate || loading) return;
     setLoading(true);
     setReviewResult('');
+    setIsExpanded(true); // Automatically expand to full width reading mode
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -136,157 +138,220 @@ export default function LiteratureSynthesis({ resources }) {
       </div>
 
       {/* Mode Switcher Tabs */}
-      <div className="ai-toolbar" role="group" aria-label="Review mode" style={{ display: 'flex', gap: '10px', backgroundColor: 'var(--bg-card)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)', width: 'fit-content' }}>
-        <button
-          type="button"
-          onClick={() => { setMode('synthesis'); setSelectedIds([]); setReviewResult(''); }}
-          aria-pressed={mode === 'synthesis'}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '8px',
-            fontSize: '0.85rem',
-            fontWeight: 700,
-            backgroundColor: mode === 'synthesis' ? 'var(--primary)' : 'transparent',
-            color: mode === 'synthesis' ? '#ffffff' : 'var(--text-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <Layers size={16} aria-hidden="true" /> Literature Synthesis (Multi-Paper)
-        </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div className="ai-toolbar" role="group" aria-label="Review mode" style={{ display: 'flex', gap: '10px', backgroundColor: 'var(--bg-card)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)', width: 'fit-content' }}>
+          <button
+            type="button"
+            onClick={() => { setMode('synthesis'); setSelectedIds([]); setReviewResult(''); setIsExpanded(false); }}
+            aria-pressed={mode === 'synthesis'}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              backgroundColor: mode === 'synthesis' ? 'var(--primary)' : 'transparent',
+              color: mode === 'synthesis' ? '#ffffff' : 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <Layers size={16} aria-hidden="true" /> Literature Synthesis (Multi-Paper)
+          </button>
 
-        <button
-          type="button"
-          onClick={() => { setMode('peer_review'); setSelectedIds([]); setReviewResult(''); }}
-          aria-pressed={mode === 'peer_review'}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '8px',
-            fontSize: '0.85rem',
-            fontWeight: 700,
-            backgroundColor: mode === 'peer_review' ? 'var(--primary)' : 'transparent',
-            color: mode === 'peer_review' ? '#ffffff' : 'var(--text-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <FileText size={16} aria-hidden="true" /> Professional Peer Review (Single Paper)
-        </button>
-      </div>
-
-      <div className="synthesis-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-        {/* Left Column: Paper Selection */}
-        <div className="glass-card ai-review-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
-                {mode === 'synthesis' ? `Select Papers (${selectedIds.length} Selected)` : `Select 1 Paper to Review (${selectedIds.length} Selected)`}
-              </h3>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                {mode === 'synthesis' ? 'Choose 2 or more papers to compare' : 'Choose 1 paper for a full Peer Review Report'}
-              </div>
-            </div>
-
-            {loading ? (
-              <button
-                type="button"
-                onClick={stopGenerating}
-                className="btn-secondary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              >
-                <StopCircle size={16} aria-hidden="true" />
-                <span>Stop</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleGenerate}
-                className="btn-primary"
-                disabled={!canGenerate}
-                style={{ opacity: canGenerate ? 1 : 0.5 }}
-              >
-                <Sparkles size={16} aria-hidden="true" />
-                <span>{mode === 'synthesis' ? 'Synthesize Review' : 'Generate Peer Review'}</span>
-              </button>
-            )}
-          </div>
-
-          <div role="group" aria-label="Select papers to include" style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '500px', overflowY: 'auto' }}>
-            {resources.map(r => {
-              const isSelected = selectedIds.includes(r.id);
-              return (
-                /* A real <input type="checkbox"> rather than a clickable div:
-                   this is a multi-select list, so it must be reachable by Tab,
-                   togglable with Space, and announced with its checked state. */
-                <label
-                  key={r.id}
-                  htmlFor={`synthesis-paper-${r.id}`}
-                  style={{
-                    padding: '12px',
-                    borderRadius: '12px',
-                    border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                    backgroundColor: isSelected ? 'var(--primary-light)' : 'var(--bg-main)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px'
-                  }}
-                >
-                  <input
-                    id={`synthesis-paper-${r.id}`}
-                    type="checkbox"
-                    className="sr-only"
-                    checked={isSelected}
-                    onChange={() => toggleSelect(r.id)}
-                  />
-                  <span aria-hidden="true" style={{ color: isSelected ? 'var(--primary)' : 'var(--text-muted)', display: 'flex', flexShrink: 0 }}>
-                    {isSelected ? (mode === 'peer_review' ? <CheckCircle size={20} /> : <CheckSquare size={20} />) : <Square size={20} />}
-                  </span>
-                  <span>
-                    <span style={{ fontWeight: 700, fontSize: '0.85rem', display: 'block' }}>{r.title}</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>{r.authors} ({r.publicationYear})</span>
-                  </span>
-                </label>
-              );
-            })}
-          </div>
+          <button
+            type="button"
+            onClick={() => { setMode('peer_review'); setSelectedIds([]); setReviewResult(''); setIsExpanded(false); }}
+            aria-pressed={mode === 'peer_review'}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              backgroundColor: mode === 'peer_review' ? 'var(--primary)' : 'transparent',
+              color: mode === 'peer_review' ? '#ffffff' : 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <FileText size={16} aria-hidden="true" /> Professional Peer Review (Single Paper)
+          </button>
         </div>
 
-        {/* Right Column: Generated Report */}
+        {/* Focus Mode Toggle Button */}
+        {isExpanded ? (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(false)}
+            className="btn-secondary"
+            style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Minimize2 size={16} aria-hidden="true" /> Show Paper Selector
+          </button>
+        ) : reviewResult ? (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(true)}
+            className="btn-secondary"
+            style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Maximize2 size={16} aria-hidden="true" /> Expand Full Reading View
+          </button>
+        ) : null}
+      </div>
+
+      <div className="synthesis-grid" style={{ display: 'grid', gridTemplateColumns: isExpanded ? '1fr' : '1fr 1fr', gap: '24px' }}>
+        {/* Left Column: Paper Selection (Hidden in Focus Reading Mode) */}
+        {!isExpanded && (
+          <div className="glass-card ai-review-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+                  {mode === 'synthesis' ? `Select Papers (${selectedIds.length} Selected)` : `Select 1 Paper to Review (${selectedIds.length} Selected)`}
+                </h3>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {mode === 'synthesis' ? 'Choose 2 or more papers to compare' : 'Choose 1 paper for a full Peer Review Report'}
+                </div>
+              </div>
+
+              {loading ? (
+                <button
+                  type="button"
+                  onClick={stopGenerating}
+                  className="btn-secondary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <StopCircle size={16} aria-hidden="true" />
+                  <span>Stop</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  className="btn-primary"
+                  disabled={!canGenerate}
+                  style={{ opacity: canGenerate ? 1 : 0.5 }}
+                >
+                  <Sparkles size={16} aria-hidden="true" />
+                  <span>{mode === 'synthesis' ? 'Synthesize Review' : 'Generate Peer Review'}</span>
+                </button>
+              )}
+            </div>
+
+            <div role="group" aria-label="Select papers to include" style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '500px', overflowY: 'auto' }}>
+              {resources.map(r => {
+                const isSelected = selectedIds.includes(r.id);
+                return (
+                  <label
+                    key={r.id}
+                    htmlFor={`synthesis-paper-${r.id}`}
+                    style={{
+                      padding: '12px',
+                      borderRadius: '12px',
+                      border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                      backgroundColor: isSelected ? 'var(--primary-light)' : 'var(--bg-main)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px'
+                    }}
+                  >
+                    <input
+                      id={`synthesis-paper-${r.id}`}
+                      type="checkbox"
+                      className="sr-only"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(r.id)}
+                    />
+                    <span aria-hidden="true" style={{ color: isSelected ? 'var(--primary)' : 'var(--text-muted)', display: 'flex', flexShrink: 0 }}>
+                      {isSelected ? (mode === 'peer_review' ? <CheckCircle size={20} /> : <CheckSquare size={20} />) : <Square size={20} />}
+                    </span>
+                    <span>
+                      <span style={{ fontWeight: 700, fontSize: '0.85rem', display: 'block' }}>{r.title}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>{r.authors} ({r.publicationYear})</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Right Column: Generated Report (Expands to 100% width when reading) */}
         <div className="glass-card synthesis-output" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
-              {mode === 'synthesis' ? 'Generated Synthesis Review' : 'Peer Review Report Output'}
-            </h3>
-            {/* Hidden mid-stream: copying or exporting a half-written review
-                produces a document that silently stops mid-sentence. */}
-            {reviewResult && !loading && (
-              <div className="action-button-group" style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(reviewResult);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+                {mode === 'synthesis' ? 'Generated Synthesis Review' : 'Peer Review Report Output'}
+              </h3>
+              {isExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(false)}
                   className="btn-secondary"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                  style={{ padding: '3px 8px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  title="Show paper selection list again"
                 >
-                  {copied ? <Check size={14} /> : <Copy size={14} />}
-                  <span>{copied ? 'Copied!' : 'Copy'}</span>
+                  <Minimize2 size={12} />
+                  <span>Exit Focus View</span>
                 </button>
+              )}
+            </div>
 
-                <button 
-                  onClick={handleExportPdf}
-                  className="btn-primary"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {!isExpanded && reviewResult && (
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(true)}
+                  className="btn-secondary"
+                  style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  title="Enlarge reading panel"
                 >
-                  <Download size={14} />
-                  <span>Download PDF</span>
+                  <Maximize2 size={14} />
+                  <span>Enlarge</span>
                 </button>
-              </div>
-            )}
+              )}
+
+              {loading && isExpanded && (
+                <button
+                  type="button"
+                  onClick={stopGenerating}
+                  className="btn-secondary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '0.8rem' }}
+                >
+                  <StopCircle size={16} aria-hidden="true" />
+                  <span>Stop</span>
+                </button>
+              )}
+
+              {/* Action buttons when complete */}
+              {reviewResult && !loading && (
+                <div className="action-button-group" style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(reviewResult);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="btn-secondary"
+                    style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                  >
+                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                  </button>
+
+                  <button 
+                    onClick={handleExportPdf}
+                    className="btn-primary"
+                    style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <Download size={14} />
+                    <span>Download PDF</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {awaitingFirstToken ? (
@@ -310,12 +375,13 @@ export default function LiteratureSynthesis({ resources }) {
           ) : reviewResult ? (
             <div className="synthesis-output-content" style={{
               flex: 1,
-              padding: '16px',
+              padding: '20px',
               borderRadius: '12px',
               backgroundColor: 'var(--bg-main)',
-              fontSize: '0.9rem',
+              fontSize: '0.92rem',
               overflowY: 'auto',
-              maxHeight: '480px'
+              maxHeight: isExpanded ? 'calc(100vh - 250px)' : '480px',
+              minHeight: isExpanded ? '450px' : 'auto'
             }}>
               <MarkdownMessage>{reviewResult}</MarkdownMessage>
               {loading && (
