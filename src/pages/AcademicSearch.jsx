@@ -49,10 +49,6 @@ export default function AcademicSearch({
   const previewKeyRef = useRef(null);
   const resultsRef = useRef(null);
 
-  // ----------------------------------------
-  // SEARCH
-  // ----------------------------------------
-
   const [scholarModalQuery, setScholarModalQuery] = useState(null);
 
   const openInAppScholar = (searchTerms) => {

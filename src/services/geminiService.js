@@ -274,10 +274,6 @@ function generateScholarlyFallbackResponse(
     .toLowerCase()
     .trim();
 
-  // -----------------------------------------
-  // GREETINGS
-  // -----------------------------------------
-
   if (isGreeting(query)) {
     const greetings = [
       `Hey ${userName}! 😊 It's great to hear from you. How can I help you with your research today?`,
@@ -296,10 +292,6 @@ function generateScholarlyFallbackResponse(
     ];
   }
 
-  // -----------------------------------------
-  // USER CALLS THE AI
-  // -----------------------------------------
-
   if (isCallingAI(query)) {
     const responses = [
       `Hey ${userName}! 😊 I'm right here. What can I help you with?`,
@@ -317,10 +309,6 @@ function generateScholarlyFallbackResponse(
       )
     ];
   }
-
-  // -----------------------------------------
-  // TRANSFORMER / ATTENTION
-  // -----------------------------------------
 
   if (
     query.includes("transformer") ||
@@ -356,10 +344,6 @@ Transformers can process many parts of a sequence in parallel, making them highl
 
 If you'd like, I can also explain **self-attention using a simple real-world example**. That usually makes the concept much easier to understand.`;
   }
-
-  // -----------------------------------------
-  // LITERATURE REVIEW / METHODOLOGY
-  // -----------------------------------------
 
   if (
     query.includes("literature review") ||
@@ -401,10 +385,6 @@ A good literature review should tell a **story about what researchers know, what
 If you tell me your research topic, I can help you build the literature review structure around it.`;
   }
 
-  // -----------------------------------------
-  // RESEARCH TOPIC
-  // -----------------------------------------
-
   if (
     query.includes("research topic") ||
     query.includes("research title")
@@ -421,10 +401,6 @@ We can also look at the **research gap**, the **relevance of the problem**, and 
 
 Tell me the area you're interested in, and I'll help you develop some strong research topics.`;
   }
-
-  // -----------------------------------------
-  // RESEARCH GAP
-  // -----------------------------------------
 
   if (
     query.includes("research gap") ||
@@ -444,10 +420,6 @@ You can look for gaps by examining:
 
 If you give me your research topic, I can help you identify possible research gaps and turn them into research questions.`;
   }
-
-  // -----------------------------------------
-  // GENERAL FALLBACK
-  // -----------------------------------------
 
   return `Hey ${userName}! 😊 I'm having trouble reaching the AI service right now, so I can't give you a full answer to that one — but here's what I can normally help with once it's back:
 

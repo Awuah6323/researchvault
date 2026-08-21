@@ -1,22 +1,4 @@
-// src/services/storage.js
-// Account-scoped local persistence plus cross-device sync for ResearchVault.
-//
-// Design:
-//
-//   localStorage is the source of truth for every read. Nothing in the UI
-//   waits on the network, and the app works fully offline.
-//
-//   Sync runs on Supabase: auth and session handling are its job, each user's
-//   library is one row behind Row Level Security, and a realtime subscription
-//   tells this device the moment another one commits. Writes are debounced and
-//   version checked, so a change that lands while you are mid-edit is merged
-//   rather than overwriting you.
-//
-//   What this replaced: every saveResources/saveNotes/saveProfile call fired a
-//   full-vault upload including base64 PDFs; a 15s timer re-pulled and rewrote
-//   all of localStorage whether or not anything had changed; and passwords were
-//   hashed with a single SHA-256 round and published to a public bucket keyed
-//   by email address.
+// src/services/storage.js - Account-scoped local storage and sync service
 
 import {
   hasSyncSession,
@@ -91,12 +73,8 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sync state broadcasting
-// ---------------------------------------------------------------------------
-
 let syncListeners = [];
-let currentSyncState = 'synced'; // synced | syncing | offline | error
+let currentSyncState = 'synced';
 
 function notifySyncListeners(state, timestamp) {
   currentSyncState = state;
@@ -108,10 +86,6 @@ function notifySyncListeners(state, timestamp) {
     }
   });
 }
-
-// ---------------------------------------------------------------------------
-// Key scoping
-// ---------------------------------------------------------------------------
 
 function getActiveUserEmail() {
   try {
@@ -152,10 +126,6 @@ function writeJson(key, value) {
 function nowIso() {
   return new Date().toISOString();
 }
-
-// ---------------------------------------------------------------------------
-// Sync bookkeeping
-// ---------------------------------------------------------------------------
 
 function getSyncedVersion() {
   const raw = localStorage.getItem(getScopedKey(BASE_KEYS.SYNC_VERSION));

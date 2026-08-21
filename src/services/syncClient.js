@@ -2,10 +2,7 @@
 import { supabase, isSupabaseConfigured, VAULT_TABLE } from './supabaseClient';
 
 const PUSH_DEBOUNCE_MS = 2000;
-// Longest a change can sit unsent while you keep making more changes.
 const PUSH_MAX_WAIT_MS = 10000;
-
-// ------------------------------------------------------------------- ERRORS
 
 /** The stored session is gone or rejected — sign in again. */
 export class AuthExpiredError extends Error {
@@ -17,9 +14,6 @@ export class AuthExpiredError extends Error {
 
 /**
  * Supabase could not be reached, or this build has no credentials.
- *
- * Kept separate from a credential rejection so the app can fall back to
- * local-only mode instead of telling someone their password is wrong.
  */
 export class BackendUnavailableError extends Error {
   constructor(message) {
@@ -28,12 +22,6 @@ export class BackendUnavailableError extends Error {
   }
 }
 
-/**
- * Sorts a Supabase error into one of the two above, or passes it through.
- *
- * The distinction matters: showing "invalid password" to someone whose wifi
- * dropped sends them chasing a problem that isn't theirs.
- */
 function classifyError(error) {
   if (!error) return null;
 
@@ -41,8 +29,6 @@ function classifyError(error) {
   const message = String(error.message || '');
   const status = Number(error.status || 0);
 
-  // supabase-js raises AuthRetryableFetchError for transport failures; a raw
-  // fetch rejection surfaces as TypeError: Failed to fetch.
   if (
     name === 'AuthRetryableFetchError' ||
     name === 'TypeError' ||
@@ -60,16 +46,9 @@ function classifyError(error) {
   return error;
 }
 
-/** Throws BackendUnavailableError when this build has no Supabase credentials. */
 function requireBackend() {
   if (!isSupabaseConfigured() || !supabase) throw new BackendUnavailableError();
 }
-
-// ------------------------------------------------------------------ SESSION
-//
-// canSync() in storage.js is called on hot paths and has to answer
-// synchronously, so the live session is mirrored here rather than awaited.
-// supabase-js is the owner of the real thing; this is only a cache.
 
 let cachedSession = null;
 let sessionReady = false;
