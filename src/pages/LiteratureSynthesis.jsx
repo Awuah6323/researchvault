@@ -362,8 +362,7 @@ export default function LiteratureSynthesis({ resources }) {
                 borderRadius: '50%',
                 border: '4px solid var(--border-color)',
                 borderTopColor: 'var(--primary)',
-                animation: 'spin 0.9s linear infinite',
-                boxShadow: '0 0 20px rgba(0, 255, 136, 0.3)'
+                animation: 'spin 0.9s linear infinite'
               }} />
               <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)' }}>
                 {mode === 'synthesis' ? 'Gemini AI is synthesizing methodologies & research gaps...' : 'Gemini AI is drafting formal Peer Review Report...'}

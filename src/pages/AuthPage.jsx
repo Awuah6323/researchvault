@@ -231,8 +231,7 @@ export default function AuthPage({ onLoginSuccess }) {
 
         padding: '24px',
 
-        background:
-          'radial-gradient(circle at 10% 20%, rgba(0, 255, 136, 0.12), transparent 45%), radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.15), transparent 45%)',
+        background: 'var(--bg-main)',
       }}
     >
       <div
@@ -293,7 +292,7 @@ export default function AuthPage({ onLoginSuccess }) {
                 color: '#03140a',
 
                 boxShadow:
-                  '0 0 25px rgba(0, 255, 136, 0.4)',
+                  '0 4px 14px rgba(0, 0, 0, 0.25)',
               }}
             >
               <BookOpen size={28} />

@@ -143,7 +143,7 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
             className="btn-primary"
             style={{
               width: '100%',
-              boxShadow: '0 4px 14px rgba(0, 255, 136, 0.25)',
+              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
               justifyContent: 'center'
             }}
           >

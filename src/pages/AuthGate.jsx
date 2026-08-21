@@ -12,7 +12,7 @@ export default function AuthGate({ onLoginSuccess }) {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '24px',
-      background: 'radial-gradient(circle at top right, rgba(37, 99, 235, 0.15), transparent 40%), radial-gradient(circle at bottom left, rgba(30, 27, 75, 0.2), transparent 40%)'
+      backgroundColor: 'var(--bg-main, #0b0f19)'
     }}>
       <div style={{
         width: '100%',
@@ -34,7 +34,7 @@ export default function AuthGate({ onLoginSuccess }) {
               alignItems: 'center',
               justifyContent: 'center',
               color: '#fff',
-              boxShadow: '0 6px 20px rgba(37, 99, 235, 0.4)'
+              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)'
             }}>
               <BookOpen size={26} />
             </div>
