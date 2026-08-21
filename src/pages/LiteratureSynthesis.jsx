@@ -97,9 +97,11 @@ export default function LiteratureSynthesis({ resources }) {
       </div>
 
       {/* Mode Switcher Tabs */}
-      <div className="ai-toolbar" style={{ display: 'flex', gap: '10px', backgroundColor: 'var(--bg-card)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)', width: 'fit-content' }}>
+      <div className="ai-toolbar" role="group" aria-label="Review mode" style={{ display: 'flex', gap: '10px', backgroundColor: 'var(--bg-card)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-color)', width: 'fit-content' }}>
         <button
+          type="button"
           onClick={() => { setMode('synthesis'); setSelectedIds([]); setReviewResult(''); }}
+          aria-pressed={mode === 'synthesis'}
           style={{
             padding: '8px 16px',
             borderRadius: '8px',
@@ -112,11 +114,13 @@ export default function LiteratureSynthesis({ resources }) {
             gap: '8px'
           }}
         >
-          <Layers size={16} /> Literature Synthesis (Multi-Paper)
+          <Layers size={16} aria-hidden="true" /> Literature Synthesis (Multi-Paper)
         </button>
 
         <button
+          type="button"
           onClick={() => { setMode('peer_review'); setSelectedIds([]); setReviewResult(''); }}
+          aria-pressed={mode === 'peer_review'}
           style={{
             padding: '8px 16px',
             borderRadius: '8px',
@@ -129,7 +133,7 @@ export default function LiteratureSynthesis({ resources }) {
             gap: '8px'
           }}
         >
-          <FileText size={16} /> Professional Peer Review (Single Paper)
+          <FileText size={16} aria-hidden="true" /> Professional Peer Review (Single Paper)
         </button>
       </div>
 
@@ -157,13 +161,16 @@ export default function LiteratureSynthesis({ resources }) {
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '500px', overflowY: 'auto' }}>
+          <div role="group" aria-label="Select papers to include" style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '500px', overflowY: 'auto' }}>
             {resources.map(r => {
               const isSelected = selectedIds.includes(r.id);
               return (
-                <div
+                /* A real <input type="checkbox"> rather than a clickable div:
+                   this is a multi-select list, so it must be reachable by Tab,
+                   togglable with Space, and announced with its checked state. */
+                <label
                   key={r.id}
-                  onClick={() => toggleSelect(r.id)}
+                  htmlFor={`synthesis-paper-${r.id}`}
                   style={{
                     padding: '12px',
                     borderRadius: '12px',
@@ -175,14 +182,21 @@ export default function LiteratureSynthesis({ resources }) {
                     gap: '12px'
                   }}
                 >
-                  <div style={{ color: isSelected ? 'var(--primary)' : 'var(--text-muted)' }}>
+                  <input
+                    id={`synthesis-paper-${r.id}`}
+                    type="checkbox"
+                    className="sr-only"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(r.id)}
+                  />
+                  <span aria-hidden="true" style={{ color: isSelected ? 'var(--primary)' : 'var(--text-muted)', display: 'flex', flexShrink: 0 }}>
                     {isSelected ? (mode === 'peer_review' ? <CheckCircle size={20} /> : <CheckSquare size={20} />) : <Square size={20} />}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{r.title}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.authors} ({r.publicationYear})</div>
-                  </div>
-                </div>
+                  </span>
+                  <span>
+                    <span style={{ fontWeight: 700, fontSize: '0.85rem', display: 'block' }}>{r.title}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>{r.authors} ({r.publicationYear})</span>
+                  </span>
+                </label>
               );
             })}
           </div>

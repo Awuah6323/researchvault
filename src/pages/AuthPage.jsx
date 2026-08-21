@@ -16,6 +16,31 @@ import {
 import { storage } from '../services/storage';
 import { waitForGoogleIdentity } from '../utils/googleIdentity';
 
+/**
+ * Turns an auth failure into a message that points at the actual cause.
+ * The previous catch-all ("check your credentials") sent people to retype a
+ * password that was never the problem when the real failure was the network
+ * or the cloud vault being unreachable.
+ */
+function resolveAuthErrorMessage(err) {
+  const raw = (err && err.message) || '';
+
+  if (/already exists/i.test(raw)) {
+    return 'An account with this email already exists. Try signing in instead.';
+  }
+  if (/Invalid email address or password/i.test(raw)) {
+    return 'That email and password combination doesn’t match an account. Check for typos, or create an account if you haven’t yet.';
+  }
+  if (/Web Crypto/i.test(raw)) {
+    return 'Your browser blocked the secure hashing needed to sign in. This usually means the page is not on HTTPS.';
+  }
+  if (/fetch|network|Failed to fetch|NetworkError|timeout/i.test(raw)) {
+    return 'Couldn’t reach the ResearchVault cloud vault. Check your connection and try again — your password is fine.';
+  }
+
+  return raw || 'Something went wrong while signing you in. Please try again.';
+}
+
 export default function AuthPage({ onLoginSuccess }) {
   const [activeTab, setActiveTab] = useState('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -82,7 +107,12 @@ export default function AuthPage({ onLoginSuccess }) {
   const [submitting, setSubmitting] = useState(false);
 
   /**
-   * Handle successful Google login
+   * Handle successful Google login.
+   *
+   * The raw credential is handed straight to the server, which verifies it
+   * against Google's tokeninfo endpoint. This used to base64-decode the JWT
+   * here and trust the email inside it, with no signature or audience check —
+   * a hand-crafted token could claim to be anyone.
    */
   const handleGoogleCredential = async (response) => {
     try {
@@ -93,48 +123,13 @@ export default function AuthPage({ onLoginSuccess }) {
         throw new Error('Google did not return a valid credential.');
       }
 
-      // Decode the Google JWT credential
-      const payload = parseGoogleCredential(response.credential);
-
-      if (!payload) {
-        throw new Error('Unable to read Google account information.');
-      }
-
-      if (!payload.email) {
-        throw new Error('Google did not provide an email address.');
-      }
-
-      // Google has verified this user's identity
-      const googleUser = {
-        name:
-          payload.name ||
-          payload.given_name ||
-          'Google User',
-
-        email: payload.email,
-
-        institution: 'Google Verified Account',
-
-        picture: payload.picture || '',
-
-        googleId: payload.sub || '',
-      };
-
-      // Login or create the user in your local storage & pull cloud vault
-      const user = await storage.loginWithGoogle(
-        googleUser.email,
-        googleUser.name,
-        googleUser.institution
-      );
+      const user = await storage.loginWithGoogle(response.credential);
 
       setSuccess(
         `Signed in with Google as ${user.name}! Synchronizing vault...`
       );
 
-      // Redirect to the application
-      setTimeout(() => {
-        onLoginSuccess(storage.getProfile());
-      }, 500);
+      onLoginSuccess(storage.getProfile());
     } catch (err) {
       console.error('Google Sign-In Error:', err);
 
@@ -144,47 +139,6 @@ export default function AuthPage({ onLoginSuccess }) {
       );
     } finally {
       setGoogleLoading(false);
-    }
-  };
-
-  /**
-   * Decode Google Identity Services JWT credential
-   */
-  const parseGoogleCredential = (token) => {
-    try {
-      const parts = token.split('.');
-
-      if (parts.length !== 3) {
-        throw new Error('Invalid Google credential format.');
-      }
-
-      const base64Url = parts[1];
-
-      const base64 = base64Url
-        .replace(/-/g, '+')
-        .replace(/_/g, '/');
-
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map(
-            (char) =>
-              '%' +
-              ('00' +
-                char.charCodeAt(0).toString(16)
-              ).slice(-2)
-          )
-          .join('')
-      );
-
-      return JSON.parse(jsonPayload);
-    } catch (error) {
-      console.error(
-        'Failed to decode Google credential:',
-        error
-      );
-
-      return null;
     }
   };
 
@@ -206,6 +160,19 @@ export default function AuthPage({ onLoginSuccess }) {
       return;
     }
 
+    // Password rules only apply when creating an account — never reject an
+    // existing user's password at the login form.
+    if (activeTab === 'signup') {
+      if (!name.trim()) {
+        setError('Please enter your full name.');
+        return;
+      }
+      if (password.length < 8) {
+        setError('Please choose a password of at least 8 characters.');
+        return;
+      }
+    }
+
     try {
       setSubmitting(true);
 
@@ -213,33 +180,22 @@ export default function AuthPage({ onLoginSuccess }) {
       if (activeTab === 'login') {
         const user = await storage.loginUser(
           email.trim(),
-          password.trim()
+          password
         );
 
         setSuccess(
           `Welcome back, ${user.name}! Synchronizing vault...`
         );
 
-        setTimeout(() => {
-          onLoginSuccess(storage.getProfile());
-        }, 500);
+        onLoginSuccess(storage.getProfile());
       }
 
       // SIGNUP
       else {
-        if (!name.trim()) {
-          setError(
-            'Please enter your full name.'
-          );
-          setSubmitting(false);
-
-          return;
-        }
-
         const user = await storage.registerUser(
           name.trim(),
           email.trim(),
-          password.trim(),
+          password,
           institution.trim() ||
           'University / Institution',
           fieldOfStudy.trim() ||
@@ -250,9 +206,7 @@ export default function AuthPage({ onLoginSuccess }) {
           `Account created successfully for ${user.name}! Synchronizing vault...`
         );
 
-        setTimeout(() => {
-          onLoginSuccess(storage.getProfile());
-        }, 500);
+        onLoginSuccess(storage.getProfile());
       }
     } catch (err) {
       console.error(
@@ -260,10 +214,9 @@ export default function AuthPage({ onLoginSuccess }) {
         err
       );
 
-      setError(
-        err.message ||
-        'Authentication failed. Please check your credentials.'
-      );
+      // Don't tell people to check credentials when the real failure was the
+      // network or the cloud vault — they'd retype a password that was fine.
+      setError(resolveAuthErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -761,9 +714,12 @@ export default function AuthPage({ onLoginSuccess }) {
             />
           </div>
 
-          {/* ERROR */}
+          {/* ERROR — role="alert" makes this an assertive live region, so the
+              failure is spoken instead of only turning the box red. */}
           {error && (
             <div
+              id="auth-error"
+              role="alert"
               style={{
                 padding: '12px 14px',
 
@@ -785,6 +741,7 @@ export default function AuthPage({ onLoginSuccess }) {
           {/* SUCCESS */}
           {success && (
             <div
+              role="status"
               style={{
                 padding: '12px 14px',
 
@@ -805,7 +762,7 @@ export default function AuthPage({ onLoginSuccess }) {
                 gap: '6px',
               }}
             >
-              <Check size={18} />
+              <Check size={18} aria-hidden="true" />
 
               {success}
             </div>
@@ -826,6 +783,7 @@ export default function AuthPage({ onLoginSuccess }) {
             {activeTab === 'signup' && (
               <div>
                 <label
+                  htmlFor="auth-name"
                   style={{
                     fontSize: '0.8rem',
 
@@ -849,6 +807,7 @@ export default function AuthPage({ onLoginSuccess }) {
                 >
                   <User
                     size={18}
+                    aria-hidden="true"
                     style={{
                       position: 'absolute',
 
@@ -865,8 +824,10 @@ export default function AuthPage({ onLoginSuccess }) {
                   />
 
                   <input
+                    id="auth-name"
                     type="text"
                     required
+                    autoComplete="name"
                     value={name}
                     onChange={(e) =>
                       setName(e.target.value)
@@ -896,6 +857,7 @@ export default function AuthPage({ onLoginSuccess }) {
             {/* EMAIL */}
             <div>
               <label
+                htmlFor="auth-email"
                 style={{
                   fontSize: '0.8rem',
 
@@ -919,6 +881,7 @@ export default function AuthPage({ onLoginSuccess }) {
               >
                 <Mail
                   size={18}
+                  aria-hidden="true"
                   style={{
                     position: 'absolute',
 
@@ -935,8 +898,12 @@ export default function AuthPage({ onLoginSuccess }) {
                 />
 
                 <input
+                  id="auth-email"
                   type="email"
                   required
+                  autoComplete="email"
+                  aria-invalid={error ? 'true' : undefined}
+                  aria-describedby={error ? 'auth-error' : undefined}
                   value={email}
                   onChange={(e) =>
                     setEmail(e.target.value)
@@ -965,6 +932,7 @@ export default function AuthPage({ onLoginSuccess }) {
             {/* PASSWORD */}
             <div>
               <label
+                htmlFor="auth-password"
                 style={{
                   fontSize: '0.8rem',
 
@@ -988,6 +956,7 @@ export default function AuthPage({ onLoginSuccess }) {
               >
                 <Lock
                   size={18}
+                  aria-hidden="true"
                   style={{
                     position: 'absolute',
 
@@ -1004,12 +973,25 @@ export default function AuthPage({ onLoginSuccess }) {
                 />
 
                 <input
+                  id="auth-password"
                   type={
                     showPassword
                       ? 'text'
                       : 'password'
                   }
                   required
+                  /* Lets password managers offer the right credential, and
+                     stops Chrome warning about a missing autocomplete hint. */
+                  autoComplete={
+                    activeTab === 'signup'
+                      ? 'new-password'
+                      : 'current-password'
+                  }
+                  minLength={activeTab === 'signup' ? 8 : undefined}
+                  aria-invalid={error ? 'true' : undefined}
+                  aria-describedby={
+                    activeTab === 'signup' ? 'auth-password-hint' : (error ? 'auth-error' : undefined)
+                  }
                   value={password}
                   onChange={(e) =>
                     setPassword(e.target.value)
@@ -1040,6 +1022,8 @@ export default function AuthPage({ onLoginSuccess }) {
                       !showPassword
                     )
                   }
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
                   style={{
                     position: 'absolute',
 
@@ -1055,12 +1039,27 @@ export default function AuthPage({ onLoginSuccess }) {
                   }}
                 >
                   {showPassword ? (
-                    <EyeOff size={18} />
+                    <EyeOff size={18} aria-hidden="true" />
                   ) : (
-                    <Eye size={18} />
+                    <Eye size={18} aria-hidden="true" />
                   )}
                 </button>
               </div>
+
+              {/* Stating the rule up front beats rejecting the form after
+                  the user has already committed to a password. */}
+              {activeTab === 'signup' && (
+                <div
+                  id="auth-password-hint"
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--text-muted)',
+                    marginTop: '5px',
+                  }}
+                >
+                  Use at least 8 characters.
+                </div>
+              )}
             </div>
 
             {/* INSTITUTION AND FIELD */}
@@ -1077,6 +1076,7 @@ export default function AuthPage({ onLoginSuccess }) {
               >
                 <div>
                   <label
+                    htmlFor="auth-institution"
                     style={{
                       fontSize: '0.8rem',
 
@@ -1094,7 +1094,9 @@ export default function AuthPage({ onLoginSuccess }) {
                   </label>
 
                   <input
+                    id="auth-institution"
                     type="text"
+                    autoComplete="organization"
                     value={institution}
                     onChange={(e) =>
                       setInstitution(
@@ -1122,6 +1124,7 @@ export default function AuthPage({ onLoginSuccess }) {
 
                 <div>
                   <label
+                    htmlFor="auth-field-of-study"
                     style={{
                       fontSize: '0.8rem',
 
@@ -1139,6 +1142,7 @@ export default function AuthPage({ onLoginSuccess }) {
                   </label>
 
                   <input
+                    id="auth-field-of-study"
                     type="text"
                     value={fieldOfStudy}
                     onChange={(e) =>

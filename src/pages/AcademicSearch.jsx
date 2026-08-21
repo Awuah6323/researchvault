@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import { searchAcademicSources, isDirectPdfUrl } from '../services/academicSearch';
+import Modal from '../components/Modal';
 
 export default function AcademicSearch({
   initialQuery,
@@ -453,6 +454,7 @@ export default function AcademicSearch({
           >
             <Search
               size={20}
+              aria-hidden="true"
               style={{
                 position: 'absolute',
                 left: '16px',
@@ -462,8 +464,12 @@ export default function AcademicSearch({
               }}
             />
 
+            <label htmlFor="academic-search-query" className="sr-only">
+              Search academic papers by author, title, keyword or DOI
+            </label>
             <input
-              type="text"
+              id="academic-search-query"
+              type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search author names, titles, keywords, or DOI..."
@@ -736,19 +742,24 @@ export default function AcademicSearch({
                     </span>
                   </div>
 
-                  <h3
-                    onClick={() => openPreview(item)}
-                    style={{
-                      fontFamily:
-                        'var(--font-serif)',
-                      fontSize: '1.25rem',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      color: 'var(--text-main)',
-                      lineHeight: 1.35
-                    }}
-                  >
-                    {item.title}
+                  <h3>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => openPreview(item)}
+                      aria-label={`Preview "${item.title}"`}
+                      style={{
+                        fontFamily:
+                          'var(--font-serif)',
+                        fontSize: '1.25rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        color: 'var(--text-main)',
+                        lineHeight: 1.35
+                      }}
+                    >
+                      {item.title}
+                    </button>
                   </h3>
 
                   <div
@@ -989,10 +1000,12 @@ export default function AcademicSearch({
           >
             {/* FIRST PAGE */}
             <button
+              type="button"
               onClick={() => handlePageChange(1)}
               disabled={page === 1 || loading}
               className="btn-secondary"
               title="First Page"
+              aria-label="Go to first page of results"
               style={{
                 padding: '8px 10px',
                 borderRadius: '10px',
@@ -1000,7 +1013,7 @@ export default function AcademicSearch({
                 cursor: page === 1 ? 'not-allowed' : 'pointer'
               }}
             >
-              <ChevronsLeft size={16} />
+              <ChevronsLeft size={16} aria-hidden="true" />
             </button>
 
             {/* PREVIOUS PAGE */}
@@ -1091,10 +1104,12 @@ export default function AcademicSearch({
 
             {/* LAST PAGE */}
             <button
+              type="button"
               onClick={() => handlePageChange(totalPages)}
               disabled={page >= totalPages || loading}
               className="btn-secondary"
               title="Last Page"
+              aria-label="Go to last page of results"
               style={{
                 padding: '8px 10px',
                 borderRadius: '10px',
@@ -1102,7 +1117,7 @@ export default function AcademicSearch({
                 cursor: page >= totalPages ? 'not-allowed' : 'pointer'
               }}
             >
-              <ChevronsRight size={16} />
+              <ChevronsRight size={16} aria-hidden="true" />
             </button>
           </div>
 
@@ -1127,8 +1142,9 @@ export default function AcademicSearch({
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>Results per page:</span>
+              <label htmlFor="search-per-page">Results per page:</label>
               <select
+                id="search-per-page"
                 value={perPage}
                 onChange={(e) => handlePerPageChange(e.target.value)}
                 style={{
@@ -1157,34 +1173,24 @@ export default function AcademicSearch({
       ======================================== */}
 
       {previewPaper && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor:
-              'rgba(0, 0, 0, 0.82)',
-            backdropFilter: 'blur(8px)',
-            zIndex: 300,
+        <Modal
+          onClose={closePreview}
+          labelledBy="paper-preview-title"
+          zIndex={300}
+          overlayStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(8px)', padding: '12px' }}
+          panelClassName="glass-card"
+          panelStyle={{
+            width: '100%',
+            maxWidth: '1100px',
+            height: '94vh',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '12px'
+            flexDirection: 'column',
+            overflow: 'hidden',
+            borderRadius: '20px',
+            boxShadow:
+              '0 24px 60px rgba(0, 0, 0, 0.6)'
           }}
         >
-          <div
-            className="glass-card"
-            style={{
-              width: '100%',
-              maxWidth: '1100px',
-              height: '94vh',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-              borderRadius: '20px',
-              boxShadow:
-                '0 24px 60px rgba(0, 0, 0, 0.6)'
-            }}
-          >
             {/* MODAL HEADER */}
             <div
               style={{
@@ -1223,7 +1229,8 @@ export default function AcademicSearch({
                 </div>
 
                 <div>
-                  <div
+                  <h2
+                    id="paper-preview-title"
                     style={{
                       fontWeight: 800,
                       fontSize: '1.05rem',
@@ -1231,7 +1238,7 @@ export default function AcademicSearch({
                     }}
                   >
                     Paper Preview
-                  </div>
+                  </h2>
 
                   <div
                     style={{
@@ -1846,42 +1853,30 @@ export default function AcademicSearch({
                 )}
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* IN-APP GOOGLE SCHOLAR VIEWER MODAL */}
       {scholarModalQuery && (
-        <div 
-          className="modal-overlay" 
-          onClick={closeInAppScholar}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(8px)',
-            zIndex: 1000,
+        <Modal
+          onClose={closeInAppScholar}
+          label={`Google Scholar results for ${scholarModalQuery}`}
+          zIndex={1000}
+          overlayStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)', padding: '16px' }}
+          panelClassName=""
+          panelStyle={{
+            width: '100%',
+            maxWidth: '1050px',
+            height: '88vh',
+            backgroundColor: 'var(--bg-card)',
+            borderRadius: '24px',
+            border: '1px solid var(--border-color)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px'
+            flexDirection: 'column',
+            overflow: 'hidden'
           }}
         >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: '100%',
-              maxWidth: '1050px',
-              height: '88vh',
-              backgroundColor: 'var(--bg-card)',
-              borderRadius: '24px',
-              border: '1px solid var(--border-color)',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden'
-            }}
-          >
             {/* Header Bar */}
             <div style={{
               padding: '14px 20px',
@@ -1928,12 +1923,14 @@ export default function AcademicSearch({
                   <ExternalLink size={14} />
                   <span>Open External Tab</span>
                 </a>
-                <button 
+                <button
+                  type="button"
                   onClick={closeInAppScholar}
                   className="neu-button"
+                  aria-label="Close Google Scholar viewer"
                   style={{ width: '32px', height: '32px', borderRadius: '50%', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <X size={18} />
+                  <X size={18} aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -1950,8 +1947,7 @@ export default function AcademicSearch({
                 }}
               />
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

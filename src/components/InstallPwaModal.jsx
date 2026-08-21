@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Download, X, Smartphone, Monitor, Share, PlusSquare, CheckCircle, Sparkles, ShieldCheck, Zap } from 'lucide-react';
+import { Download, X, Smartphone, Monitor, Share, PlusSquare, CheckCircle, Sparkles, ShieldCheck, Zap, Info } from 'lucide-react';
+import Modal from './Modal';
+import { useAnnounce } from './FeedbackProvider';
 
 export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone, onInstallSuccess }) {
   const [isIOS, setIsIOS] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [installed, setInstalled] = useState(isStandalone);
+  // Shown when the browser gives us no install prompt to trigger (Firefox,
+  // desktop Safari, or Chrome that has already dismissed the prompt).
+  const [showManualHint, setShowManualHint] = useState(false);
+  const announce = useAnnounce();
 
   useEffect(() => {
     // Detect iOS devices (Safari on iPhone, iPad, iPod)
@@ -20,7 +26,14 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      alert("To install ResearchVault, use your browser's menu (e.g., ⋮ or Share) and select 'Add to Home Screen' or 'Install App'.");
+      // Was a window.alert(). Inline guidance keeps the instructions next to
+      // the button that needed them, stays in-theme, and is reachable by
+      // screen readers via the live region below.
+      setShowManualHint(true);
+      announce(
+        "This browser has no install button. Use the browser menu and choose Add to Home Screen or Install App.",
+        { assertive: true }
+      );
       return;
     }
 
@@ -30,31 +43,25 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
       const choiceResult = await deferredPrompt.userChoice;
       if (choiceResult.outcome === 'accepted') {
         setInstalled(true);
+        announce('ResearchVault installed successfully.');
         if (onInstallSuccess) onInstallSuccess();
       }
     } catch (err) {
       console.error('PWA Installation Error:', err);
+      setShowManualHint(true);
     } finally {
       setIsInstalling(false);
     }
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.75)',
-      backdropFilter: 'blur(8px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '20px'
-    }}>
-      <div style={{
+    <Modal
+      onClose={onClose}
+      labelledBy="install-pwa-title"
+      zIndex={1000}
+      overlayStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)' }}
+      panelClassName=""
+      panelStyle={{
         backgroundColor: 'var(--bg-card)',
         borderRadius: '24px',
         border: '1px solid var(--border-color)',
@@ -64,7 +71,8 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
         overflow: 'hidden',
         position: 'relative',
         animation: 'fadeIn 0.2s ease-out'
-      }}>
+      }}
+    >
         {/* Header Banner */}
         <div style={{
           backgroundColor: 'var(--bg-main)',
@@ -87,19 +95,21 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
               border: '1px solid var(--border-color)',
               boxShadow: 'var(--card-shadow)'
             }}>
-              <img src="/logo_icon.png" alt="ResearchVault App Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src="/logo_icon.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
+              <h2 id="install-pwa-title" style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 Install ResearchVault App
-              </h3>
+              </h2>
               <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 Phone • Tablet • Desktop Browser App
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close install dialog"
             style={{
               background: 'rgba(255, 255, 255, 0.05)',
               border: '1px solid var(--border-color)',
@@ -110,10 +120,11 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexShrink: 0
             }}
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
@@ -237,9 +248,34 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
                   transition: 'transform 0.2s ease'
                 }}
               >
-                <Download size={20} />
+                <Download size={20} aria-hidden="true" />
                 <span>{isInstalling ? 'Installing...' : 'Install App Now'}</span>
               </button>
+
+              {/* Fallback guidance when the browser exposes no install prompt */}
+              {showManualHint && (
+                <div
+                  role="alert"
+                  style={{
+                    marginTop: '14px',
+                    padding: '14px',
+                    borderRadius: '14px',
+                    backgroundColor: 'var(--bg-main)',
+                    border: '1px solid var(--border-color)',
+                    borderLeft: '4px solid var(--primary)',
+                    display: 'flex',
+                    gap: '10px',
+                    alignItems: 'flex-start'
+                  }}
+                >
+                  <Info size={18} aria-hidden="true" style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '1px' }} />
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: 1.5 }}>
+                    Your browser doesn&apos;t offer a one-tap install for this app. Open the
+                    browser menu (<strong>⋮</strong> or <strong>Share</strong>) and choose{' '}
+                    <strong>Add to Home Screen</strong> or <strong>Install App</strong>.
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -253,6 +289,7 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
           justifyContent: 'flex-end'
         }}>
           <button
+            type="button"
             onClick={onClose}
             className="btn-secondary"
             style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem' }}
@@ -260,7 +297,6 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
             Done
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,16 +1,19 @@
 import React from 'react';
 import { Star, BookOpen, Quote, Sparkles, Download, CheckCircle, ExternalLink, Trash2, FileCode } from 'lucide-react';
+import { useConfirm } from './FeedbackProvider';
 
-export default function ResourceCard({ 
-  resource, 
-  onOpenReader, 
-  onToggleFavorite, 
-  onShowCitation, 
+export default function ResourceCard({
+  resource,
+  onOpenReader,
+  onToggleFavorite,
+  onShowCitation,
   onOpenAiSummarizer,
   onDeleteResource
 }) {
+  const confirm = useConfirm();
+
   return (
-    <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
+    <article className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
       <div>
         {/* Header Badges */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
@@ -25,34 +28,41 @@ export default function ResourceCard({
             )}
             {resource.pdfFileName && (
               <span className="badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <FileCode size={12} /> PDF Attached
+                <FileCode size={12} aria-hidden="true" /> PDF Attached
               </span>
             )}
           </div>
 
-          <button 
+          <button
+            type="button"
             onClick={() => onToggleFavorite(resource.id)}
             style={{ color: resource.isFavorite ? 'var(--accent-gold)' : 'var(--text-muted)', padding: '4px' }}
-            title={resource.isFavorite ? "Unstar paper" : "Star paper"}
+            title={resource.isFavorite ? 'Unstar paper' : 'Star paper'}
+            aria-label={resource.isFavorite ? `Remove "${resource.title}" from favourites` : `Add "${resource.title}" to favourites`}
+            aria-pressed={!!resource.isFavorite}
           >
-            <Star size={18} fill={resource.isFavorite ? 'var(--accent-gold)' : 'none'} />
+            <Star size={18} aria-hidden="true" fill={resource.isFavorite ? 'var(--accent-gold)' : 'none'} />
           </button>
         </div>
 
-        {/* Title */}
-        <h3 
-          onClick={() => onOpenReader(resource)}
-          style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: '1.1rem',
-            fontWeight: 700,
-            lineHeight: 1.3,
-            color: 'var(--text-main)',
-            cursor: 'pointer',
-            marginBottom: '6px'
-          }}
-        >
-          {resource.title}
+        {/* Title — a real button so it is focusable and works with Enter/Space.
+            It used to be an <h3> with an onClick, unreachable by keyboard. */}
+        <h3 style={{ marginBottom: '6px' }}>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => onOpenReader(resource)}
+            style={{
+              fontFamily: 'var(--font-serif)',
+              fontSize: '1.1rem',
+              fontWeight: 700,
+              lineHeight: 1.3,
+              color: 'var(--text-main)',
+              cursor: 'pointer'
+            }}
+          >
+            {resource.title}
+          </button>
         </h3>
 
         {/* Authors & Year */}
@@ -91,7 +101,14 @@ export default function ResourceCard({
               <span>Reading Progress</span>
               <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{resource.readingProgressPercent}%</span>
             </div>
-            <div style={{ height: '5px', borderRadius: '3px', backgroundColor: 'var(--border-color)', overflow: 'hidden' }}>
+            <div
+              role="progressbar"
+              aria-valuenow={resource.readingProgressPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Reading progress for "${resource.title}"`}
+              style={{ height: '5px', borderRadius: '3px', backgroundColor: 'var(--border-color)', overflow: 'hidden' }}
+            >
               <div style={{ width: `${resource.readingProgressPercent}%`, height: '100%', backgroundColor: 'var(--primary)', transition: 'width 0.3s ease' }} />
             </div>
           </div>
@@ -106,12 +123,19 @@ export default function ResourceCard({
             {/* Delete Button — icon only */}
             {onDeleteResource && (
               <button
-                onClick={() => {
-                  if (window.confirm(`Delete "${resource.title}" from your library?`)) {
-                    onDeleteResource(resource.id);
-                  }
+                type="button"
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Delete this paper?',
+                    message: `"${resource.title}" will be removed from your library, along with any notes attached to it. This cannot be undone.`,
+                    confirmLabel: 'Delete paper',
+                    cancelLabel: 'Keep it',
+                    tone: 'danger'
+                  });
+                  if (ok) onDeleteResource(resource.id);
                 }}
                 title="Delete paper from library"
+                aria-label={`Delete "${resource.title}" from library`}
                 style={{
                   padding: '6px',
                   borderRadius: '8px',
@@ -131,17 +155,19 @@ export default function ResourceCard({
                   e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)';
                 }}
               >
-                <Trash2 size={16} />
+                <Trash2 size={16} aria-hidden="true" />
               </button>
             )}
 
             {/* AI Summary */}
-            <button 
+            <button
+              type="button"
               onClick={() => onOpenAiSummarizer(resource)}
               title="Gemini AI Summary"
+              aria-label={`Generate Gemini AI summary of "${resource.title}"`}
               style={{ padding: '6px', borderRadius: '8px', color: 'var(--primary)', backgroundColor: 'var(--primary-light)' }}
             >
-              <Sparkles size={16} />
+              <Sparkles size={16} aria-hidden="true" />
             </button>
 
             {/* Download PDF Button */}
@@ -152,33 +178,42 @@ export default function ResourceCard({
                 target={resource.pdfFileData ? undefined : "_blank"}
                 rel={resource.pdfFileData ? undefined : "noopener noreferrer"}
                 title="Download PDF File"
+                aria-label={
+                  resource.pdfFileData
+                    ? `Download PDF of "${resource.title}"`
+                    : `Open PDF of "${resource.title}" in a new tab`
+                }
                 style={{ padding: '6px', borderRadius: '8px', color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
               >
-                <Download size={16} />
+                <Download size={16} aria-hidden="true" />
               </a>
             )}
 
             {/* Citation Format */}
-            <button 
+            <button
+              type="button"
               onClick={() => onShowCitation(resource)}
               title="Generate Citation"
+              aria-label={`Generate citation for "${resource.title}"`}
               style={{ padding: '6px', borderRadius: '8px', color: 'var(--text-muted)' }}
             >
-              <Quote size={16} />
+              <Quote size={16} aria-hidden="true" />
             </button>
 
             {/* Read Button */}
-            <button 
+            <button
+              type="button"
               onClick={() => onOpenReader(resource)}
               className="btn-primary card-read-btn"
+              aria-label={`Read "${resource.title}"`}
               style={{ padding: '6px 14px', fontSize: '0.8rem', flexShrink: 0 }}
             >
-              <BookOpen size={14} />
+              <BookOpen size={14} aria-hidden="true" />
               <span>Read</span>
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

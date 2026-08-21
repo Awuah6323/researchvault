@@ -122,9 +122,11 @@ export default function MyLibrary({
       <div className="glass-card" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
         {/* Search */}
         <div style={{ flex: 1, minWidth: '220px', position: 'relative' }}>
-          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <Search size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <label htmlFor="library-filter" className="sr-only">Filter library papers</label>
           <input
-            type="text"
+            id="library-filter"
+            type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Filter library papers..."
@@ -133,7 +135,9 @@ export default function MyLibrary({
         </div>
 
         {/* Category Filter */}
+        <label htmlFor="library-category" className="sr-only">Filter by category</label>
         <select
+          id="library-category"
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
           style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem', fontWeight: 600 }}
@@ -143,7 +147,9 @@ export default function MyLibrary({
         </select>
 
         {/* Sort */}
+        <label htmlFor="library-sort" className="sr-only">Sort papers by</label>
         <select
+          id="library-sort"
           value={sortOption}
           onChange={(e) => setSortOption(e.target.value)}
           style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem', fontWeight: 600 }}

@@ -117,32 +117,37 @@ export default function App() {
       });
     }
 
+    const pullIfActive = () => {
+      // Don't sync a backgrounded tab: on mobile this was waking the radio
+      // every 15s and draining battery for a screen nobody was looking at.
+      if (document.visibilityState !== 'visible') return;
+      const activeSession = storage.getSession();
+      if (!activeSession || !activeSession.email) return;
+      storage.pullCloudVault(activeSession.email).then((updated) => {
+        if (updated) {
+          refreshAppData();
+          setUserProfile(storage.getSession());
+        }
+      });
+    };
+
     // Auto-refresh from Cloud Vault when switching focus back to phone/PC
     const handleFocus = () => {
       refreshAppData();
-      const activeSession = storage.getSession();
-      if (activeSession && activeSession.email) {
-        storage.pullCloudVault(activeSession.email).then((updated) => {
-          if (updated) {
-            refreshAppData();
-            setUserProfile(storage.getSession());
-          }
-        });
-      }
+      pullIfActive();
     };
 
-    // Automatic real-time background sync interval (every 15 seconds)
-    const autoSyncInterval = setInterval(() => {
-      const activeSession = storage.getSession();
-      if (activeSession && activeSession.email) {
-        storage.pullCloudVault(activeSession.email).then((updated) => {
-          if (updated) {
-            refreshAppData();
-            setUserProfile(storage.getSession());
-          }
-        });
-      }
-    }, 15000);
+    // Background sync. 15s was aggressive enough to clobber in-progress edits
+    // and re-render the tree four times a minute while idle; 60s while visible
+    // is still well inside "feels live" for cross-device use.
+    const autoSyncInterval = setInterval(pullIfActive, 60000);
+
+    // Sync immediately when the tab becomes visible again rather than waiting
+    // out the remainder of the interval.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') pullIfActive();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Detect if running in standalone PWA mode
     const checkStandalone = () => {
@@ -162,6 +167,7 @@ export default function App() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(autoSyncInterval);
       unsubscribeSync();
     };
@@ -296,6 +302,9 @@ export default function App() {
       backgroundColor: 'var(--bg-main)',
       color: 'var(--text-main)'
     }}>
+      {/* First tab stop: lets keyboard users jump the nav on every page. */}
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+
       <Navbar
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -320,7 +329,7 @@ export default function App() {
           isStandalone={isStandalone}
         />
 
-        <main style={{ flex: 1, padding: '28px 36px', overflowX: 'hidden' }}>
+        <main id="main-content" tabIndex={-1} style={{ flex: 1, padding: '28px 36px', overflowX: 'hidden' }}>
           {activeTab === 'home' && (
             <HomeDashboard
               resources={resources}

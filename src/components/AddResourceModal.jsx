@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Link2, FileText, Search, Loader2, UploadCloud, Check } from 'lucide-react';
 import { searchAcademicSources, suggestCategory } from '../services/academicSearch';
 import { extractTextFromPdfFile } from '../utils/pdfExtractor';
+import Modal from './Modal';
 
 export default function AddResourceModal({ onClose, onAdd, categories, onNavigateSearch }) {
   const [activeTab, setActiveTab] = useState('upload'); // upload, doi, manual
@@ -132,27 +133,25 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      zIndex: 50,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      backdropFilter: 'blur(4px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '580px', padding: '24px' }}>
+    <Modal
+      onClose={onClose}
+      labelledBy="add-resource-title"
+      zIndex={50}
+      panelStyle={{ width: '100%', maxWidth: '580px', padding: '24px' }}
+    >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Add to Research Vault</h3>
-          <button onClick={onClose} style={{ color: 'var(--text-muted)' }}><X size={20} /></button>
+          <h2 id="add-resource-title" style={{ fontSize: '1.2rem', fontWeight: 700 }}>Add to Research Vault</h2>
+          <button type="button" onClick={onClose} aria-label="Close add paper dialog" style={{ color: 'var(--text-muted)' }}>
+            <X size={20} aria-hidden="true" />
+          </button>
         </div>
 
         {/* Tab Selection */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', overflowX: 'auto' }}>
+        <div role="group" aria-label="How to add a paper" style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', overflowX: 'auto' }}>
           <button
+            type="button"
             onClick={() => setActiveTab('upload')}
+            aria-pressed={activeTab === 'upload'}
             style={{
               padding: '8px 14px',
               borderRadius: '8px',
@@ -166,11 +165,13 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               whiteSpace: 'nowrap'
             }}
           >
-            <UploadCloud size={16} /> Upload PDF from Device
+            <UploadCloud size={16} aria-hidden="true" /> Upload PDF from Device
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('doi')}
+            aria-pressed={activeTab === 'doi'}
             style={{
               padding: '8px 14px',
               borderRadius: '8px',
@@ -184,11 +185,13 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               whiteSpace: 'nowrap'
             }}
           >
-            <Link2 size={16} /> Link or DOI
+            <Link2 size={16} aria-hidden="true" /> Link or DOI
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('manual')}
+            aria-pressed={activeTab === 'manual'}
             style={{
               padding: '8px 14px',
               borderRadius: '8px',
@@ -202,14 +205,14 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               whiteSpace: 'nowrap'
             }}
           >
-            <FileText size={16} /> Manual Entry
+            <FileText size={16} aria-hidden="true" /> Manual Entry
           </button>
         </div>
 
         {/* Mode 0: Upload PDF directly from device */}
         {activeTab === 'upload' && (
           <form onSubmit={handleSubmitManual} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <label style={{
+            <label htmlFor="upload-pdf-file" style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -222,24 +225,29 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               textAlign: 'center',
               transition: 'all 0.2s ease'
             }}>
+              {/* .sr-only rather than display:none — a hidden input is removed
+                  from the tab order entirely, making upload keyboard-only
+                  users unable to reach the file picker at all. */}
               <input
+                id="upload-pdf-file"
                 type="file"
                 accept=".pdf,application/pdf"
                 onChange={handlePdfChange}
-                style={{ display: 'none' }}
+                className="sr-only"
               />
-              <UploadCloud size={36} style={{ color: pdfFileName ? '#10b981' : 'var(--primary)', marginBottom: '8px' }} />
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '4px' }}>
+              <UploadCloud size={36} aria-hidden="true" style={{ color: pdfFileName ? '#10b981' : 'var(--primary)', marginBottom: '8px' }} />
+              <span style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '4px' }}>
                 {pdfFileName ? `Selected: ${pdfFileName}` : 'Tap or Click to Select PDF file'}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: extractionStatus.includes('successfully') ? '#10b981' : 'var(--text-muted)' }}>
+              </span>
+              <span role="status" style={{ fontSize: '0.75rem', color: extractionStatus.includes('successfully') ? '#10b981' : 'var(--text-muted)' }}>
                 {extractionStatus || (pdfFileName ? 'File attached! Text extracted for AI analysis below.' : 'Supports PDF documents from your Phone, Tablet, Laptop, or Cloud Storage.')}
-              </div>
+              </span>
             </label>
 
             <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Paper Title *</label>
+              <label htmlFor="upload-title" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Paper Title *</label>
               <input
+                id="upload-title"
                 type="text"
                 required
                 value={title}
@@ -251,8 +259,9 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Category</label>
+                <label htmlFor="upload-category" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Category</label>
                 <select
+                  id="upload-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)' }}
@@ -262,8 +271,9 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               </div>
 
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Authors (Optional)</label>
+                <label htmlFor="upload-authors" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Authors (Optional)</label>
                 <input
+                  id="upload-authors"
                   type="text"
                   value={authors}
                   onChange={(e) => setAuthors(e.target.value)}
@@ -274,7 +284,9 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
             </div>
 
             <button type="submit" className="btn-primary" disabled={readingFile} style={{ width: '100%', marginTop: '6px', opacity: readingFile ? 0.6 : 1 }}>
-              {readingFile ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
+              {readingFile
+                ? <Loader2 size={18} aria-hidden="true" className="animate-spin" />
+                : <UploadCloud size={18} aria-hidden="true" />}
               <span>{readingFile ? 'Extracting PDF text...' : 'Upload PDF to Vault'}</span>
             </button>
           </form>
@@ -287,18 +299,24 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               Paste a paper DOI identifier (e.g. <code>10.1038/nature14539</code>) or direct URL (arXiv, IEEE, Nature, OpenAlex) to automatically fetch paper details.
             </p>
 
+            <label htmlFor="doi-input" className="sr-only">DOI identifier or paper URL</label>
             <input
+              id="doi-input"
               type="text"
               value={doiUrl}
               onChange={(e) => setDoiUrl(e.target.value)}
               placeholder="https://doi.org/10... or 10.48550/arXiv.1706.03762"
+              aria-invalid={doiError ? 'true' : undefined}
+              aria-describedby={doiError ? 'doi-error' : undefined}
               style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)' }}
             />
 
-            {doiError && <div style={{ color: '#dc2626', fontSize: '0.85rem' }}>{doiError}</div>}
+            {doiError && <div id="doi-error" role="alert" style={{ color: '#dc2626', fontSize: '0.85rem' }}>{doiError}</div>}
 
             <button type="submit" className="btn-primary" disabled={fetchingDoi || !doiUrl.trim()}>
-              {fetchingDoi ? <Loader2 size={18} className="animate-spin" /> : <Link2 size={18} />}
+              {fetchingDoi
+                ? <Loader2 size={18} aria-hidden="true" className="animate-spin" />
+                : <Link2 size={18} aria-hidden="true" />}
               <span>{fetchingDoi ? 'Fetching Metadata...' : 'Fetch & Save Paper'}</span>
             </button>
           </form>
@@ -308,8 +326,9 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
         {activeTab === 'manual' && (
           <form onSubmit={handleSubmitManual} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Paper Title *</label>
+              <label htmlFor="manual-title" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Paper Title *</label>
               <input
+                id="manual-title"
                 type="text"
                 required
                 value={title}
@@ -321,8 +340,9 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Authors</label>
+                <label htmlFor="manual-authors" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Authors</label>
                 <input
+                  id="manual-authors"
                   type="text"
                   value={authors}
                   onChange={(e) => setAuthors(e.target.value)}
@@ -332,8 +352,9 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               </div>
 
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Year</label>
+                <label htmlFor="manual-year" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Year</label>
                 <input
+                  id="manual-year"
                   type="number"
                   value={publicationYear}
                   onChange={(e) => setPublicationYear(e.target.value)}
@@ -344,8 +365,9 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Category</label>
+                <label htmlFor="manual-category" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Category</label>
                 <select
+                  id="manual-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)' }}
@@ -355,8 +377,9 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               </div>
 
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Document Type</label>
+                <label htmlFor="manual-doctype" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Document Type</label>
                 <select
+                  id="manual-doctype"
                   value={resourceType}
                   onChange={(e) => setResourceType(e.target.value)}
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)' }}
@@ -371,23 +394,25 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
             </div>
 
             <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Attach PDF File (Optional)</label>
+              <label htmlFor="manual-pdf" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Attach PDF File (Optional)</label>
               <input
+                id="manual-pdf"
                 type="file"
                 accept=".pdf"
                 onChange={handlePdfChange}
                 style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem' }}
               />
               {pdfFileName && (
-                <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '4px', fontWeight: 600 }}>
+                <div role="status" style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '4px', fontWeight: 600 }}>
                   Selected PDF: {pdfFileName}
                 </div>
               )}
             </div>
 
             <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Abstract / Summary</label>
+              <label htmlFor="manual-abstract" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Abstract / Summary</label>
               <textarea
+                id="manual-abstract"
                 rows={3}
                 value={abstractText}
                 onChange={(e) => setAbstractText(e.target.value)}
@@ -401,8 +426,7 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
             </button>
           </form>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }
 

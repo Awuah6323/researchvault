@@ -11,14 +11,15 @@ export default function BottomNav({ activeTab, onNavigate, onOpenMenu }) {
   ];
 
   return (
-    <nav className="mobile-bottom-nav">
+    <nav className="mobile-bottom-nav" aria-label="Primary">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = activeTab === item.id;
-        
+
         return (
           <button
             key={item.id}
+            type="button"
             onClick={() => {
               if (item.isMenuTrigger) {
                 onOpenMenu();
@@ -27,8 +28,10 @@ export default function BottomNav({ activeTab, onNavigate, onOpenMenu }) {
               }
             }}
             className={`mobile-bottom-nav-btn ${isActive ? 'active' : ''}`}
+            aria-current={isActive && !item.isMenuTrigger ? 'page' : undefined}
+            aria-label={item.isMenuTrigger ? 'Open navigation menu' : undefined}
           >
-            <Icon size={20} />
+            <Icon size={20} aria-hidden="true" />
             <span>{item.label}</span>
           </button>
         );

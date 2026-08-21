@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, LogIn, UserPlus, Shield, Check, Lock, Mail, User, Building } from 'lucide-react';
 import { storage } from '../services/storage';
 import { waitForGoogleIdentity } from '../utils/googleIdentity';
+import Modal from './Modal';
 
 export default function AuthModal({ onClose, onLoginSuccess }) {
   const [mode, setMode] = useState('login'); // 'login', 'signup'
@@ -27,227 +28,151 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
     try {
       setSubmitting(true);
       if (mode === 'login') {
-        const user = await storage.loginUser(email.trim(), password.trim());
+        const user = await storage.loginUser(email.trim(), password);
         setSuccess(`Welcome back, ${user.name}! Synchronizing vault...`);
-        setTimeout(() => {
-          onLoginSuccess(storage.getProfile());
-          onClose();
-        }, 500);
+        onLoginSuccess(storage.getProfile());
+        onClose();
       } else {
         if (!name.trim()) {
           setError('Please enter your full name.');
           setSubmitting(false);
           return;
         }
+        if (password.length < 8) {
+          setError('Please choose a password of at least 8 characters.');
+          setSubmitting(false);
+          return;
+        }
         const user = await storage.registerUser(
           name.trim(),
           email.trim(),
-          password.trim(),
-          institution.trim() || 'Stanford University',
+          password,
+          institution.trim() || 'University / Institution',
           fieldOfStudy.trim() || 'Computer Science'
         );
         setSuccess(`Account registered successfully for ${user.name}! Synchronizing vault...`);
-        setTimeout(() => {
-          onLoginSuccess(storage.getProfile());
-          onClose();
-        }, 500);
+        onLoginSuccess(storage.getProfile());
+        onClose();
       }
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please check credentials.');
+      setError(err.message || 'Could not sign you in. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const [showGooglePicker, setShowGooglePicker] = useState(false);
-  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
-  const [customGoogleName, setCustomGoogleName] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const defaultGoogleAccounts = [
-    { name: 'Dr. Alex Rivera', email: 'alex.rivera@stanford.edu', institution: 'Stanford University' },
-    { name: 'Prof. Marcus Vance', email: 'm.vance@mit.edu', institution: 'MIT Media Lab' }
-  ];
+  const googleClientId =
+    import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+    '73859989622-gfnm64hfcom43l064d0gf19f8losasrh.apps.googleusercontent.com';
 
-  const handleGoogleAccountSelect = async (acc) => {
+  /**
+   * Real Google sign-in.
+   *
+   * This replaces a hardcoded account picker plus a free-text form that called
+   * loginWithGoogle() with whatever name and email were typed in. That was a
+   * complete authentication bypass: entering someone's address signed you in as
+   * them and pulled their vault. Only a Google-issued ID token is accepted now,
+   * and the server verifies it before issuing a sync token.
+   */
+  const handleGoogleCredential = async (response) => {
+    if (!response || !response.credential) {
+      setError('Google did not return a credential. Please try again.');
+      setGoogleLoading(false);
+      return;
+    }
+
     try {
-      setSubmitting(true);
-      const user = await storage.loginWithGoogle(acc.email, acc.name, acc.institution);
-      setSuccess(`Signed in with Google as ${user.name} (${user.email})! Synchronizing vault...`);
-      setTimeout(() => {
-        onLoginSuccess(storage.getProfile());
-        if (onClose) onClose();
-      }, 500);
+      const user = await storage.loginWithGoogle(response.credential);
+      setSuccess(`Signed in with Google as ${user.name}! Synchronizing vault...`);
+      onLoginSuccess(storage.getProfile());
+      if (onClose) onClose();
     } catch (err) {
-      setError('Google Sign-In failed.');
+      setError(err.message || 'Google sign-in failed.');
     } finally {
-      setSubmitting(false);
+      setGoogleLoading(false);
     }
   };
 
-  const handleCustomGoogleSubmit = (e) => {
-    e.preventDefault();
-    if (!customGoogleEmail.trim() || !customGoogleName.trim()) return;
-    handleGoogleAccountSelect({
-      name: customGoogleName.trim(),
-      email: customGoogleEmail.trim(),
-      institution: 'Academic Institution'
-    });
-  };
+  useEffect(() => {
+    let isMounted = true;
 
-  const handleGoogleSignIn = () => {
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '73859989622-gfnm64hfcom43l064d0gf19f8losasrh.apps.googleusercontent.com';
-    
     waitForGoogleIdentity()
       .then((google) => {
-        if (google.accounts?.oauth2) {
-          try {
-            const tokenClient = google.accounts.oauth2.initTokenClient({
-              client_id: googleClientId,
-              scope: 'email profile',
-              callback: async (tokenResponse) => {
-                if (tokenResponse && tokenResponse.access_token) {
-                  try {
-                    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                      headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                    });
-                    const profile = await res.json();
-                    if (profile && profile.email) {
-                      handleGoogleAccountSelect({
-                        name: profile.name || profile.given_name || 'Google User',
-                        email: profile.email,
-                        institution: 'Google Verified Account'
-                      });
-                      return;
-                    }
-                  } catch (err) {
-                    console.error('Error fetching Google profile:', err);
-                  }
-                }
-                setShowGooglePicker(true);
-              }
+        if (!isMounted) return;
+        try {
+          google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: handleGoogleCredential,
+            auto_select: false,
+            cancel_on_tap_outside: true
+          });
+
+          const container = document.getElementById('authModalGsiButton');
+          if (container) {
+            container.innerHTML = '';
+            google.accounts.id.renderButton(container, {
+              theme: 'outline',
+              size: 'large',
+              text: 'continue_with',
+              shape: 'rectangular',
+              logo_alignment: 'left'
             });
-            tokenClient.requestAccessToken({ prompt: 'select_account' });
-            return;
-          } catch (e) {
-            console.warn('OAuth2 TokenClient init error:', e);
           }
+        } catch (err) {
+          console.error('Google Sign-In initialization failed:', err);
         }
-        setShowGooglePicker(true);
       })
-      .catch(() => {
-        setShowGooglePicker(true);
+      .catch((err) => {
+        console.warn('Google Identity Services unavailable:', err.message);
       });
-  };
+
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleClientId]);
 
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      zIndex: 100,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      backdropFilter: 'blur(4px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '460px', padding: '28px' }}>
-        {showGooglePicker ? (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                </svg>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Sign in with Google</h3>
-              </div>
-              <button onClick={() => setShowGooglePicker(false)} style={{ color: 'var(--text-muted)' }}><X size={20} /></button>
-            </div>
-
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-              Enter your Google Account details to sign in:
-            </p>
-
-            <form onSubmit={handleCustomGoogleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. John Doe"
-                  value={customGoogleName}
-                  onChange={(e) => setCustomGoogleName(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Google Email Address *</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="e.g. user@gmail.com"
-                  value={customGoogleEmail}
-                  onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem' }}
-                />
-              </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '6px' }}>
-                Continue with Google Account
-              </button>
-            </form>
-          </div>
-        ) : (
+    <Modal
+      onClose={onClose}
+      labelledBy="auth-modal-title"
+      zIndex={100}
+      closeOnBackdrop={!!onClose}
+      panelStyle={{ width: '100%', maxWidth: '460px', padding: '28px' }}
+    >
           <>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>
+                <h2 id="auth-modal-title" style={{ fontSize: '1.25rem', fontWeight: 800 }}>
                   {mode === 'login' ? 'Scholar Sign In' : 'Create Scholar Account'}
-                </h3>
+                </h2>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   {mode === 'login' ? 'Access your research vault & cloud sync' : 'Register your academic research profile'}
                 </p>
               </div>
               {onClose && (
-                <button onClick={onClose} style={{ color: 'var(--text-muted)', padding: '4px' }}>
-                  <X size={20} />
+                <button type="button" onClick={onClose} aria-label="Close sign in dialog" style={{ color: 'var(--text-muted)', padding: '4px' }}>
+                  <X size={20} aria-hidden="true" />
                 </button>
               )}
             </div>
 
-        {/* Google Sign In Button */}
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          style={{
-            width: '100%',
-            padding: '10px',
-            borderRadius: '10px',
-            border: '1px solid var(--border-color)',
-            backgroundColor: '#ffffff',
-            color: '#333333',
-            fontWeight: 700,
-            fontSize: '0.85rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px',
-            cursor: 'pointer',
-            marginBottom: '16px'
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-          </svg>
-          <span>Continue with Google</span>
-        </button>
+        {/* Google Sign In — rendered by Google Identity Services so the app
+            only ever receives a real, signed ID token. */}
+        <div
+          id="authModalGsiButton"
+          style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px', minHeight: '40px' }}
+        />
+
+        {googleLoading && (
+          <div role="status" style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--primary)', marginBottom: '10px' }}>
+            Verifying your Google account...
+          </div>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', margin: '14px 0', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
           <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }} />
@@ -256,9 +181,11 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
         </div>
 
         {/* Tab Switcher */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', backgroundColor: 'var(--bg-main)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+        <div role="group" aria-label="Sign in or create an account" style={{ display: 'flex', gap: '8px', marginBottom: '20px', backgroundColor: 'var(--bg-main)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
           <button
+            type="button"
             onClick={() => { setMode('login'); setError(''); }}
+            aria-pressed={mode === 'login'}
             style={{
               flex: 1,
               padding: '8px',
@@ -303,12 +230,14 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {mode === 'signup' && (
             <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Full Name *</label>
+              <label htmlFor="authmodal-name" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Full Name *</label>
               <div style={{ position: 'relative' }}>
-                <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <User size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
+                  id="authmodal-name"
                   type="text"
                   required
+                  autoComplete="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="E.g., Dr. Alex Rivera"
@@ -319,12 +248,14 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
           )}
 
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Email Address *</label>
+            <label htmlFor="authmodal-email" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Email Address *</label>
             <div style={{ position: 'relative' }}>
-              <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <Mail size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
+                id="authmodal-email"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="alex.rivera@stanford.edu"
@@ -334,26 +265,37 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Password *</label>
+            <label htmlFor="authmodal-password" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Password *</label>
             <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <Lock size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
+                id="authmodal-password"
                 type="password"
                 required
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                minLength={mode === 'signup' ? 8 : undefined}
+                aria-describedby={mode === 'signup' ? 'authmodal-password-hint' : undefined}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem' }}
               />
             </div>
+            {mode === 'signup' && (
+              <div id="authmodal-password-hint" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '5px' }}>
+                Use at least 8 characters.
+              </div>
+            )}
           </div>
 
           {mode === 'signup' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Institution</label>
+                <label htmlFor="authmodal-institution" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Institution</label>
                 <input
+                  id="authmodal-institution"
                   type="text"
+                  autoComplete="organization"
                   value={institution}
                   onChange={(e) => setInstitution(e.target.value)}
                   placeholder="Stanford University"
@@ -362,8 +304,9 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
               </div>
 
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Field of Study</label>
+                <label htmlFor="authmodal-field-of-study" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Field of Study</label>
                 <input
+                  id="authmodal-field-of-study"
                   type="text"
                   value={fieldOfStudy}
                   onChange={(e) => setFieldOfStudy(e.target.value)}
@@ -389,20 +332,18 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
               <span>Syncing Vault...</span>
             ) : mode === 'login' ? (
               <>
-                <LogIn size={18} />
+                <LogIn size={18} aria-hidden="true" />
                 <span>Sign In to Vault</span>
               </>
             ) : (
               <>
-                <UserPlus size={18} />
+                <UserPlus size={18} aria-hidden="true" />
                 <span>Create Scholar Account</span>
               </>
             )}
           </button>
         </form>
         </>
-        )}
-      </div>
-    </div>
+    </Modal>
   );
 }

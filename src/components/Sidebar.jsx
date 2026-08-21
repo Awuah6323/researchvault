@@ -27,6 +27,7 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenI
     }}>
       <div className="sidebar-nav-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <button
+          type="button"
           onClick={onOpenAddModal}
           className="btn-primary"
           style={{
@@ -35,35 +36,40 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenI
             boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)'
           }}
         >
-          <PlusCircle size={18} />
+          <PlusCircle size={18} aria-hidden="true" />
           <span>Add Paper</span>
         </button>
 
-        <div className="mobile-hide" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-sidebar)', padding: '0 12px 6px' }}>
+        <h2 id="sidebar-nav-heading" className="mobile-hide" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-sidebar)', padding: '0 12px 6px' }}>
           Navigation
-        </div>
+        </h2>
 
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
+        <nav aria-labelledby="sidebar-nav-heading" style={{ display: 'contents' }}>
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
 
-          return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
-              className={`sidebar-btn ${isActive ? 'active' : ''}`}
-            >
-              <Icon size={18} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onNavigate(item.id)}
+                className={`sidebar-btn ${isActive ? 'active' : ''}`}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <Icon size={18} aria-hidden="true" />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       {/* Footer Info & PWA Install Button */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {!isStandalone && (
           <button
+            type="button"
             onClick={onOpenInstallPwa}
             style={{
               display: 'flex',
@@ -84,7 +90,7 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenI
               letterSpacing: '0.2px'
             }}
           >
-            <Download size={17} style={{ strokeWidth: 2.5 }} />
+            <Download size={17} aria-hidden="true" style={{ strokeWidth: 2.5 }} />
             <span>Install App on Device</span>
           </button>
         )}

@@ -29,16 +29,18 @@ export default function NotesManager({ onOpenReader, resources }) {
       {/* Filter Bar */}
       <div className="glass-card" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
         <div style={{ flex: 1, position: 'relative' }}>
-          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <Search size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <label htmlFor="notes-filter" className="sr-only">Search notes content or paper title</label>
           <input
-            type="text"
+            id="notes-filter"
+            type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search notes content or paper title..."
             style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem' }}
           />
         </div>
-        <span className="badge" style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary-text)' }}>
+        <span className="badge" role="status" style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary-text)' }}>
           {filteredNotes.length} Total Notes
         </span>
       </div>

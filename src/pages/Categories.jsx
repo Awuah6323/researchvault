@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FolderPlus, BookOpen, Plus, X } from 'lucide-react';
+import Modal from '../components/Modal';
 
 export default function Categories({ categories, onAddCategory, onSelectCategory }) {
   const [showModal, setShowModal] = useState(false);
@@ -32,14 +33,16 @@ export default function Categories({ categories, onAddCategory, onSelectCategory
       {/* Grid of Categories */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
         {categories.map((cat) => (
-          <div
+          <button
             key={cat.id}
+            type="button"
             onClick={() => onSelectCategory(cat.name)}
             className="glass-card"
-            style={{ padding: '24px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '180px' }}
+            aria-label={`${cat.name} — ${cat.count || 0} papers. ${cat.description || ''}`}
+            style={{ padding: '24px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '180px', textAlign: 'left', width: '100%', font: 'inherit', color: 'inherit' }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ padding: '10px', borderRadius: '12px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+              <div aria-hidden="true" style={{ padding: '10px', borderRadius: '12px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>
                 <BookOpen size={24} />
               </div>
               <span className="badge">{cat.count || 0} Papers</span>
@@ -49,23 +52,30 @@ export default function Categories({ categories, onAddCategory, onSelectCategory
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '4px' }}>{cat.name}</h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{cat.description}</p>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
       {/* New Category Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '480px', padding: '24px' }}>
+        <Modal
+          onClose={() => setShowModal(false)}
+          labelledBy="new-category-title"
+          zIndex={50}
+          panelStyle={{ width: '100%', maxWidth: '480px', padding: '24px' }}
+        >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Create New Category</h3>
-              <button onClick={() => setShowModal(false)} style={{ color: 'var(--text-muted)' }}><X size={20} /></button>
+              <h2 id="new-category-title" style={{ fontSize: '1.1rem', fontWeight: 700 }}>Create New Category</h2>
+              <button type="button" onClick={() => setShowModal(false)} aria-label="Close create category dialog" style={{ color: 'var(--text-muted)' }}>
+                <X size={20} aria-hidden="true" />
+              </button>
             </div>
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Category Name *</label>
+                <label htmlFor="new-category-name" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Category Name *</label>
                 <input
+                  id="new-category-name"
                   type="text"
                   required
                   value={name}
@@ -76,8 +86,9 @@ export default function Categories({ categories, onAddCategory, onSelectCategory
               </div>
 
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Description</label>
+                <label htmlFor="new-category-description" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Description</label>
                 <textarea
+                  id="new-category-description"
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -88,8 +99,7 @@ export default function Categories({ categories, onAddCategory, onSelectCategory
 
               <button type="submit" className="btn-primary" style={{ width: '100%' }}>Create Category</button>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

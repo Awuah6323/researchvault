@@ -106,77 +106,22 @@ async function callGeminiApi(
       console.warn(`/api/gemini responded with ${apiResponse.status}: ${errBody}`);
     }
   } catch (backendErr) {
-    console.warn("Backend /api/gemini call failed, trying direct client call.", backendErr);
+    console.warn("Backend /api/gemini call failed.", backendErr);
   }
 
-  // Direct client call as a secondary fallback (only fires if you set
-  // VITE_GEMINI_API_KEY locally too — in production this should be unset
-  // now that the key lives server-side, so this block will just be skipped).
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const hasValidApiKey =
-    apiKey &&
-    !apiKey.includes("YOUR_GEMINI_API_KEY") &&
-    apiKey.length > 20;
+  // No client-side API key path.
+  //
+  // This used to fall back to calling Gemini directly with
+  // import.meta.env.VITE_GEMINI_API_KEY. Vite inlines every VITE_-prefixed
+  // variable at build time, so that key shipped inside the public JavaScript
+  // bundle — anyone loading the site could extract it and spend against the
+  // account. The key now lives only in GEMINI_API_KEY (no VITE_ prefix), read
+  // server-side by /api/gemini.
+  //
+  // When the proxy is unreachable we degrade to the scripted fallback below
+  // rather than reintroducing a browser-visible credential.
 
-  if (hasValidApiKey) {
-    try {
-      const payload = {
-        contents: [
-          {
-            parts: [
-              {
-                text: promptText,
-              },
-            ],
-          },
-        ],
-      };
-
-      // Google's current docs authenticate via the x-goog-api-key header
-      // rather than a ?key= query param. This matters especially for the
-      // newer "AQ." auth-style keys AI Studio now issues by default.
-      const response = await fetch(
-        BASE_URL,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
-          },
-
-          body: JSON.stringify(payload),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-
-        const candidate =
-          data.candidates?.[0];
-
-        const generatedText =
-          candidate?.content?.parts?.[0]?.text;
-
-        if (generatedText) {
-          return generatedText;
-        }
-      } else {
-        // Surface the real reason in dev tools instead of failing silently
-        const errBody = await response.text().catch(() => "");
-        console.warn(
-          `Gemini API responded with ${response.status}: ${errBody}`
-        );
-      }
-    } catch (err) {
-      console.warn(
-        "Direct Gemini API call failed. Using ResearchVault Academic Fallback Engine.",
-        err
-      );
-    }
-  }
-
-  // Fallback to ResearchVault Academic Engine (only reached if the direct call failed)
+  // Fallback to ResearchVault Academic Engine (only reached if the proxy failed)
   return generateScholarlyFallbackResponse(
     promptText,
     userName,

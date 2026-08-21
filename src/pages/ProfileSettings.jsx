@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Shield, Download, Upload, Check } from 'lucide-react';
 import { storage } from '../services/storage';
+import { useToast, useAnnounce } from '../components/FeedbackProvider';
 
 export default function ProfileSettings({ userProfile, onSaveProfile, resources, onImportBackup, onLogout, onOpenInstallPwa, isStandalone }) {
   const [name, setName] = useState(userProfile?.name || '');
@@ -9,6 +10,8 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
   const [interests, setInterests] = useState(userProfile?.researchInterests || '');
   const [savedMsg, setSavedMsg] = useState('');
   const [importStatus, setImportStatus] = useState('');
+  const notify = useToast();
+  const announce = useAnnounce();
 
   const handleSave = (e) => {
     e.preventDefault();
@@ -21,6 +24,7 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
       isAuthenticated: true
     });
     setSavedMsg('Profile updated successfully!');
+    announce('Profile updated successfully.');
     setTimeout(() => setSavedMsg(''), 3000);
   };
 
@@ -46,16 +50,30 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
           if (onImportBackup) {
             onImportBackup(parsed);
             setImportStatus(`Successfully restored ${parsed.length} papers!`);
+            announce(`Successfully restored ${parsed.length} papers from backup.`);
             setTimeout(() => setImportStatus(''), 4000);
           }
         } else {
-          alert('Invalid backup file format. Expected a JSON list of research papers.');
+          // Was a window.alert(): blocking, unstyled, and unreliable in an
+          // installed iOS PWA.
+          notify({
+            message: 'That file isn’t a ResearchVault backup. Expected a JSON file containing a list of papers.',
+            tone: 'error'
+          });
         }
       } catch (err) {
-        alert('Failed to parse backup JSON file.');
+        notify({
+          message: 'Could not read that backup file — the JSON appears to be corrupted.',
+          tone: 'error'
+        });
       }
     };
+    reader.onerror = () => {
+      notify({ message: 'Could not read that file from disk. Please try again.', tone: 'error' });
+    };
     reader.readAsText(file);
+    // Allow re-selecting the same file after a failed import.
+    e.target.value = '';
   };
 
   return (
@@ -96,9 +114,11 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
 
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Full Name</label>
+            <label htmlFor="profile-name" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Full Name</label>
             <input
+              id="profile-name"
               type="text"
+              autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)' }}
@@ -106,9 +126,11 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Academic Institution / University</label>
+            <label htmlFor="profile-institution" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Academic Institution / University</label>
             <input
+              id="profile-institution"
               type="text"
+              autoComplete="organization"
               value={institution}
               onChange={(e) => setInstitution(e.target.value)}
               style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)' }}
@@ -116,8 +138,9 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Field of Study</label>
+            <label htmlFor="profile-field-of-study" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Field of Study</label>
             <input
+              id="profile-field-of-study"
               type="text"
               value={fieldOfStudy}
               onChange={(e) => setFieldOfStudy(e.target.value)}
@@ -126,8 +149,9 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Research Interests</label>
+            <label htmlFor="profile-interests" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Research Interests</label>
             <textarea
+              id="profile-interests"
               rows={2}
               value={interests}
               onChange={(e) => setInterests(e.target.value)}
@@ -136,8 +160,8 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
           </div>
 
           {savedMsg && (
-            <div style={{ color: 'var(--secondary)', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Check size={16} /> {savedMsg}
+            <div role="status" style={{ color: 'var(--secondary)', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Check size={16} aria-hidden="true" /> {savedMsg}
             </div>
           )}
 
@@ -215,20 +239,22 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>Export your complete paper catalog, notes, and citations as a JSON file, or restore a backup.</p>
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button onClick={handleExportBackup} className="btn-secondary">
-            <Download size={18} />
+          <button type="button" onClick={handleExportBackup} className="btn-secondary">
+            <Download size={18} aria-hidden="true" />
             <span>Export Library JSON</span>
           </button>
 
-          <label className="btn-primary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <Upload size={18} />
+          <label htmlFor="restore-backup-file" className="btn-primary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <Upload size={18} aria-hidden="true" />
             <span>Restore Backup JSON</span>
-            <input type="file" accept=".json" onChange={handleImportFile} style={{ display: 'none' }} />
+            {/* .sr-only, not display:none — a display:none input is removed from
+                the tab order, so this was unreachable by keyboard. */}
+            <input id="restore-backup-file" type="file" accept=".json" onChange={handleImportFile} className="sr-only" />
           </label>
         </div>
 
         {importStatus && (
-          <div style={{ marginTop: '12px', color: 'var(--secondary)', fontWeight: 700, fontSize: '0.85rem' }}>
+          <div role="status" style={{ marginTop: '12px', color: 'var(--secondary)', fontWeight: 700, fontSize: '0.85rem' }}>
             {importStatus}
           </div>
         )}

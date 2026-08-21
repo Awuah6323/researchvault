@@ -2,12 +2,15 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { FeedbackProvider } from './components/FeedbackProvider';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <FeedbackProvider>
+        <App />
+      </FeedbackProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

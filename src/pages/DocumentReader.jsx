@@ -4,6 +4,7 @@ import { storage } from '../services/storage';
 import { generatePaperSummary, askPaperQuestion, generatePeerReview } from '../services/geminiService';
 import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 import { resolvePdfSource } from '../services/pdfResolver';
+import { useConfirm, useAnnounce } from '../components/FeedbackProvider';
 
 const PLACEHOLDER_TEXT = 'Imported paper document in ResearchVault digital library.';
 
@@ -32,6 +33,10 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   const [notes, setNotes] = useState([]);
   const [showNotesDrawer, setShowNotesDrawer] = useState(false);
   const [newNote, setNewNote] = useState('');
+  const confirm = useConfirm();
+  const announce = useAnnounce();
+  const readerRef = useRef(null);
+  const restoreFocusRef = useRef(null);
 
   // --- AI Assistant Panel State ---
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -318,13 +323,78 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
     }
   }, [aiChatHistory, aiLoading]);
 
+  // The reader is a full-screen dialog: it needs the same Escape-to-close,
+  // focus-in / focus-restore and scroll-lock behaviour as the Modal shell.
+  // (It can't reuse Modal directly because it renders its own full-bleed
+  // chrome rather than a centred panel.)
+  useEffect(() => {
+    restoreFocusRef.current = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const raf = requestAnimationFrame(() => {
+      if (readerRef.current) {
+        try {
+          readerRef.current.focus({ preventScroll: true });
+        } catch (e) { /* unmounted between frames */ }
+      }
+    });
+
+    announce(`Opened reader for ${resource.title}. Press Escape to close.`);
+
+    const handleKeyDown = (e) => {
+      if (e.key !== 'Escape') return;
+      // Let a nested confirm/alertdialog handle its own Escape first.
+      if (document.querySelector('[role="alertdialog"]')) return;
+      e.preventDefault();
+      onClose();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      const previous = restoreFocusRef.current;
+      if (previous && typeof previous.focus === 'function' && document.contains(previous)) {
+        try {
+          previous.focus({ preventScroll: true });
+        } catch (e) { /* opener already gone */ }
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleAiSaveNote = (text) => {
     storage.addNote(resource.id, text, safeCurrentPage);
     setNotes(storage.getNotes(resource.id));
   };
 
+  // Shared by the mobile and desktop delete buttons. Replaces two identical
+  // window.confirm() calls.
+  const handleDeleteRequest = async () => {
+    const ok = await confirm({
+      title: 'Delete this paper?',
+      message: `"${resource.title}" will be removed from your library, along with any notes attached to it. This cannot be undone.`,
+      confirmLabel: 'Delete paper',
+      cancelLabel: 'Keep it',
+      tone: 'danger'
+    });
+    if (ok) {
+      onDeleteResource(resource.id);
+      onClose();
+    }
+  };
+
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 500, backgroundColor: themeColors.bg, color: themeColors.text, display: 'flex', flexDirection: 'column' }}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Reading: ${resource.title}`}
+      ref={readerRef}
+      tabIndex={-1}
+      style={{ position: 'fixed', inset: 0, zIndex: 500, backgroundColor: themeColors.bg, color: themeColors.text, display: 'flex', flexDirection: 'column' }}
+    >
       {/* Header */}
       <header className="reader-mobile-header" style={{
         padding: isSmallScreen ? '8px 12px' : '10px 16px',
@@ -340,8 +410,8 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
       }}>
         {/* Row 1: Back Arrow + Paper Title (1-line Ellipsis) + Theme & Delete on Mobile */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-          <button onClick={onClose} title="Back to Library" style={{ color: 'inherit', padding: '6px', flexShrink: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
-            <ArrowLeft size={20} />
+          <button type="button" onClick={onClose} title="Back to Library" aria-label="Close reader and return to library" style={{ color: 'inherit', padding: '6px', flexShrink: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
+            <ArrowLeft size={20} aria-hidden="true" />
           </button>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="reader-title-text" style={{
@@ -364,20 +434,18 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
 
           {isSmallScreen && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-              <select value={readerTheme} onChange={(e) => setReaderTheme(e.target.value)} style={{ padding: '4px 6px', borderRadius: '6px', fontSize: '0.75rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'inherit' }}>
+              <label htmlFor="reader-theme-mobile" className="sr-only">Reader colour theme</label>
+              <select id="reader-theme-mobile" value={readerTheme} onChange={(e) => setReaderTheme(e.target.value)} style={{ padding: '4px 6px', borderRadius: '6px', fontSize: '0.75rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'inherit' }}>
                 <option value="light">☀️</option>
                 <option value="sepia">📜</option>
                 <option value="dark">🌙</option>
               </select>
               {onDeleteResource && (
                 <button
-                  onClick={() => {
-                    if (window.confirm(`Delete "${resource.title}" from your library?`)) {
-                      onDeleteResource(resource.id);
-                      onClose();
-                    }
-                  }}
+                  type="button"
+                  onClick={handleDeleteRequest}
                   title="Delete paper"
+                  aria-label={`Delete "${resource.title}" from library`}
                   style={{
                     padding: '5px',
                     borderRadius: '8px',
@@ -389,7 +457,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                     cursor: 'pointer'
                   }}
                 >
-                  <Trash2 size={15} />
+                  <Trash2 size={15} aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -439,21 +507,18 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
               </a>
             )}
 
-            <button onClick={() => { setShowNotesDrawer(!showNotesDrawer); setShowAiPanel(false); }} style={{ padding: '5px', color: 'inherit', border: 'none', background: 'none', cursor: 'pointer' }} title="Notes">
-              <FileText size={16} />
+            <button type="button" onClick={() => { setShowNotesDrawer(!showNotesDrawer); setShowAiPanel(false); }} style={{ padding: '5px', color: 'inherit', border: 'none', background: 'none', cursor: 'pointer' }} title="Notes" aria-label={showNotesDrawer ? 'Hide notes panel' : 'Show notes panel'} aria-expanded={showNotesDrawer}>
+              <FileText size={16} aria-hidden="true" />
             </button>
 
             {!isSmallScreen && (
               <>
                 {onDeleteResource && (
                   <button
-                    onClick={() => {
-                      if (window.confirm(`Delete "${resource.title}" from your library?`)) {
-                        onDeleteResource(resource.id);
-                        onClose();
-                      }
-                    }}
+                    type="button"
+                    onClick={handleDeleteRequest}
                     title="Delete paper"
+                    aria-label={`Delete "${resource.title}" from library`}
                     style={{
                       padding: '5px',
                       borderRadius: '8px',
@@ -465,11 +530,12 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                       cursor: 'pointer'
                     }}
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={15} aria-hidden="true" />
                   </button>
                 )}
 
-                <select value={readerTheme} onChange={(e) => setReaderTheme(e.target.value)} style={{ padding: '4px 6px', borderRadius: '6px', fontSize: '0.75rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'inherit' }}>
+                <label htmlFor="reader-theme-desktop" className="sr-only">Reader colour theme</label>
+                <select id="reader-theme-desktop" value={readerTheme} onChange={(e) => setReaderTheme(e.target.value)} style={{ padding: '4px 6px', borderRadius: '6px', fontSize: '0.75rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'inherit' }}>
                   <option value="light">☀️</option>
                   <option value="sepia">📜</option>
                   <option value="dark">🌙</option>
@@ -637,7 +703,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                 <Sparkles size={16} style={{ color: 'var(--primary)' }} />
                 <div style={{ fontWeight: 800 }}>AI Paper Assistant</div>
               </div>
-              <button onClick={() => setShowAiPanel(false)} style={{ color: 'var(--text-muted)' }}><X size={18} /></button>
+              <button type="button" onClick={() => setShowAiPanel(false)} aria-label="Close AI paper assistant" style={{ color: 'var(--text-muted)' }}><X size={18} aria-hidden="true" /></button>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
@@ -679,8 +745,9 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
             </div>
 
             <form onSubmit={handleAiAskQuestion} style={{ display: 'flex', gap: '8px', padding: '12px 16px', borderTop: '1px solid var(--border-color)' }}>
-              <input type="text" value={aiQuestion} onChange={(e) => setAiQuestion(e.target.value)} placeholder="Ask about this paper..." style={{ flex: 1, padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.82rem' }} />
-              <button type="submit" className="btn-primary" style={{ padding: '8px 12px' }}><Send size={14} /></button>
+              <label htmlFor="reader-ai-question" className="sr-only">Ask a question about this paper</label>
+              <input id="reader-ai-question" type="text" value={aiQuestion} onChange={(e) => setAiQuestion(e.target.value)} placeholder="Ask about this paper..." style={{ flex: 1, padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.82rem' }} />
+              <button type="submit" className="btn-primary" aria-label="Send question to AI assistant" style={{ padding: '8px 12px' }}><Send size={14} aria-hidden="true" /></button>
             </form>
           </div>
         )}
@@ -737,18 +804,20 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Notes for Page {currentPage}</h3>
-            <button onClick={() => setShowNotesDrawer(false)}><X size={18} /></button>
+            <button type="button" onClick={() => setShowNotesDrawer(false)} aria-label="Close notes panel"><X size={18} aria-hidden="true" /></button>
           </div>
 
           <form onSubmit={handleAddNote} style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+            <label htmlFor="reader-new-note" className="sr-only">Add a note for page {currentPage}</label>
             <input
+              id="reader-new-note"
               type="text"
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
               placeholder="Add observation..."
               style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}
             />
-            <button type="submit" className="btn-primary" style={{ padding: '8px' }}><Send size={14} /></button>
+            <button type="submit" className="btn-primary" aria-label="Save note" style={{ padding: '8px' }}><Send size={14} aria-hidden="true" /></button>
           </form>
 
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>

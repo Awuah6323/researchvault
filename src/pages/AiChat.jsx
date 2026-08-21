@@ -294,8 +294,8 @@ export default function AiChat({ onSaveNote, resources = [] }) {
                 Questions will be answered based on this paper's content
               </div>
             </div>
-            <button onClick={() => setTaggedPaper(null)} style={{ color: 'var(--primary)', padding: '2px', flexShrink: 0 }} title="Remove paper tag">
-              <X size={16} />
+            <button type="button" onClick={() => setTaggedPaper(null)} style={{ color: 'var(--primary)', padding: '2px', flexShrink: 0 }} title="Remove paper tag" aria-label={`Remove tagged paper "${taggedPaper?.title || ''}"`}>
+              <X size={16} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -340,12 +340,14 @@ export default function AiChat({ onSaveNote, resources = [] }) {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>📎 Tag a paper from your library</span>
-              <button onClick={() => setShowPaperPicker(false)} style={{ color: 'var(--text-muted)', padding: '2px' }}>
-                <X size={16} />
+              <button type="button" onClick={() => setShowPaperPicker(false)} aria-label="Close paper picker" style={{ color: 'var(--text-muted)', padding: '2px' }}>
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
+            <label htmlFor="aichat-paper-search" className="sr-only">Search your papers to tag one</label>
             <input
-              type="text"
+              id="aichat-paper-search"
+              type="search"
               value={paperSearchQuery}
               onChange={(e) => setPaperSearchQuery(e.target.value)}
               placeholder="Search your papers..."
@@ -408,6 +410,8 @@ export default function AiChat({ onSaveNote, resources = [] }) {
             type="button"
             onClick={() => setShowPaperPicker(!showPaperPicker)}
             title={taggedPaper ? `Tagged: ${taggedPaper.title}` : "Tag a paper to ask about it"}
+            aria-label={taggedPaper ? `Change tagged paper (currently "${taggedPaper.title}")` : 'Tag a paper to ask about it'}
+            aria-expanded={showPaperPicker}
             style={{
               padding: '10px',
               borderRadius: '10px',
@@ -422,10 +426,14 @@ export default function AiChat({ onSaveNote, resources = [] }) {
               transition: 'all 0.15s ease'
             }}
           >
-            <FileText size={18} />
+            <FileText size={18} aria-hidden="true" />
           </button>
 
+          <label htmlFor="aichat-message" className="sr-only">
+            Your message to the AI research assistant
+          </label>
           <input
+            id="aichat-message"
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}

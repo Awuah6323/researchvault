@@ -382,8 +382,11 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
 
             {/* Auto-Slide Play/Pause Button */}
             <button
+              type="button"
               onClick={() => setIsPlaying(!isPlaying)}
               title={isPlaying ? `Pause ${slideDuration}s Auto-slide` : `Play ${slideDuration}s Auto-slide`}
+              aria-label={isPlaying ? `Pause automatic slideshow (currently advancing every ${slideDuration} seconds)` : 'Resume automatic slideshow'}
+              aria-pressed={!isPlaying}
               style={{
                 width: '32px',
                 height: '32px',
@@ -404,8 +407,10 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
             {/* Optional Close/Dismiss Guide Button */}
             {onClose && (
               <button
+                type="button"
                 onClick={onClose}
                 title="Dismiss Guide Carousel"
+                aria-label="Dismiss the app guide"
                 style={{
                   width: '32px',
                   height: '32px',

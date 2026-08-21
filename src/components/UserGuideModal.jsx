@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import OnboardingCarousel from './OnboardingCarousel';
-import { X, CheckSquare, Square, EyeOff } from 'lucide-react';
+import { CheckSquare, Square, EyeOff } from 'lucide-react';
+import Modal from './Modal';
 
 export default function UserGuideModal({ isOpen, onClose, onNavigate, onOpenAddModal }) {
   const [dontShowAgain, setDontShowAgain] = useState(false);
@@ -25,41 +26,27 @@ export default function UserGuideModal({ isOpen, onClose, onNavigate, onOpenAddM
   };
 
   return (
-    <div 
-      className="modal-overlay"
-      onClick={() => handleCloseModal()}
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.68)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 1000,
+    <Modal
+      onClose={() => handleCloseModal()}
+      label="ResearchVault user guide"
+      zIndex={1000}
+      overlayStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.68)', backdropFilter: 'blur(8px)' }}
+      panelClassName=""
+      panelStyle={{
+        width: '100%',
+        maxWidth: '860px',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        borderRadius: '24px',
+        backgroundColor: 'var(--bg-card)',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+        position: 'relative',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
+        flexDirection: 'column',
         animation: 'fadeIn 0.2s ease-out'
       }}
     >
-      <div 
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: '100%',
-          maxWidth: '860px',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          borderRadius: '24px',
-          backgroundColor: 'var(--bg-card)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        <OnboardingCarousel 
+        <OnboardingCarousel
           onNavigate={(tab) => {
             if (onNavigate) onNavigate(tab);
             handleCloseModal();
@@ -84,9 +71,11 @@ export default function UserGuideModal({ isOpen, onClose, onNavigate, onOpenAddM
           borderBottomLeftRadius: '24px',
           borderBottomRightRadius: '24px'
         }}>
-          {/* Checkbox Option */}
-          <label 
-            onClick={() => setDontShowAgain(!dontShowAgain)}
+          {/* Checkbox Option — a real <input type="checkbox"> so it is
+              focusable, toggleable with Space, and announced with its state.
+              The icons are decorative; the native box is visually hidden. */}
+          <label
+            htmlFor="guide-dont-show-again"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -98,15 +87,23 @@ export default function UserGuideModal({ isOpen, onClose, onNavigate, onOpenAddM
               userSelect: 'none'
             }}
           >
-            <div style={{ color: dontShowAgain ? 'var(--primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+            <input
+              id="guide-dont-show-again"
+              type="checkbox"
+              className="sr-only"
+              checked={dontShowAgain}
+              onChange={(e) => setDontShowAgain(e.target.checked)}
+            />
+            <span aria-hidden="true" style={{ color: dontShowAgain ? 'var(--primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
               {dontShowAgain ? <CheckSquare size={18} /> : <Square size={18} />}
-            </div>
-            <span>Don't show this popup on startup again</span>
+            </span>
+            <span>Don&apos;t show this popup on startup again</span>
           </label>
 
           {/* Quick Action Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
+              type="button"
               onClick={handleDontShowClick}
               style={{
                 display: 'inline-flex',
@@ -123,11 +120,12 @@ export default function UserGuideModal({ isOpen, onClose, onNavigate, onOpenAddM
                 transition: 'all 0.2s ease'
               }}
             >
-              <EyeOff size={14} />
-              <span>Don't Show Again</span>
+              <EyeOff size={14} aria-hidden="true" />
+              <span>Don&apos;t Show Again</span>
             </button>
 
             <button
+              type="button"
               onClick={() => handleCloseModal()}
               className="btn-primary"
               style={{
@@ -140,7 +138,6 @@ export default function UserGuideModal({ isOpen, onClose, onNavigate, onOpenAddM
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
