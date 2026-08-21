@@ -39,8 +39,8 @@ function resolveAuthErrorMessage(err) {
   if (/rate limit|too many requests/i.test(raw)) {
     return 'Too many attempts in a short time. Wait a minute and try again.';
   }
-  if (/fetch|network|Failed to fetch|NetworkError|timeout|unreachable/i.test(raw)) {
-    return 'Couldn’t reach the ResearchVault cloud vault. Check your connection and try again — your password is fine.';
+  if (err?.name === 'BackendUnavailableError' || /fetch|network|Failed to fetch|NetworkError|timeout|unreachable|not configured/i.test(raw)) {
+    return 'Cloud sync is not configured on this local server. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.';
   }
 
   return raw || 'Something went wrong while signing you in. Please try again.';

@@ -68,7 +68,12 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
         onClose();
       }
     } catch (err) {
-      setError(err.message || 'Could not sign you in. Please try again.');
+      const msg = err && err.message ? err.message : '';
+      if (err?.name === 'BackendUnavailableError' || /unreachable|not configured/i.test(msg)) {
+        setError('Cloud sync is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.');
+      } else {
+        setError(msg || 'Could not sign you in. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
