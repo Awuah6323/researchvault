@@ -3,6 +3,7 @@ import { X, Sparkles, Send, Copy, Check, Loader2, BookmarkPlus, FileSearch } fro
 import { generatePaperSummary, askPaperQuestion } from '../services/geminiService';
 import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 import Modal from './Modal';
+import MarkdownMessage from './MarkdownMessage';
 import { useAnnounce, useToast } from './FeedbackProvider';
 
 // Sentinel value set by AddResourceModal when no real text could be extracted
@@ -235,8 +236,8 @@ export default function AiSummarizerModal({ resource, onClose, onSaveNote }) {
                 </button>
               </div>
             </div>
-            <div style={{ fontSize: '0.9rem', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
-              {summaryResult}
+            <div style={{ fontSize: '0.9rem' }}>
+              <MarkdownMessage>{summaryResult}</MarkdownMessage>
             </div>
           </div>
         )}
@@ -249,7 +250,9 @@ export default function AiSummarizerModal({ resource, onClose, onSaveNote }) {
               {chatHistory.map((item, idx) => (
                 <div key={idx} style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--bg-main)' }}>
                   <div style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.85rem', marginBottom: '4px' }}>Q: {item.q}</div>
-                  <div style={{ fontSize: '0.85rem', lineHeight: 1.5 }}>{item.a}</div>
+                  <div style={{ fontSize: '0.85rem' }}>
+                    <MarkdownMessage compact>{item.a}</MarkdownMessage>
+                  </div>
                 </div>
               ))}
             </div>

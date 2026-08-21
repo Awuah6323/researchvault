@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, Loader2, Copy, Check, BookmarkPlus, RefreshCw, Bot, User, FileText, X, ChevronDown } from 'lucide-react';
+import { Sparkles, Send, Loader2, Copy, Check, BookmarkPlus, RefreshCw, Bot, User, FileText, X, ChevronDown, Square } from 'lucide-react';
 import { chatWithGemini, askPaperQuestion } from '../services/geminiService';
 import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 import { storage } from '../services/storage';
+import MarkdownMessage from '../components/MarkdownMessage';
 
 // Sentinel for placeholder detection
 const PLACEHOLDER_TEXT = 'Imported paper document in ResearchVault digital library.';
@@ -39,6 +40,15 @@ export default function AiChat({ onSaveNote, resources = [] }) {
   const [copiedId, setCopiedId] = useState(null);
   const [savedId, setSavedId] = useState(null);
   const chatEndRef = useRef(null);
+
+  // The id of the message currently being streamed into, or null. Used to show
+  // the live caret and to decide whether the "composing" indicator still
+  // applies — once the first chunk lands, the answer itself is the indicator.
+  const [streamingId, setStreamingId] = useState(null);
+  // Lets the Stop button, Clear Chat, and unmount all cancel an in-flight
+  // request. Without this, leaving the page mid-answer leaves the stream
+  // running and setState firing into an unmounted component.
+  const abortRef = useRef(null);
 
   // Paper tagging state
   const [taggedPaper, setTaggedPaper] = useState(null);
@@ -91,6 +101,15 @@ export default function AiChat({ onSaveNote, resources = [] }) {
     return stored;
   };
 
+  /** Cancel any in-flight answer. Safe to call when nothing is running. */
+  const stopStreaming = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  };
+
+  // Leaving the page mid-answer must not leave the request running.
+  useEffect(() => stopStreaming, []);
+
   const handleSendMessage = async (textToSend) => {
     const text = textToSend || inputMessage.trim();
     if (!text || loading) return;
@@ -106,36 +125,69 @@ export default function AiChat({ onSaveNote, resources = [] }) {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    // Captured before the append below, so the model is not sent the question it
+    // is being asked to answer as part of its own conversation history.
+    const historyForPrompt = messages;
+
+    // The AI's bubble is created empty and filled in as tokens arrive, instead
+    // of being appended once at the end. This is what makes the answer appear
+    // progressively rather than all at once after a long silence.
+    const aiId = Date.now() + 1;
+    const aiMsg = {
+      id: aiId,
+      sender: 'ai',
+      text: '',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMessages(prev => [...prev, userMsg, aiMsg]);
     if (!textToSend) setInputMessage('');
     setLoading(true);
+    setStreamingId(aiId);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const onChunk = (chunk) => {
+      setMessages(prev =>
+        prev.map(m => (m.id === aiId ? { ...m, text: m.text + chunk } : m))
+      );
+    };
 
     try {
-      let responseText;
       if (currentTaggedPaper) {
         // Use paper-aware Q&A with the paper's actual content
         const paperContent = await getResolvedPaperContent(currentTaggedPaper);
-        responseText = await askPaperQuestion(currentTaggedPaper.title, paperContent, text);
+        await askPaperQuestion(
+          currentTaggedPaper.title,
+          paperContent,
+          text,
+          historyForPrompt,
+          userName,
+          { onChunk, signal: controller.signal }
+        );
       } else {
         // General chat
-        responseText = await chatWithGemini(text, messages, userName);
+        await chatWithGemini(text, historyForPrompt, userName, {
+          onChunk,
+          signal: controller.signal
+        });
       }
-      const aiMsg = {
-        id: Date.now() + 1,
-        sender: 'ai',
-        text: responseText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages(prev => [...prev, aiMsg]);
     } catch (err) {
-      const errorMsg = {
-        id: Date.now() + 1,
-        sender: 'ai',
-        text: err.message || "Gemini API error. Please ensure your API key is configured.",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages(prev => [...prev, errorMsg]);
+      // Every chunk received was already written into the bubble, so on both
+      // paths below the partial answer is preserved and only an empty bubble
+      // gets replaced.
+      const note =
+        err?.name === 'AbortError'
+          ? '_Stopped._'
+          : err?.message || 'Gemini API error. Please ensure your API key is configured.';
+
+      setMessages(prev =>
+        prev.map(m => (m.id === aiId && !m.text.trim() ? { ...m, text: note } : m))
+      );
     } finally {
+      abortRef.current = null;
+      setStreamingId(null);
       setLoading(false);
     }
   };
@@ -164,6 +216,12 @@ export default function AiChat({ onSaveNote, resources = [] }) {
     return r.title.toLowerCase().includes(q) || r.authors?.toLowerCase().includes(q);
   });
 
+  // The "composing" indicator only belongs in the gap before the first token.
+  // Once text is arriving, the answer itself shows that something is happening,
+  // and leaving the indicator up alongside it reads as a second pending reply.
+  const streamingText = messages.find(m => m.id === streamingId)?.text || '';
+  const awaitingFirstToken = loading && !extractingPaperText && !streamingText.trim();
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: 'calc(100vh - 120px)' }}>
       {/* Header */}
@@ -175,8 +233,8 @@ export default function AiChat({ onSaveNote, resources = [] }) {
           <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Chat with AI or tag a paper with 📎 to ask questions about it.</p>
         </div>
 
-        <button 
-          onClick={() => { setMessages([messages[0]]); setTaggedPaper(null); }} 
+        <button
+          onClick={() => { stopStreaming(); setMessages([messages[0]]); setTaggedPaper(null); }}
           className="btn-secondary"
           style={{ padding: '6px 12px', fontSize: '0.8rem' }}
           title="Clear Conversation"
@@ -188,8 +246,16 @@ export default function AiChat({ onSaveNote, resources = [] }) {
       {/* Chat Messages Container */}
       <div className="glass-card" style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {messages.map(msg => (
-            <div 
+          {messages.map(msg => {
+            // An AI bubble exists from before the first token arrives. Rendering
+            // it while empty would flash a blank box under the typing
+            // indicator, so it stays hidden until it has something to show.
+            if (msg.sender === 'ai' && !msg.text) return null;
+
+            const isStreaming = msg.id === streamingId;
+
+            return (
+            <div
               key={msg.id}
               style={{
                 display: 'flex',
@@ -212,15 +278,26 @@ export default function AiChat({ onSaveNote, resources = [] }) {
                 border: msg.sender === 'user' ? 'none' : '1px solid var(--border-color)',
                 lineHeight: 1.6,
                 fontSize: '0.9rem',
-                whiteSpace: 'pre-wrap'
+                minWidth: 0,
+                // Only the user's own text is plain, so only it needs newlines
+                // preserved. AI output is rendered Markdown — pre-wrap there
+                // would re-introduce the blank lines of the Markdown source and
+                // double-space every paragraph.
+                whiteSpace: msg.sender === 'user' ? 'pre-wrap' : 'normal'
               }}>
-                <div>{msg.text}</div>
+                {msg.sender === 'ai'
+                  ? <MarkdownMessage compact>{msg.text}</MarkdownMessage>
+                  : <div>{msg.text}</div>}
                 <div style={{ fontSize: '0.7rem', opacity: 0.7, marginTop: '6px', textAlign: 'right', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>{msg.timestamp}</span>
+                  {isStreaming
+                    ? <span className="md-streaming">Generating…</span>
+                    : <span>{msg.timestamp}</span>}
 
-                  {msg.sender === 'ai' && (
+                  {/* Hidden mid-stream: copying or saving a half-written answer
+                      is almost never what someone means to do. */}
+                  {msg.sender === 'ai' && !isStreaming && (
                     <div style={{ display: 'flex', gap: '6px', marginLeft: '12px' }}>
-                      <button 
+                      <button
                         onClick={() => handleCopy(msg.id, msg.text)}
                         style={{ color: 'var(--primary)', padding: '2px' }}
                         title="Copy Response"
@@ -228,7 +305,7 @@ export default function AiChat({ onSaveNote, resources = [] }) {
                         {copiedId === msg.id ? <Check size={14} /> : <Copy size={14} />}
                       </button>
 
-                      <button 
+                      <button
                         onClick={() => handleSaveToNotes(msg.id, msg.text)}
                         style={{ color: 'var(--primary)', padding: '2px' }}
                         title="Save to Research Notes"
@@ -246,7 +323,8 @@ export default function AiChat({ onSaveNote, resources = [] }) {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
 
           {extractingPaperText && (
             <div style={{ display: 'flex', gap: '12px', alignSelf: 'flex-start' }}>
@@ -259,7 +337,7 @@ export default function AiChat({ onSaveNote, resources = [] }) {
             </div>
           )}
 
-          {loading && !extractingPaperText && (
+          {awaitingFirstToken && (
             <div style={{ display: 'flex', gap: '12px', alignSelf: 'flex-start' }}>
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Loader2 size={20} className="animate-spin" />
@@ -450,10 +528,23 @@ export default function AiChat({ onSaveNote, resources = [] }) {
               outline: 'none'
             }}
           />
-          <button type="submit" className="btn-primary" disabled={loading || !inputMessage.trim()} style={{ padding: '0 20px' }}>
-            {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-            <span>Send</span>
-          </button>
+          {loading ? (
+            <button
+              type="button"
+              onClick={stopStreaming}
+              className="btn-secondary"
+              style={{ padding: '0 20px' }}
+              title="Stop generating"
+            >
+              <Square size={16} />
+              <span>Stop</span>
+            </button>
+          ) : (
+            <button type="submit" className="btn-primary" disabled={!inputMessage.trim()} style={{ padding: '0 20px' }}>
+              <Send size={18} />
+              <span>Send</span>
+            </button>
+          )}
         </form>
       </div>
     </div>

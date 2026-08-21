@@ -711,10 +711,267 @@ input, textarea, select {
   }
 }
 
+/* Long words and URLs must not push the panel wider than its column.
+ *
+ * `white-space: pre-wrap` used to be set here too, back when this panel printed
+ * the model's raw Markdown source. Now that the text is rendered through
+ * MarkdownMessage it must NOT be: pre-wrap preserves the newlines of the
+ * Markdown *source*, so every rendered paragraph would pick up the blank line
+ * that separated it in the source and the whole review would come out
+ * double-spaced. Code blocks get `white-space: pre` back explicitly in the
+ * .md-body rules below, which is the only place it is actually wanted. */
 .synthesis-output-content {
-  white-space: pre-wrap !important; /* Ensures AI text wraps naturally */
   word-break: break-word !important;
   overflow-wrap: break-word !important;
+}
+
+/* ==========================================================================
+   RENDERED MARKDOWN (AI OUTPUT) — see src/components/MarkdownMessage.jsx
+   ==========================================================================
+   Every AI surface renders through .md-body, so spacing and colour live here
+   once instead of being duplicated as inline styles on four pages. Colours are
+   all variables, so light and dark themes are covered without new tokens.
+
+   The first/last-child margin resets matter: without them each block adds a
+   leading margin that stacks on the container's own padding, and short chat
+   replies end up with a visible gap above the first line. */
+
+.md-body {
+  color: inherit;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.md-body > *:first-child { margin-top: 0 !important; }
+.md-body > *:last-child { margin-bottom: 0 !important; }
+
+/* Headings ---------------------------------------------------------------- */
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  color: var(--text-main);
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.4em 0 0.5em;
+}
+
+.md-body h1 {
+  font-size: 1.3em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.md-body h2 {
+  font-size: 1.15em;
+  color: var(--primary);
+}
+
+.md-body h3 { font-size: 1.03em; }
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  font-size: 0.97em;
+  color: var(--text-muted);
+  text-transform: none;
+}
+
+/* Text ------------------------------------------------------------------- */
+.md-body p {
+  margin: 0 0 0.85em;
+  line-height: 1.65;
+}
+
+.md-body strong {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.md-body em { font-style: italic; }
+
+.md-body del {
+  text-decoration: line-through;
+  opacity: 0.65;
+}
+
+.md-body a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.md-body hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 1.4em 0;
+}
+
+/* Lists ------------------------------------------------------------------ */
+.md-body ul,
+.md-body ol {
+  margin: 0 0 0.9em;
+  padding-left: 1.45em;
+}
+
+.md-body li {
+  margin-bottom: 0.35em;
+  line-height: 1.6;
+}
+
+.md-body li::marker { color: var(--primary); }
+
+/* Nested lists sit tighter than top-level ones. */
+.md-body li > ul,
+.md-body li > ol {
+  margin: 0.35em 0 0.2em;
+}
+
+.md-body li > p { margin-bottom: 0.35em; }
+
+/* GFM task lists */
+.md-body li input[type='checkbox'] {
+  margin-right: 0.45em;
+  accent-color: var(--primary);
+}
+
+/* Quotes ----------------------------------------------------------------- */
+.md-body blockquote {
+  margin: 0 0 0.9em;
+  padding: 0.6em 0.95em;
+  border-left: 3px solid var(--primary);
+  background: var(--primary-light);
+  border-radius: 0 8px 8px 0;
+  color: var(--text-main);
+}
+
+.md-body blockquote > *:last-child { margin-bottom: 0; }
+
+/* Code ------------------------------------------------------------------- */
+.md-body code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  padding: 0.12em 0.36em;
+  white-space: pre-wrap;
+}
+
+.md-body pre {
+  margin: 0 0 0.9em;
+  padding: 0.85em 1em;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+/* Inside a <pre> the formatting IS the content, so preserve it exactly and
+ * drop the inline chrome the standalone <code> rule adds. */
+.md-body pre code {
+  white-space: pre;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.86em;
+  line-height: 1.55;
+}
+
+/* Tables ----------------------------------------------------------------- */
+/* The wrapper is what scrolls, not the page. MarkdownMessage emits it around
+ * every table so a wide comparison cannot break the mobile layout. */
+.md-table-wrap {
+  overflow-x: auto;
+  margin: 0 0 1em;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.md-body table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9em;
+}
+
+.md-body th,
+.md-body td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  vertical-align: top;
+}
+
+.md-body th:last-child,
+.md-body td:last-child { border-right: none; }
+
+.md-body tr:last-child td { border-bottom: none; }
+
+.md-body thead th {
+  background: var(--primary-light);
+  color: var(--primary-text);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Compact variant -------------------------------------------------------- */
+/* Chat bubbles are small and already padded; the document-sized rhythm above
+   leaves too much air inside them. */
+.md-compact h1,
+.md-compact h2,
+.md-compact h3,
+.md-compact h4 {
+  margin: 1em 0 0.4em;
+  font-size: 1.02em;
+}
+
+.md-compact h1 {
+  font-size: 1.1em;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.md-compact h2 { font-size: 1.06em; }
+
+.md-compact p { margin-bottom: 0.6em; }
+
+.md-compact ul,
+.md-compact ol {
+  margin-bottom: 0.6em;
+  padding-left: 1.25em;
+}
+
+.md-compact li { margin-bottom: 0.2em; }
+
+.md-compact pre,
+.md-compact .md-table-wrap { margin-bottom: 0.7em; }
+
+@media (max-width: 768px) {
+  .md-body th,
+  .md-body td {
+    padding: 7px 9px;
+    font-size: 0.95em;
+  }
+}
+
+/* Shown in place of the timestamp while a reply is still streaming in, so a
+   part-written answer is never mistaken for a finished one. */
+.md-streaming {
+  color: var(--primary);
+  font-weight: 700;
+  animation: md-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes md-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .md-streaming { animation: none; }
 }
 
 /* ==========================================================================

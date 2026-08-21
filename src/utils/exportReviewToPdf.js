@@ -5,6 +5,75 @@ const LINE_HEIGHT = 16;
 const FONT_BODY = 11;
 const FONT_H1 = 18;
 const FONT_H2 = 14;
+const FONT_H3 = 12.5;
+const FONT_H4 = 11.5;
+const INDENT_STEP = 16;
+
+// Space added before and after a heading, indexed by heading level (h1..h6).
+const SPACE_BEFORE_HEADING = [10, 8, 6, 4, 4, 4];
+const SPACE_AFTER_HEADING = [6, 4, 3, 2, 2, 2];
+const HEADING_SIZE = [FONT_H1, FONT_H2, FONT_H3, FONT_H4, FONT_H4, FONT_H4];
+
+/**
+ * Flatten inline Markdown to plain text.
+ *
+ * jsPDF has no inline formatting — a run of bold text inside a paragraph cannot
+ * be expressed — so the markers are removed and the words kept. The alternative
+ * is printing them literally, which is what used to happen and is what made
+ * exported reviews look like source code.
+ */
+function stripInline(text) {
+  return String(text)
+    // [label](url) -> label (url). The destination is worth keeping in a
+    // document that may be read on paper, where a link cannot be clicked.
+    .replace(/!?\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g, (_match, label, url) =>
+      label ? `${label} (${url})` : url
+    )
+    // `code` -> code
+    .replace(/`{1,3}([^`]+)`{1,3}/g, "$1")
+    // **bold** and __bold__
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    // *italic* — two guards, both load-bearing. The leading boundary group
+    // stops a mid-word asterisk from opening a span, and requiring the content
+    // to begin and end with a non-space is what keeps arithmetic intact:
+    // "5 * 3 = 15 and 2 * 4" would otherwise read as one emphasised span and
+    // lose both operators.
+    .replace(
+      /(^|[\s(["'])\*([^\s*][^*\n]*[^\s*]|[^\s*])\*(?=[\s.,;:!?)\]"'-]|$)/g,
+      "$1$2"
+    )
+    // _italic_ — same two guards. Here the leading boundary is what protects
+    // `snake_case_variable`, which would otherwise come out as one word.
+    .replace(
+      /(^|[\s(["'])_([^\s_][^_\n]*[^\s_]|[^\s_])_(?=[\s.,;:!?)\]"'-]|$)/g,
+      "$1$2"
+    )
+    // ~~strikethrough~~
+    .replace(/~~([^~]+)~~/g, "$1");
+}
+
+/** True for a row of a GFM table (leading pipe, or at least two pipes). */
+function isTableRow(line) {
+  if (typeof line !== "string" || !line.includes("|")) return false;
+  return line.trim().startsWith("|") || (line.match(/\|/g) || []).length >= 2;
+}
+
+/** True for the `| --- | :---: |` row that separates a table's head from its body. */
+function isTableDivider(line) {
+  if (typeof line !== "string") return false;
+  return /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(line);
+}
+
+/** Split one table row into trimmed, inline-stripped cells. */
+function splitRow(line) {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => stripInline(cell.trim()));
+}
 
 /**
  * Exports literature review text (or any AI-generated Markdown-style
@@ -28,15 +97,22 @@ export function exportReviewToPdf(reviewText, documentTitle = "Literature Review
     }
   };
 
-  const writeWrappedText = (text, fontSize, isBold = false) => {
-    doc.setFont("helvetica", isBold ? "bold" : "normal");
+  const writeWrappedText = (text, fontSize, isBold = false, indent = 0, font = "helvetica") => {
+    doc.setFont(font, isBold ? "bold" : "normal");
     doc.setFontSize(fontSize);
-    const lines = doc.splitTextToSize(text, usableWidth);
+    const lines = doc.splitTextToSize(text, usableWidth - indent);
     lines.forEach((line) => {
       ensureSpace(LINE_HEIGHT);
-      doc.text(line, PAGE_MARGIN, cursorY);
+      doc.text(line, PAGE_MARGIN + indent, cursorY);
       cursorY += LINE_HEIGHT;
     });
+  };
+
+  const writeRule = () => {
+    ensureSpace(LINE_HEIGHT);
+    doc.setDrawColor(210);
+    doc.line(PAGE_MARGIN, cursorY, pageWidth - PAGE_MARGIN, cursorY);
+    cursorY += LINE_HEIGHT;
   };
 
   // Title
@@ -56,42 +132,143 @@ export function exportReviewToPdf(reviewText, documentTitle = "Literature Review
 
   // Parse and render line by line
   const rawLines = String(reviewText || "").split("\n");
+  let inCodeFence = false;
 
-  rawLines.forEach((rawLine) => {
-    const line = rawLine.trimEnd();
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i].trimEnd();
+    const trimmed = line.trim();
 
-    if (!line.trim()) {
+    // ---- Fenced code blocks --------------------------------------------
+    // Inside a fence nothing is interpreted: the point of a code block is
+    // that its asterisks and hashes are content, not formatting.
+    if (/^```/.test(trimmed)) {
+      inCodeFence = !inCodeFence;
+      cursorY += LINE_HEIGHT / 3;
+      continue;
+    }
+
+    if (inCodeFence) {
+      // splitTextToSize word-wraps, which drops leading whitespace, so the
+      // indentation is moved into the x offset instead of the string.
+      const lead = (line.match(/^ */) || [""])[0].length;
+      writeWrappedText(
+        line.trimStart() || " ",
+        FONT_BODY - 1,
+        false,
+        INDENT_STEP + lead * 5,
+        "courier"
+      );
+      continue;
+    }
+
+    if (!trimmed) {
       cursorY += LINE_HEIGHT / 2;
-      return;
+      continue;
     }
 
-    if (line.startsWith("# ")) {
-      cursorY += 10;
-      ensureSpace(FONT_H1 + LINE_HEIGHT);
-      writeWrappedText(line.replace(/^#\s+/, ""), FONT_H1, true);
-      cursorY += 6;
-      return;
+    // ---- GFM table -> indented "Header: value" lines --------------------
+    // The synthesis prompt forbids tables, but chat mode explicitly allows
+    // them and this exporter is shared. Pipe rows re-wrap into unreadable
+    // garbage at PDF width, so a table is flattened rather than printed.
+    // Only a row followed by a divider counts, so a sentence that merely
+    // contains pipes is left alone.
+    if (isTableRow(line) && isTableDivider(rawLines[i + 1])) {
+      const headers = splitRow(line);
+      let j = i + 2;
+
+      // Inside a confirmed table any line with a pipe is a body row. This is
+      // looser than isTableRow on purpose: a two-column row written without
+      // edge pipes ("Sample | 120") holds only one pipe, and the strict test
+      // would end the table early and silently drop the rest of its rows.
+      // A blank line has no pipe, so it still terminates the table.
+      while (j < rawLines.length && rawLines[j].includes("|")) {
+        if (isTableDivider(rawLines[j])) {
+          j++;
+          continue;
+        }
+
+        const cells = splitRow(rawLines[j]);
+
+        // Keep the row's label with at least its first value rather than
+        // letting a page break separate them.
+        ensureSpace(LINE_HEIGHT * 2);
+        writeWrappedText(cells[0] || "—", FONT_BODY, true);
+
+        for (let c = 1; c < cells.length; c++) {
+          const label = headers[c] || `Column ${c + 1}`;
+          writeWrappedText(`${label}: ${cells[c] || "—"}`, FONT_BODY, false, INDENT_STEP);
+        }
+
+        cursorY += LINE_HEIGHT / 3;
+        j++;
+      }
+
+      i = j - 1;
+      continue;
     }
 
-    if (line.startsWith("## ")) {
-      cursorY += 8;
-      ensureSpace(FONT_H2 + LINE_HEIGHT);
-      writeWrappedText(line.replace(/^##\s+/, ""), FONT_H2, true);
+    // ---- Horizontal rule ------------------------------------------------
+    if (/^([-*_])\1{2,}$/.test(trimmed)) {
+      writeRule();
+      continue;
+    }
+
+    // ---- Headings, # through ###### -------------------------------------
+    const heading = /^(#{1,6})\s+(.*)$/.exec(trimmed);
+    if (heading) {
+      const level = heading[1].length;
+      const size = HEADING_SIZE[level - 1];
+      cursorY += SPACE_BEFORE_HEADING[level - 1];
+      ensureSpace(size + LINE_HEIGHT);
+      writeWrappedText(stripInline(heading[2]), size, true);
+      cursorY += SPACE_AFTER_HEADING[level - 1];
+      continue;
+    }
+
+    // ---- Blockquote -----------------------------------------------------
+    const quote = /^>\s?(.*)$/.exec(trimmed);
+    if (quote) {
+      writeWrappedText(stripInline(quote[1]), FONT_BODY, false, INDENT_STEP);
+      continue;
+    }
+
+    // ---- Bullet list, nesting by leading indentation --------------------
+    const bullet = /^(\s*)[-*+]\s+(.*)$/.exec(line);
+    if (bullet) {
+      const depth = Math.min(Math.floor(bullet[1].length / 2), 3);
+      const marker = depth === 0 ? "•" : depth === 1 ? "–" : "·";
+      writeWrappedText(
+        `${marker}  ${stripInline(bullet[2])}`,
+        FONT_BODY,
+        false,
+        depth * INDENT_STEP
+      );
+      continue;
+    }
+
+    // ---- Numbered list --------------------------------------------------
+    const numbered = /^(\s*)(\d+[.)])\s+(.*)$/.exec(line);
+    if (numbered) {
+      const depth = Math.min(Math.floor(numbered[1].length / 2), 3);
+      writeWrappedText(
+        `${numbered[2]}  ${stripInline(numbered[3])}`,
+        FONT_BODY,
+        false,
+        depth * INDENT_STEP
+      );
+      continue;
+    }
+
+    // ---- A line that is nothing but bold text is a heading in disguise --
+    const boldOnly = /^\*\*(.+?)\*\*:?$/.exec(trimmed);
+    if (boldOnly) {
       cursorY += 4;
-      return;
+      writeWrappedText(stripInline(boldOnly[1]), FONT_BODY, true);
+      continue;
     }
 
-    if (line.startsWith("- ") || line.startsWith("* ")) {
-      const bulletText = "•  " + line.replace(/^[-*]\s+/, "");
-      writeWrappedText(bulletText, FONT_BODY, false);
-      return;
-    }
-
-    // Strip markdown bold markers (**text**) since jsPDF doesn't render
-    // inline formatting — keep the plain text instead.
-    const plain = line.replace(/\*\*(.+?)\*\*/g, "$1");
-    writeWrappedText(plain, FONT_BODY, false);
-  });
+    writeWrappedText(stripInline(line), FONT_BODY, false);
+  }
 
   // Footer with page numbers
   const pageCount = doc.internal.getNumberOfPages();

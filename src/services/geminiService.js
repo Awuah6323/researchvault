@@ -1,14 +1,89 @@
 // ResearchVault AI Service Engine
 // Gemini AI + Friendly Academic Fallback Engine
+//
+// Nothing here talks to Google directly. Every request goes through
+// /api/gemini, which holds the key server-side and also decides the model name
+// and the generation settings — so if Google retires the model again, the one
+// place to change it is MODEL in api/gemini.js, not this file.
+//
+// This module's job is the prompts, and there are three distinct jobs among
+// them (see MODE_1_CHAT / MODE_2_REVIEW / MODE_3_SYNTHESIS below):
+//
+//   Mode 1  conversation — answer length matches the question asked
+//   Mode 2  one paper     — a formal, fixed-structure professional review
+//   Mode 3  many papers   — a comparative synthesis across them
+//
+// Modes 2 and 3 emit a rigid section order because their output is a document
+// someone exports to PDF. Mode 1 deliberately does not: a chat that answers
+// "what is a p-value?" with a ten-section report is worse, not better.
 
-const BASE_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
-// NOTE: gemini-2.0-flash was retired by Google, and gemini-2.5-flash is now
-// closed to new users too ("no longer available to new users" 404) — Google
-// has been deprecating Gemini models fast in 2026. gemini-3.6-flash is the
-// current GA flash model as of Aug 2026. If this one also 404s down the
-// line, check https://ai.google.dev/gemini-api/docs/models for whatever the
-// newest GA flash model is and swap the name here — same request shape.
+/**
+ * Rules that apply to everything the model writes, in every mode.
+ *
+ * Kept as one constant rather than repeated in five template literals, because
+ * previously each prompt carried its own slightly different wording of "do not
+ * make things up" and they had already drifted apart from each other.
+ */
+const CORE_RULES = `
+ACCURACY RULES — these apply without exception:
+
+- Ground every claim about a document in the text you were actually given. Do not invent findings, statistics, methods, authors, dates, or conclusions.
+- Never imply you have read parts of a document that were not provided to you.
+- Distinguish clearly between what a document states and what you infer from it. Do not present your own interpretation as the authors' claim.
+- When evidence is thin, say so plainly rather than filling the gap with plausible-sounding detail. An honest "this is not stated" is more useful than a confident guess.
+- Criticism must be justified. Do not call something a weakness without explaining why it is one.
+- Praise must be earned. Do not describe work as excellent, groundbreaking, or rigorous without pointing to what makes it so.
+- If you were given only an abstract, judge only what an abstract can support, and say that is what you are working from.
+`;
+
+/**
+ * The conversational contract, shared by open chat and by questions asked about
+ * a specific paper — both are the same activity from the reader's side.
+ */
+const MODE_1_CHAT = `
+RESPONSE STYLE — match the answer to the question:
+
+- A simple question gets a direct, natural answer in a few sentences. Do not wrap it in headings.
+- A medium question gets a short explanation with the key points drawn out.
+- A complex question gets real structure: a direct answer first, then the explanation, then why it matters.
+- Lead with the answer. Background comes after it, if at all.
+- Never pad a short answer into a long one. Length should be earned by the question.
+
+FORMATTING — use it where it helps and nowhere else:
+
+- **Bold** for the concepts that matter.
+- Bullet points for several parallel ideas; numbered lists for steps or sequences.
+- Headings only when the answer is long enough to need navigating.
+- A Markdown table when comparing two or more things across the same dimensions, followed by a sentence naming the most important difference in plain language.
+- Blockquotes only to highlight one genuinely important statement.
+- Do not format a two-sentence answer at all.
+
+TONE:
+
+- Warm, natural, and human. Talk like a knowledgeable person, not a textbook.
+- Vary how you open. Do not begin every reply the same way, and do not greet the user again mid-conversation.
+- Avoid opening with "Based on the provided paper...", "According to the research...", or "The paper states..." — use those phrasings only when the source genuinely needs attributing.
+- Be encouraging when the user is stuck, without inventing praise.
+- Occasional emoji are fine where they fit naturally. Do not decorate every line.
+- Explain jargon the first time it appears.
+
+CONVERSATION:
+
+- Treat the conversation as continuous. Resolve "they", "it", and "that" from what was already said rather than asking the user to repeat themselves.
+- Only ask a clarifying question when the request is genuinely ambiguous.
+- Suggest a useful next question occasionally, not after every answer.
+
+WHEN ASKED FOR AN OPINION on whether a paper is good, reliable, or convincing, separate the two things explicitly:
+
+### What the Paper Shows
+
+What the document itself reports.
+
+### My Assessment
+
+Your own judgement, and what it depends on.
+`;
+
 
 /**
  * Sanitizes input text to reduce control characters,
@@ -82,32 +157,120 @@ function isGreeting(message) {
  * the application automatically uses the friendly
  * ResearchVault Academic Fallback Engine.
  */
+/**
+ * Render the recent turns of a conversation for the prompt.
+ *
+ * The last 8 turns is a deliberate compromise: enough for pronouns and
+ * follow-ups to resolve, short enough that it does not dominate the prompt. When
+ * a paper is tagged, the paper content is already the expensive part.
+ */
+function formatChatHistory(chatHistory = [], turns = 8, perTurn = 1000) {
+  return (chatHistory || [])
+    .slice(-turns)
+    .map(
+      (h) =>
+        `${
+          h.sender === "user"
+            ? "User"
+            : "ResearchVault AI"
+        }: ${sanitizeInput(h.text, perTurn)}`
+    )
+    .join("\n");
+}
+
+/**
+ * Calls Gemini through the /api/gemini proxy.
+ *
+ * Two modes of delivery, chosen by whether `onChunk` was passed:
+ *
+ *   without onChunk — one await, returns the finished string. Unchanged from
+ *                     before, and still what the summarisers use.
+ *   with onChunk    — the proxy streams raw text and every chunk is handed to
+ *                     onChunk as it lands. The full string is still returned at
+ *                     the end, so a caller that wants both gets both.
+ *
+ * If Gemini is unreachable the friendly ResearchVault fallback engine answers
+ * instead. But note the ordering below: partial streamed text always beats the
+ * fallback. Replacing half a real answer with canned filler because the
+ * connection dropped at the end would be a downgrade, not a rescue.
+ *
+ * @param {object}   options
+ * @param {string}   options.mode    - generation preset: 'chat' | 'review' | 'summary'
+ * @param {Function} options.onChunk - called with each text delta as it arrives
+ * @param {AbortSignal} options.signal - cancels the request
+ */
 async function callGeminiApi(
   promptText,
   userName = "Scholar",
-  rawUserMessage = ""
+  rawUserMessage = "",
+  options = {}
 ) {
-  // Try the secure backend serverless route first (api/gemini.js).
-  // The API key lives server-side there and never reaches the client bundle.
+  const { mode = "chat", onChunk, signal } = options;
+  const wantsStream = typeof onChunk === "function";
+
+  // Accumulated outside the try so the catch and the fallback path can both see
+  // how much real text already reached the caller.
+  let streamed = "";
+
   try {
     const apiResponse = await fetch('/api/gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ promptText })
+      body: JSON.stringify({ promptText, mode, stream: wantsStream }),
+      signal
     });
 
     if (apiResponse.ok) {
-      const data = await apiResponse.json();
-      if (data && data.text) {
-        return data.text;
+      if (wantsStream && apiResponse.body) {
+        const reader = apiResponse.body.getReader();
+        const decoder = new TextDecoder();
+
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          // stream: true keeps a multi-byte character split across two chunks
+          // from being decoded as two replacement characters.
+          const chunk = decoder.decode(value, { stream: true });
+          if (chunk) {
+            streamed += chunk;
+            onChunk(chunk);
+          }
+        }
+
+        const tail = decoder.decode();
+        if (tail) {
+          streamed += tail;
+          onChunk(tail);
+        }
+
+        if (streamed.trim()) return streamed;
+      } else {
+        const data = await apiResponse.json();
+        if (data && data.text) {
+          return data.text;
+        }
       }
     } else {
       const errBody = await apiResponse.text().catch(() => "");
       console.warn(`/api/gemini responded with ${apiResponse.status}: ${errBody}`);
     }
   } catch (backendErr) {
+    // The user pressed Stop or navigated away. Every chunk received so far was
+    // already handed to onChunk, so the caller is holding the partial answer —
+    // rethrowing lets it tell "cancelled" apart from "failed" without needing
+    // the text back from here.
+    if (backendErr?.name === 'AbortError') throw backendErr;
+
+    if (streamed.trim()) {
+      console.warn("Gemini stream ended early; keeping partial response.", backendErr);
+      return streamed;
+    }
+
     console.warn("Backend /api/gemini call failed.", backendErr);
   }
+
+  if (streamed.trim()) return streamed;
 
   // No client-side API key path.
   //
@@ -120,13 +283,17 @@ async function callGeminiApi(
   //
   // When the proxy is unreachable we degrade to the scripted fallback below
   // rather than reintroducing a browser-visible credential.
-
-  // Fallback to ResearchVault Academic Engine (only reached if the proxy failed)
-  return generateScholarlyFallbackResponse(
+  const fallback = generateScholarlyFallbackResponse(
     promptText,
     userName,
     rawUserMessage
   );
+
+  // A streaming caller renders from its onChunk handler, so the fallback has to
+  // be pushed through the same channel or it would never appear.
+  if (wantsStream && fallback) onChunk(fallback);
+
+  return fallback;
 }
 
 /**
@@ -340,7 +507,8 @@ export async function generatePaperSummary(
   title,
   authors,
   abstractOrText,
-  summaryType = "Executive Summary"
+  summaryType = "Executive Summary",
+  options = {}
 ) {
   const safeTitle = sanitizeInput(
     title,
@@ -403,21 +571,31 @@ List four important findings and explain why they matter.
 Discuss important limitations and possible directions for future research.
 
 Use an approachable academic tone.
-`;
+${CORE_RULES}`;
 
   return callGeminiApi(
     prompt,
-    safeAuthors || "Scholar"
+    safeAuthors || "Scholar",
+    "",
+    { mode: "summary", ...options }
   );
 }
 
 /**
- * Ask a question about a specific academic paper.
+ * Ask a question about a specific academic paper — Mode 1, with the paper as
+ * the grounding source.
+ *
+ * `chatHistory` matters more here than it looks. Without it a tagged paper
+ * turned every message into an isolated one-shot question, so a follow-up like
+ * "and what sample size did they use?" arrived with no idea who "they" were.
  */
 export async function askPaperQuestion(
   title,
   content,
-  question
+  question,
+  chatHistory = [],
+  userName = "Scholar",
+  options = {}
 ) {
   const safeTitle = sanitizeInput(
     title,
@@ -426,42 +604,51 @@ export async function askPaperQuestion(
 
   const safeContent = sanitizeInput(
     content,
-    12000
+    16000
   );
 
   const safeQuestion = sanitizeInput(
     question,
-    1000
+    2000
   );
 
+  const safeUserName = sanitizeInput(userName, 100);
+  const historyText = formatChatHistory(chatHistory);
+
   const prompt = `
-You are ResearchVault AI, a friendly academic research assistant.
+You are ResearchVault AI, a friendly, intelligent academic research assistant.
 
-You are helping a researcher understand a specific academic paper.
+You are chatting with a researcher named "${safeUserName}" about one specific paper. Answer as a knowledgeable person would in conversation — not as a report.
+${MODE_1_CHAT}
+GROUNDING — the paper below is your source for anything factual about it:
 
+- Answer from the paper content provided. Do not supplement it with outside claims about this particular paper.
+- General background knowledge (explaining what a method or term means) is fine and welcome, as long as you do not attribute it to this paper.
+- If the paper content does not answer the question, say exactly this:
+
+"I couldn't find enough information in the available paper content to answer that confidently."
+
+  Then say what the available content DOES cover that is relevant, and what would be needed to answer properly. Do not stop at the refusal — a dead end with no explanation is not a useful answer.
+${CORE_RULES}
 Paper Title:
 ${safeTitle}
 
-Paper Context:
+Paper Content:
 ${safeContent}
+
+Conversation So Far:
+${historyText || "No previous messages. This is the start of the conversation."}
 
 Researcher's Question:
 ${safeQuestion}
 
-Answer the researcher's question clearly and accurately based primarily on the provided context.
-
-Start naturally and conversationally when appropriate.
-
-Do not invent information that is not supported by the provided paper context.
-
-If the context does not contain enough information to answer the question confidently, clearly say so and explain what additional information would be useful.
-
-Use Markdown only when it improves readability.
-`;
+Answer the question directly and naturally.`;
 
   return callGeminiApi(
     prompt,
-    "Scholar"
+    safeUserName,
+    safeQuestion,
+    { mode: "chat", ...options }
   );
 }
 
@@ -474,11 +661,12 @@ Use Markdown only when it improves readability.
 export async function chatWithGemini(
   userMessage,
   chatHistory = [],
-  userName = "Scholar"
+  userName = "Scholar",
+  options = {}
 ) {
   const safeMsg = sanitizeInput(
     userMessage,
-    2000
+    4000
   );
 
   const safeUserName = sanitizeInput(
@@ -486,17 +674,7 @@ export async function chatWithGemini(
     100
   );
 
-  const historyText = chatHistory
-    .slice(-8)
-    .map(
-      (h) =>
-        `${
-          h.sender === "user"
-            ? "User"
-            : "ResearchVault AI"
-        }: ${sanitizeInput(h.text, 1000)}`
-    )
-    .join("\n");
+  const historyText = formatChatHistory(chatHistory);
 
   const directAICall =
     isCallingAI(safeMsg);
@@ -505,177 +683,169 @@ export async function chatWithGemini(
     isGreeting(safeMsg);
 
   const prompt = `
-You are ResearchVault AI, a friendly, intelligent, supportive, and conversational AI assistant. Think of yourself as a general-purpose chatbox first, with a specialty in academic research.
+You are ResearchVault AI, a friendly, intelligent, and knowledgeable academic research assistant.
 
-You are chatting directly with a user named "${safeUserName}".
+You are chatting with a user named "${safeUserName}". This is a conversation, not a report — it should feel like talking to a highly knowledgeable assistant who happens to specialise in research.
+${MODE_1_CHAT}
+SCOPE:
 
-Your personality:
+- You are NOT limited to academic questions. Answer anything asked — general knowledge, coding, maths, everyday advice, casual conversation — as accurately and helpfully as you can.
+- If the user is researching, guide them step by step.
+- If the user shares good news, be pleased for them. If they are frustrated, acknowledge it before solving the problem.
+- If you are genuinely unsure, say so instead of guessing.
 
-- Be warm, friendly, natural, and human-like.
-- Talk to the user as a helpful, knowledgeable companion.
-- Do not sound like a formal textbook unless the user specifically asks for a formal academic response.
-- Be encouraging and supportive when the user is confused, stressed, or struggling.
-- Use the user's name naturally when appropriate.
-- Do NOT use the user's name in every response.
-- Do NOT start every response with the same greeting.
-- Avoid sounding robotic, repetitive, or overly formal.
-- Respond naturally based on the context of the conversation.
-- If the user says "AI", "Hey AI", "Hi AI", or calls you "ResearchVault AI", recognize that they are talking directly to you.
-- If the user shares good news, celebrate with them.
-- If the user is frustrated, acknowledge their frustration and reassure them.
+EXPLAINING DIFFICULT CONCEPTS — build up rather than dumping everything at once. A plain-language explanation first, the technical detail after it, and a concrete analogy when one genuinely clarifies things. Use headings for those parts only when the explanation is long enough to need them.
+${CORE_RULES}
+Signals about this message:
 
-IMPORTANT — SCOPE OF QUESTIONS:
+- Was the user addressing you directly ("AI", "hey AI")? ${directAICall ? "Yes — respond as if they got your attention." : "No."}
+- Was the user just greeting you? ${greeting ? "Yes — greet them back warmly and briefly, then ask what they are working on." : "No."}
+- Is this the start of the conversation? ${historyText ? "No — do not greet them again, just answer." : "Yes — a brief friendly greeting is appropriate."}
 
-- You are NOT limited to academic or research questions. Answer ANY question the user asks — general knowledge, coding, everyday advice, casual conversation, math, current events framed generally, anything — as accurately and helpfully as you can.
-- If the user asks a simple question, give a simple and friendly answer.
-- If the user asks a complex or academic question, explain it clearly while maintaining a conversational tone.
-- If the user asks for help with research, guide them step by step.
-- If you are genuinely unsure or the question needs information you don't have, say so honestly instead of guessing.
-- Ask a natural follow-up question when it would help continue the conversation.
-- Use emojis occasionally when they fit naturally, but do not overuse them.
-
-CONVERSATION STYLE:
-
-Do NOT force this exact opening every time:
-
-"Hello ${safeUserName}! 👋"
-
-Instead, vary your responses naturally.
-
-Possible openings include:
-
-- "Hey ${safeUserName}! 😊"
-- "Of course! I'd be happy to help."
-- "Absolutely, let's work through this together."
-- "Good question!"
-- "That's a really interesting direction."
-- "No worries, we can figure this out together."
-- "Good morning! ☀️"
-- "Hey! What's on your mind?"
-- "I like where you're going with this."
-
-These are examples only. Choose an opening that naturally fits the user's message.
-
-IMPORTANT:
-
-If this is the beginning of the conversation, a friendly greeting is appropriate.
-
-If the conversation is already ongoing, do not add an unnecessary greeting to every response.
-
-If the user directly calls you "AI", respond as if they are calling your attention.
-
-If the user is simply greeting you, respond warmly and naturally.
-
-Always prioritize answering the user's actual question, whatever the topic.
-
-User Name:
-${safeUserName}
-
-Was the user directly calling the AI?
-${directAICall ? "Yes" : "No"}
-
-Was the user greeting the AI?
-${greeting ? "Yes" : "No"}
-
-Conversation History:
-${
-  historyText ||
-  "No previous conversation. This is the beginning of the conversation."
-}
+Conversation So Far:
+${historyText || "No previous conversation. This is the beginning."}
 
 Current User Message:
 ${safeMsg}
 
-Now respond naturally to the user.
-
-Remember:
-
-- Be friendly.
-- Be encouraging.
-- Be conversational.
-- Use "${safeUserName}" naturally when appropriate.
-- Do not force a greeting if the conversation is already ongoing.
-- Do not repeat the same opening style every time.
-- Answer the user's message directly and accurately, on any topic.
-- Use clean Markdown when it improves readability.
-`;
+Respond naturally. Answer what was actually asked, at the length the question deserves.`;
 
   return callGeminiApi(
     prompt,
     safeUserName,
-    safeMsg
+    safeMsg,
+    { mode: "chat", ...options }
   );
 }
 
 /**
- * Synthesize multiple academic papers
- * into a literature review.
+ * Mode 3 — a comparative synthesis across two or more papers.
+ *
+ * This replaced a four-section thematic summary that could not actually compare
+ * anything, for a structural reason: it truncated every paper to 2,000
+ * characters, which is roughly an abstract. Asked to contrast methodologies, it
+ * had no methodology sections to read. The content budget below is the more
+ * important half of this rewrite; the section list is the visible half.
+ *
+ * Deliberately no comparison table. A table is the obvious way to lay two papers
+ * side by side, but it stops working the moment there are four of them on a
+ * phone screen, and it pushes the model toward three-word cells where the
+ * interesting content is the reasoning. Prose per aspect carries more.
  */
 export async function synthesizeLiteratureReview(
-  papers
+  papers,
+  options = {}
 ) {
-  const formatted = papers
+  const list = Array.isArray(papers) ? papers : [];
+  const count = list.length;
+
+  // One total budget shared out across however many papers were selected, rather
+  // than a fixed per-paper cap. Two papers each get real depth; a large
+  // selection degrades to abstract-level coverage instead of blowing up the
+  // prompt and the latency.
+  //
+  //   2 papers -> 12,000 each   4 -> 6,000   8+ -> 3,000 (floor)
+  const perPaper = Math.max(
+    3000,
+    Math.min(12000, Math.floor(24000 / Math.max(count, 1)))
+  );
+
+  const formatted = list
     .map(
       (p, idx) =>
-        `Paper ${idx + 1}: ${sanitizeInput(
-          p.title,
-          300
-        )}
-Authors: ${sanitizeInput(
-          p.authors,
-          300
-        )}
-Abstract: ${sanitizeInput(
-          p.abstractText,
-          2000
-        )}`
+        `--- PAPER ${idx + 1} ---
+Title: ${sanitizeInput(p.title, 300)}
+Authors: ${sanitizeInput(p.authors, 300)}
+Content: ${sanitizeInput(p.abstractText, perPaper)}`
     )
     .join("\n\n");
 
+  const labels = list
+    .map((_, idx) => `Paper ${idx + 1}`)
+    .join(", ");
+
   const prompt = `
-You are ResearchVault AI Literature Review Synthesis Engine.
+You are ResearchVault AI, acting as a senior researcher writing a comparative synthesis review of ${count} papers for a thesis literature chapter or a journal submission.
 
-You are helping a researcher synthesize multiple academic papers into a cohesive, professional-grade literature review — the kind that would meet the standards expected in a thesis, dissertation, or journal submission.
+Your task is to COMPARE these papers against each other, not to summarise them one after another. A reader should finish this able to say how the papers relate, where they agree, where they conflict, and which one they should trust more.
+${CORE_RULES}
+FORMATTING CONSTRAINTS:
 
-Be academically rigorous but explain ideas clearly and naturally.
+- Refer to the papers as ${labels} throughout, and include each paper's short title the first time you name it.
+- Do NOT use Markdown tables anywhere in this response. Compare in prose and bullet points instead.
+- Use the exact section headings and order given below.
+- Write in a professional, evidence-based register. No decorative language, no emoji, no informal expressions.
 
-Analyze the following research papers:
+PAPERS UNDER REVIEW:
 
 ${formatted}
 
-Create a cohesive Literature Review draft.
+Now write the review using exactly this structure:
 
-Structure your response with clear Markdown section titles:
+# Comparative Synthesis Review
 
-# Literature Synthesis & Common Themes
+## 1. Overview of the Papers
 
-Identify the major themes and common ideas across the papers.
+One \`###\` subsection per paper, headed \`### Paper N — <short title>\`. In each, 3-5 sentences covering what the paper set out to do, how it did it, and what it concluded.
 
-## Comparative Analysis of Methodologies
+## 2. Aspect-by-Aspect Comparison
 
-Compare how the studies approached their research problems.
+The core of the review. Under each \`###\` subheading below, discuss ALL ${count} papers together and state explicitly how they differ or align on that specific aspect. Do not write separate per-paper paragraphs here — that is what section 1 was for. If a paper's content does not address an aspect, say so for that paper rather than guessing.
 
-## Identified Gaps in Current Literature
+### Research Problem and Objectives
+### Methodology and Research Design
+### Data, Sample, and Scope
+### Key Findings
+### Stated Limitations
+### Contribution to the Field
 
-Identify gaps, limitations, contradictions, or areas that require further investigation.
+## 3. Key Similarities
 
-## Suggested Future Research Directions
+Bulleted. Each point must name which papers share it and why it matters.
 
-Suggest logical future research directions based on the literature provided.
+## 4. Key Differences
 
-Important:
+Bulleted. Each point must name the specific papers that diverge and the substance of the divergence — not merely that they "differ in methodology", but how, and what that changes about their results.
 
-- Do not simply summarize each paper one by one.
-- Synthesize ideas across multiple studies.
-- Highlight agreements and disagreements.
-- Identify meaningful relationships between studies.
-- Do not invent findings that are not supported by the provided paper information.
-`;
+## 5. Areas of Agreement
+
+Where the evidence across the papers converges on the same conclusion, and how much weight that convergence deserves.
+
+## 6. Areas of Disagreement
+
+Direct contradictions or incompatible conclusions between the papers, with the specific claims on each side. If there are none in the provided evidence, write exactly:
+
+"No direct contradiction was identified from the available evidence."
+
+## 7. Critical Evaluation of Each Paper
+
+One \`###\` subsection per paper. For each, give its genuine strengths and its substantive weaknesses, each justified from the content provided. Where the content was too limited to judge something, say that explicitly rather than asserting a flaw you cannot verify.
+
+## 8. Which Paper Provides the Stronger Evidence
+
+Name the paper whose evidence is strongest and justify it against specific criteria — methodological rigour, sample size and representativeness, transparency, and how well its conclusions are supported by its own results. If the papers are genuinely comparable in strength, say so and explain what would be needed to separate them. Do not default to a tie to avoid taking a position.
+
+## 9. Combined Insights
+
+What is understood from reading these papers together that is not available from any one of them alone.
+
+## 10. Research Gaps
+
+What none of these papers addresses, inferred from what they collectively cover.
+
+## 11. Recommendations for Future Research
+
+Specific, actionable directions that follow from the gaps above. Each should be something a researcher could actually design a study around.
+
+## 12. Final Synthesis
+
+A closing paragraph giving your overall judgement of this body of work: what it establishes, how confidently, and what remains open.`;
 
   return callGeminiApi(
     prompt,
-    "Scholar"
-
+    "Scholar",
+    "",
+    { mode: "review", ...options }
   );
 }
 
@@ -691,69 +861,110 @@ export async function generatePeerReview(
   title,
   authors,
   publicationInfo,
-  abstractOrText
+  abstractOrText,
+  options = {}
 ) {
   const safeTitle = sanitizeInput(title, 300);
   const safeAuthors = sanitizeInput(authors, 300);
   const safePubInfo = sanitizeInput(publicationInfo, 300);
-  const safeContent = sanitizeInput(abstractOrText, 6000);
+  // Raised from 6,000. A review that assesses methodology and validity needs to
+  // have actually seen the methods section, which 6,000 characters rarely
+  // reached on a full paper.
+  const safeContent = sanitizeInput(abstractOrText, 14000);
 
   const prompt = `
-You are ResearchVault AI acting as an expert academic peer reviewer, writing a formal Peer Review Report to a professional publishing/academic standard — the kind submitted to a journal editor or a thesis committee.
+You are ResearchVault AI acting as an expert academic peer reviewer, writing a formal Peer Review Report to a professional publishing standard — the kind submitted to a journal editor or a thesis committee.
+${CORE_RULES}
+FORMATTING CONSTRAINTS:
 
-Paper under review:
+- Use the exact section headings and order given below.
+- Write in a formal, evidence-based reviewer register: confident but fair, and never dismissive.
+- No decorative language, no emoji, no informal expressions.
+- Where a numbered list is called for, give each item a short bolded label followed by 2-4 sentences of substantiation drawn from the provided content.
+
+PAPER UNDER REVIEW:
 
 Title: ${safeTitle}
 Authors: ${safeAuthors}
 Publication Info: ${safePubInfo || "Not provided"}
 
-Content / Abstract provided for review:
+Content provided for review:
 ${safeContent}
 
-Write a complete Peer Review Report using EXACTLY this Markdown structure and section order:
+Write the report using exactly this structure:
 
 # Peer Review Report
 
-"${safeTitle}"
+**${safeTitle}**
 ${safeAuthors}
-${safePubInfo}
+${safePubInfo || ""}
 
 ## Overview
 
-A concise (4-6 sentence) paragraph summarizing what the paper does, its core contributions, its methodology at a high level, and whether it is well suited to its apparent venue/audience.
+4-6 sentences on what the paper does, its core contribution, its methodology at a high level, and whether it suits its apparent venue and audience. If you were given only an abstract or a partial extract rather than the full text, state that here, in this section, so the reader knows the basis of everything that follows.
 
-## 1. Summary of Contribution
+## 1. Summary of the Paper
 
-A paragraph describing the paper's structure and walking through what each major section accomplishes, similar to how a reviewer would narrate the paper's arc for an editor who has not yet read it.
+Narrate the paper's arc for an editor who has not read it: what each major section accomplishes and how the argument is built.
 
-## 2. Strengths
+## 2. Research Problem and Objectives
 
-A numbered list (at least 3-5 items) of genuine strengths. Each item should have a short bolded label followed by 2-4 sentences of substantiation referencing specifics from the provided content (methodology, findings, structure, contribution, etc). Do not invent specifics not supported by the provided content.
+The problem the paper addresses, how clearly it is stated, and whether the objectives are specific enough to be answerable.
 
-## 3. Weaknesses and Points for Clarification
+## 3. Methodology
 
-A numbered list (at least 3-5 items) of substantive weaknesses, ambiguities, or open questions a rigorous reviewer would raise. Each item should have a short bolded label followed by 2-4 sentences of explanation. Be constructive and specific, not generic. Do not invent flaws not reasonably inferable from the provided content — if the provided content is too limited (e.g., only an abstract) to assess something (methodology detail, statistical validity, etc.), say so explicitly as a limitation of the review itself rather than asserting a flaw.
+The research design, methods, and analytical approach, and whether they are appropriate to the stated objectives. Note anything a reader would need in order to reproduce the work — and say plainly if the provided content does not describe the methods in enough detail to judge them.
 
-## 4. Significance and Contribution to the Field
+## 4. Results and Findings
 
-A paragraph assessing the paper's overall significance, its novelty relative to existing work (as far as can be judged), and its likely influence or usefulness to the field/practitioners.
+What the paper reports, and whether the findings actually follow from the methods described.
 
-## 5. Recommendation
+## 5. Strengths
 
-A short, direct recommendation paragraph (e.g., in the spirit of Accept / Minor Revisions / Major Revisions / Reject as applicable, or for coursework/thesis context, an assessment of the paper's suitability as an exemplar or its readiness for the next stage), with a one-line justification.
+A numbered list of at least three genuine strengths, each grounded in specifics from the provided content.
+
+## 6. Weaknesses and Limitations
+
+A numbered list of at least three substantive weaknesses, ambiguities, or open questions a rigorous reviewer would raise. Be specific rather than generic. Where the provided content is too limited to assess something, record that as a limitation of this review rather than asserting a flaw in the paper.
+
+## 7. Validity and Reliability of the Evidence
+
+How well the conclusions are supported by the evidence presented. Consider sample size and representativeness, potential confounds, whether limitations are acknowledged by the authors, and whether the strength of the claims matches the strength of the data. Overreach in the conclusions belongs here.
+
+## 8. Clarity, Structure, and Presentation
+
+How well the paper communicates: organisation, precision of language, and the use of figures, tables, or examples as far as can be judged from the provided content.
+
+## 9. Significance and Contribution to the Field
+
+The paper's importance, its novelty relative to existing work as far as can be judged, and who would find it useful.
+
+## 10. Recommendations for Improvement
+
+A numbered list of concrete, actionable revisions, ordered most to least important. Each should be something the authors could actually act on.
+
+## Final Verdict
+
+**Overall Assessment:** choose exactly ONE of the following five, quoted verbatim, and nothing else on this line:
+
+- Strong contribution, well supported by the evidence
+- Solid contribution with minor limitations
+- Moderate contribution requiring further work
+- Weak contribution with significant concerns
+- Insufficient information to assess reliably
+
+**Recommendation:** one of Accept, Minor Revisions, Major Revisions, or Reject — or, for a thesis or coursework context, a statement of readiness for the next stage.
+
+**Justification:** two to four sentences tying the assessment above to the specific findings of this review. The verdict must follow from what you wrote in sections 1-10; do not introduce a concern here that appears nowhere above.
 
 ## References
 
-If the provided content includes citations or referenced works, list them in a clean numbered reference list. If no reference information was provided, write: "No reference list was available in the provided content."
-
-Important:
-- Maintain a formal, professional, evidence-based reviewer tone throughout — confident but fair, never dismissive.
-- Every claim about the paper's content must be grounded in the provided title/authors/content — do not fabricate results, statistics, or details that are not present in what was given.
-- If the provided content is limited (e.g. only an abstract rather than full text), explicitly note in the Overview that the review is based on the abstract/available content only, and calibrate the depth of the Weaknesses section accordingly rather than asserting specific methodological flaws you cannot actually verify.
-`;
+If the provided content includes citations or referenced works, list them as a clean numbered reference list. If it does not, write exactly: "No reference list was available in the provided content."`;
 
   return callGeminiApi(
     prompt,
-    safeAuthors || "Scholar"
+    safeAuthors || "Scholar",
+    "",
+    { mode: "review", ...options }
   );
 }

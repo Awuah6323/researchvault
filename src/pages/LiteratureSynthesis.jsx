@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Sparkles, CheckSquare, Square, Loader2, Copy, Check, Download, FileText, Layers, CheckCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Sparkles, CheckSquare, Square, StopCircle, Copy, Check, Download, FileText, Layers, CheckCircle } from 'lucide-react';
 import { synthesizeLiteratureReview, generatePeerReview } from '../services/geminiService';
 import { exportReviewToPdf } from '../utils/exportReviewToPdf';
 import { extractTextFromPdfFile } from '../utils/pdfExtractor';
+import MarkdownMessage from '../components/MarkdownMessage';
 
 export default function LiteratureSynthesis({ resources }) {
   const [mode, setMode] = useState('synthesis'); // 'synthesis', 'peer_review'
@@ -10,6 +11,16 @@ export default function LiteratureSynthesis({ resources }) {
   const [loading, setLoading] = useState(false);
   const [reviewResult, setReviewResult] = useState('');
   const [copied, setCopied] = useState(false);
+  const abortRef = useRef(null);
+
+  // A full review runs for the best part of a minute. Stop needs to actually
+  // stop it — both when the user asks and when they navigate away mid-run.
+  const stopGenerating = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  };
+
+  useEffect(() => stopGenerating, []);
 
   const toggleSelect = (id) => {
     if (mode === 'peer_review') {
@@ -46,10 +57,26 @@ export default function LiteratureSynthesis({ resources }) {
     return content || paper.title;
   };
 
+  // Synthesis is a comparison, so it needs at least two papers — asked to
+  // compare one paper against nothing, the model has to invent the other half.
+  // A peer review is a single-paper report.
+  const minPapers = mode === 'synthesis' ? 2 : 1;
+  const canGenerate = selectedIds.length >= minPapers;
+
   const handleGenerate = async () => {
-    if (selectedIds.length === 0 || loading) return;
+    if (!canGenerate || loading) return;
     setLoading(true);
     setReviewResult('');
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    // Sections appear as the model writes them rather than all at once at the
+    // end. The generation is no faster; it just stops being invisible.
+    const options = {
+      onChunk: (chunk) => setReviewResult(prev => prev + chunk),
+      signal: controller.signal
+    };
 
     try {
       if (mode === 'synthesis') {
@@ -59,7 +86,7 @@ export default function LiteratureSynthesis({ resources }) {
           ...p,
           abstractText: await getPaperContent(p)
         })));
-        const result = await synthesizeLiteratureReview(processedPapers);
+        const result = await synthesizeLiteratureReview(processedPapers, options);
         setReviewResult(result);
       } else {
         const paper = selectedPaper;
@@ -69,14 +96,21 @@ export default function LiteratureSynthesis({ resources }) {
             paper.title,
             paper.authors,
             `${paper.journal || ''}, ${paper.publicationYear || ''}`,
-            content
+            content,
+            options
           );
           setReviewResult(result);
         }
       }
     } catch (err) {
-      setReviewResult("Failed to generate evaluation. Please verify Gemini API connectivity.");
+      // Stop is not a failure, and a review that died halfway is still worth
+      // reading — so the error text only replaces an empty panel, never text
+      // the user can already see.
+      if (err?.name !== 'AbortError') {
+        setReviewResult(prev => prev || 'Failed to generate evaluation. Please verify Gemini API connectivity.');
+      }
     } finally {
+      abortRef.current = null;
       setLoading(false);
     }
   };
@@ -88,6 +122,11 @@ export default function LiteratureSynthesis({ resources }) {
       : 'Systematic Literature Review';
     exportReviewToPdf(reviewResult, title);
   };
+
+  // The spinner only owns the panel until the first words land; after that the
+  // text itself is the progress indicator, and covering it with a spinner would
+  // hide the thing the user is waiting for.
+  const awaitingFirstToken = loading && !reviewResult.trim();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -150,15 +189,28 @@ export default function LiteratureSynthesis({ resources }) {
               </div>
             </div>
 
-            <button
-              onClick={handleGenerate}
-              className="btn-primary"
-              disabled={selectedIds.length === 0 || loading}
-              style={{ opacity: selectedIds.length === 0 ? 0.5 : 1 }}
-            >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-              <span>{mode === 'synthesis' ? 'Synthesize Review' : 'Generate Peer Review'}</span>
-            </button>
+            {loading ? (
+              <button
+                type="button"
+                onClick={stopGenerating}
+                className="btn-secondary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <StopCircle size={16} aria-hidden="true" />
+                <span>Stop</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleGenerate}
+                className="btn-primary"
+                disabled={!canGenerate}
+                style={{ opacity: canGenerate ? 1 : 0.5 }}
+              >
+                <Sparkles size={16} aria-hidden="true" />
+                <span>{mode === 'synthesis' ? 'Synthesize Review' : 'Generate Peer Review'}</span>
+              </button>
+            )}
           </div>
 
           <div role="group" aria-label="Select papers to include" style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '500px', overflowY: 'auto' }}>
@@ -208,7 +260,9 @@ export default function LiteratureSynthesis({ resources }) {
             <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
               {mode === 'synthesis' ? 'Generated Synthesis Review' : 'Peer Review Report Output'}
             </h3>
-            {reviewResult && (
+            {/* Hidden mid-stream: copying or exporting a half-written review
+                produces a document that silently stops mid-sentence. */}
+            {reviewResult && !loading && (
               <div className="action-button-group" style={{ display: 'flex', gap: '8px' }}>
                 <button 
                   onClick={() => {
@@ -235,7 +289,7 @@ export default function LiteratureSynthesis({ resources }) {
             )}
           </div>
 
-          {loading ? (
+          {awaitingFirstToken ? (
             <div style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--primary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
               <div style={{
                 width: '56px',
@@ -260,12 +314,15 @@ export default function LiteratureSynthesis({ resources }) {
               borderRadius: '12px',
               backgroundColor: 'var(--bg-main)',
               fontSize: '0.9rem',
-              lineHeight: 1.6,
-              whiteSpace: 'pre-wrap',
               overflowY: 'auto',
               maxHeight: '480px'
             }}>
-              {reviewResult}
+              <MarkdownMessage>{reviewResult}</MarkdownMessage>
+              {loading && (
+                <div className="md-streaming" style={{ fontSize: '0.8rem', marginTop: '10px' }}>
+                  Writing the review…
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>

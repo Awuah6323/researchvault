@@ -4,6 +4,7 @@ import { storage } from '../services/storage';
 import { generatePaperSummary, askPaperQuestion, generatePeerReview } from '../services/geminiService';
 import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 import { resolvePdfSource } from '../services/pdfResolver';
+import MarkdownMessage from '../components/MarkdownMessage';
 import { useConfirm, useAnnounce } from '../components/FeedbackProvider';
 
 const PLACEHOLDER_TEXT = 'Imported paper document in ResearchVault digital library.';
@@ -724,7 +725,9 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
 
               {aiSummaryResult && !aiLoading && (
                 <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
-                  <div style={{ fontSize: '0.82rem', lineHeight: 1.55, whiteSpace: 'pre-line' }}>{aiSummaryResult}</div>
+                  <div style={{ fontSize: '0.82rem' }}>
+                    <MarkdownMessage compact>{aiSummaryResult}</MarkdownMessage>
+                  </div>
                 </div>
               )}
 
@@ -735,7 +738,9 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                     {aiChatHistory.map((item, idx) => (
                       <div key={idx} style={{ padding: '10px', borderRadius: '10px', backgroundColor: 'var(--bg-main)' }}>
                         <div style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.78rem', marginBottom: '4px' }}>Q: {item.q}</div>
-                        <div style={{ fontSize: '0.8rem', lineHeight: 1.5 }}>{item.a}</div>
+                        <div style={{ fontSize: '0.8rem' }}>
+                          <MarkdownMessage compact>{item.a}</MarkdownMessage>
+                        </div>
                       </div>
                     ))}
                   </div>
