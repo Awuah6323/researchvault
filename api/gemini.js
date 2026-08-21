@@ -18,7 +18,7 @@
 // unwrapped here and only the token text is forwarded, so the browser side is a
 // plain TextDecoder loop with no second parser to get subtly wrong.
 
-const MODEL = 'gemini-3.6-flash';
+const MODEL = 'gemini-3.5-flash';
 const API_ROOT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}`;
 
 // Generation settings are chosen HERE, by name, rather than accepted from the
@@ -28,7 +28,7 @@ const API_ROOT = `https://generativelanguage.googleapis.com/v1beta/models/${MODE
 // the numbers.
 //
 // `thinkingLevel` is the single biggest factor in how fast the app FEELS.
-// gemini-3.6-flash defaults to "medium", which spends ~500 reasoning tokens
+// gemini-3.5-flash defaults to "medium", which spends ~500 reasoning tokens
 // before emitting a single visible character: measured time-to-first-token for
 // a one-sentence question was a median of 13s at the default, 7.6s at "low",
 // and 1.3s at "minimal". Streaming cannot help with that delay — there is
