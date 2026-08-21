@@ -338,19 +338,23 @@ input, textarea, select {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--gradient-primary);
+  background-color: var(--primary);
   color: #ffffff;
   font-weight: 700;
   padding: 10px 18px;
   border-radius: 12px;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  border: none;
+  box-shadow: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+[data-theme="cyber-emerald"] .btn-primary {
+  color: #05140a;
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   opacity: 0.92;
-  color: #ffffff;
 }
 
 .btn-secondary {
@@ -364,6 +368,7 @@ input, textarea, select {
   padding: 10px 18px;
   border-radius: 12px;
   border: 1px solid var(--border-color);
+  box-shadow: none;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
@@ -394,9 +399,13 @@ input, textarea, select {
 
 .sidebar-btn.active {
   color: #ffffff;
-  background: var(--gradient-primary);
+  background-color: var(--primary);
   font-weight: 700;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  box-shadow: none;
+}
+
+[data-theme="cyber-emerald"] .sidebar-btn.active {
+  color: #05140a;
 }
 
 /* ==========================================================================

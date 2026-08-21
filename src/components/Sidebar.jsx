@@ -32,8 +32,7 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenI
           className="btn-primary"
           style={{
             width: '100%',
-            marginBottom: '8px',
-            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)'
+            marginBottom: '8px'
           }}
         >
           <PlusCircle size={18} aria-hidden="true" />

@@ -546,7 +546,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
                   backgroundColor: currentSlide.accentColor,
                   borderColor: currentSlide.accentColor,
                   color: '#ffffff',
-                  boxShadow: `0 4px 16px ${currentSlide.accentColor}40`,
+                  boxShadow: 'none',
                   cursor: 'pointer'
                 }}
               >

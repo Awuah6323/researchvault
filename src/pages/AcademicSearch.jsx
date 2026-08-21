@@ -1073,7 +1073,7 @@ export default function AcademicSearch({
                     fontWeight: isActive ? 800 : 600,
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
-                    boxShadow: isActive ? '0 4px 12px rgba(99, 102, 241, 0.3)' : 'none'
+                    boxShadow: 'none'
                   }}
                 >
                   {pg}
