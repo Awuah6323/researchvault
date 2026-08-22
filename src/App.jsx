@@ -43,7 +43,7 @@ export default function App() {
   const [resources, setResources] = useState([]);
   const [categories, setCategories] = useState([]);
   const [userProfile, setUserProfile] = useState(() => storage.getSession());
-  const [theme, setTheme] = useState('warm-sepia');
+  const [theme, setTheme] = useState('sepia');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals & Reader Active State

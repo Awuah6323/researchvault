@@ -44,10 +44,10 @@ export default function Navbar({
   }, []);
 
   const themes = [
-    { id: 'warm-sepia', label: '☕ Warm Sepia' },
-    { id: 'cyber-emerald', label: '⚡ Cyber Emerald' },
-    { id: 'scholarly-light', label: 'Scholarly Light' },
-    { id: 'midnight-oled', label: 'Midnight OLED' }
+    { id: 'sepia', label: 'Sepia' },
+    { id: 'verdant', label: 'Verdant' },
+    { id: 'folio', label: 'Folio' },
+    { id: 'noir', label: 'Noir' }
   ];
 
   return (

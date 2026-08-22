@@ -472,7 +472,21 @@ export const storage = {
 
   getTheme() {
     const saved = localStorage.getItem(BASE_KEYS.THEME);
-    if (!saved || saved === 'dark-vault') return 'warm-sepia';
+    const MIGRATIONS = {
+      'warm-sepia': 'sepia',
+      'cyber-emerald': 'verdant',
+      'scholarly-light': 'folio',
+      'midnight-oled': 'noir',
+      'dark-vault': 'sepia'
+    };
+    if (!saved) return 'sepia';
+    if (MIGRATIONS[saved]) {
+      const migrated = MIGRATIONS[saved];
+      try {
+        localStorage.setItem(BASE_KEYS.THEME, migrated);
+      } catch (e) {}
+      return migrated;
+    }
     return saved;
   },
 
