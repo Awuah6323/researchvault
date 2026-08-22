@@ -28,7 +28,7 @@
   --reader-bg: #faf0e6;
   --reader-text: #2c1d11;
   --gradient-primary: linear-gradient(135deg, #c25e00 0%, #8b4513 100%);
-  --gradient-glow: linear-gradient(135deg, #c25e00 0%, #8b4513 100%);
+  --gradient-glow: linear-gradient(135deg, #c25e00 0%, #b8860b 100%);
   --gradient-card: linear-gradient(145deg, #fffcf7 0%, #f5efe6 100%);
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-serif: 'Playfair Display', Georgia, serif;
@@ -71,7 +71,7 @@
   --reader-bg: #09100c;
   --reader-text: #ecfdf5;
   --gradient-primary: linear-gradient(135deg, #00ff88 0%, #10b981 100%);
-  --gradient-glow: linear-gradient(135deg, #00ff88 0%, #10b981 100%);
+  --gradient-glow: linear-gradient(135deg, #00ff88 0%, #00e5ff 100%);
   --gradient-card: linear-gradient(145deg, rgba(16, 28, 21, 0.9) 0%, rgba(9, 16, 12, 0.95) 100%);
 }
 
@@ -101,7 +101,7 @@
   --reader-bg: #faf0e6;
   --reader-text: #2c1d11;
   --gradient-primary: linear-gradient(135deg, #c25e00 0%, #8b4513 100%);
-  --gradient-glow: linear-gradient(135deg, #c25e00 0%, #8b4513 100%);
+  --gradient-glow: linear-gradient(135deg, #c25e00 0%, #b8860b 100%);
   --gradient-card: linear-gradient(145deg, #fffcf7 0%, #f5efe6 100%);
 }
 
@@ -131,7 +131,7 @@
   --reader-bg: #000000;
   --reader-text: #ffffff;
   --gradient-primary: linear-gradient(135deg, #00e5ff 0%, #0099ff 100%);
-  --gradient-glow: linear-gradient(135deg, #00e5ff 0%, #0099ff 100%);
+  --gradient-glow: linear-gradient(135deg, #00e5ff 0%, #a855f7 100%);
   --gradient-card: linear-gradient(145deg, #0a0a0f 0%, #12121a 100%);
 }
 
@@ -161,7 +161,7 @@
   --reader-bg: #ffffff;
   --reader-text: #0f172a;
   --gradient-primary: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  --gradient-glow: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  --gradient-glow: linear-gradient(135deg, #2563eb 0%, #0d9488 100%);
   --gradient-card: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
 }
 

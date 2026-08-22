@@ -91,12 +91,12 @@ export default function HomeDashboard({
                   alignItems: 'center', 
                   gap: '8px', 
                   color: '#ffffff', 
-                  background: 'var(--primary)', 
+                  background: 'var(--gradient-glow)', 
                   border: 'none', 
                   borderRadius: '12px',
                   fontWeight: 700,
                   fontSize: '0.88rem',
-                  boxShadow: 'none',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
                   cursor: 'pointer'
                 }}
               >
