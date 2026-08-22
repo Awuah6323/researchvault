@@ -117,12 +117,10 @@ export default function LiteratureSynthesis({ resources }) {
   const awaitingFirstToken = loading && !reviewResult.trim();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">AI Literature Review & Peer Review Engine</h1>
-          <p className="page-subtitle">Synthesize multi-paper literature reviews or generate single-paper formal academic peer review reports.</p>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div>
+        <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 800 }}>AI Literature Review & Peer Review Engine</h1>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Synthesize multi-paper literature reviews or generate single-paper formal academic peer review reports.</p>
       </div>
 
       {/* Mode Switcher Tabs */}
@@ -235,15 +233,14 @@ export default function LiteratureSynthesis({ resources }) {
                     key={r.id}
                     htmlFor={`synthesis-paper-${r.id}`}
                     style={{
-                      padding: 'var(--space-3)',
-                      borderRadius: 'var(--radius-lg)',
-                      border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                      boxShadow: isSelected ? '0 0 0 1px var(--primary)' : 'none',
+                      padding: '12px',
+                      borderRadius: '12px',
+                      border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-color)',
                       backgroundColor: isSelected ? 'var(--primary-light)' : 'var(--bg-main)',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 'var(--space-3)'
+                      gap: '12px'
                     }}
                   >
                     <input
@@ -257,8 +254,8 @@ export default function LiteratureSynthesis({ resources }) {
                       {isSelected ? (mode === 'peer_review' ? <CheckCircle size={20} /> : <CheckSquare size={20} />) : <Square size={20} />}
                     </span>
                     <span>
-                      <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)', display: 'block' }}>{r.title}</span>
-                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'block' }}>{r.authors} ({r.publicationYear})</span>
+                      <span style={{ fontWeight: 700, fontSize: '0.85rem', display: 'block' }}>{r.title}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>{r.authors} ({r.publicationYear})</span>
                     </span>
                   </label>
                 );
@@ -268,7 +265,7 @@ export default function LiteratureSynthesis({ resources }) {
         )}
 
         {/* Right Column: Generated Report (Expands to 100% width when reading) */}
-        <div className="glass-card synthesis-output" style={{ padding: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="glass-card synthesis-output" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>
@@ -363,20 +360,17 @@ export default function LiteratureSynthesis({ resources }) {
           ) : reviewResult ? (
             <div className="synthesis-output-content" style={{
               flex: 1,
-              padding: 'var(--space-5)',
-              borderRadius: 'var(--radius-lg)',
+              padding: '20px',
+              borderRadius: '12px',
               backgroundColor: 'var(--bg-main)',
-              fontSize: 'var(--text-base)',
-              lineHeight: 'var(--leading-normal)',
+              fontSize: '0.92rem',
               overflowY: 'auto',
               maxHeight: isExpanded ? 'calc(100vh - 220px)' : '480px',
               minHeight: isExpanded ? '320px' : 'auto'
             }}>
-              <div style={{ maxWidth: 'var(--reading-measure)', margin: '0 auto' }}>
-                <MarkdownMessage>{reviewResult}</MarkdownMessage>
-              </div>
+              <MarkdownMessage>{reviewResult}</MarkdownMessage>
               {loading && (
-                <div className="md-streaming" style={{ fontSize: 'var(--text-xs)', marginTop: 'var(--space-3)' }}>
+                <div className="md-streaming" style={{ fontSize: '0.8rem', marginTop: '10px' }}>
                   Writing the review…
                 </div>
               )}

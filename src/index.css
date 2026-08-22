@@ -1,25 +1,40 @@
 /* ==========================================================================
-   RESEARCHVAULT DESIGN SYSTEM — TOKENS, THEME ENGINE, SHARED PRIMITIVES
-
-   Two kinds of variable live here and they must not be mixed up:
-
-     System tokens  (:root only)  — spacing, radius, type scale, fonts,
-                                    reading measure. Identical in every theme.
-     Palette tokens (per theme)   — colour only. Every theme MUST define the
-                                    full set, because the default block is the
-                                    fallback and a missing token silently
-                                    inherits warm-sepia's colour.
-
-   Colour rule: one colour, one meaning.
-     --primary   action, active state, current selection.  Nothing else.
-     --success   completed / available / synced.
-     --danger    destructive and failure only.
-     --accent-gold  the starred/favourite state only.
-   Metadata is --text-muted, never --primary. A journal name is not a button.
+   RESEARCHVAULT DESIGN SYSTEM - CSS THEME ENGINE & CUSTOM UTILITIES
    ========================================================================== */
 
 :root {
-  /* ---- Spacing (4px base) ---- */
+  /* Default Theme: Warm Sepia */
+  --bg-main: #f5efe6;
+  --bg-card: #fffcf7;
+  --bg-card-hover: #eae3d2;
+  --bg-sidebar: #2c221e;
+  --text-sidebar: #a89f91;
+  --text-sidebar-active: #f5efe6;
+  --text-main: #2c1d11;
+  --text-muted: #78665c;
+  --primary: #c25e00;
+  --primary-hover: #9e4900;
+  --primary-light: #fdf5e6;
+  --primary-text: #5c2c0c;
+  --secondary: #a0522d;
+  --accent-gold: #b8860b;
+  --accent-gold-light: #fdf5e6;
+  --border-color: #e6dac8;
+  --border-focus: #c25e00;
+  --card-shadow: 0 4px 18px rgba(139, 69, 19, 0.1);
+  --header-bg: rgba(255, 252, 247, 0.9);
+  --badge-bg: #e8d8c8;
+  --badge-text: #5c2c0c;
+  --reader-bg: #faf0e6;
+  --reader-text: #2c1d11;
+  --gradient-primary: linear-gradient(135deg, #c25e00 0%, #8b4513 100%);
+  --gradient-glow: linear-gradient(135deg, #c25e00 0%, #b8860b 100%);
+  --gradient-card: linear-gradient(145deg, #fffcf7 0%, #f5efe6 100%);
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Formalized Spacing Scale (4px/8px Base) */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -27,162 +42,11 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
-  --space-10: 40px;
-
-  /* ---- Radius: four steps, replacing the twelve ad-hoc values that were
-          previously scattered through the inline styles ---- */
-  --radius-sm: 6px;   /* chips, badges, tight controls */
-  --radius-md: 10px;  /* buttons, inputs, selects */
-  --radius-lg: 14px;  /* cards, panels */
-  --radius-xl: 18px;  /* modals, hero, drawers */
-
-  /* ---- Type scale ---- */
-  --text-xs: 0.75rem;     /* 12px — metadata, timestamps */
-  --text-sm: 0.8125rem;   /* 13px — labels, secondary UI */
-  --text-md: 0.875rem;    /* 14px — dense UI, buttons */
-  --text-base: 0.9375rem; /* 15px — body copy */
-  --text-lg: 1.0625rem;   /* 17px — card titles, section heads */
-  --text-xl: 1.25rem;     /* 20px — panel titles */
-  --text-2xl: 1.5rem;     /* 24px — page titles */
-
-  --leading-tight: 1.25;
-  --leading-snug: 1.4;
-  --leading-normal: 1.55;
-  --leading-relaxed: 1.7;
-
-  /* ---- Fonts ----
-     Playfair Display is a display face: correct for titles, punishing for
-     paragraphs. Long-form reading gets a text serif from the system stack, so
-     it also costs no network request and works offline in the installed PWA. */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-serif: 'Playfair Display', Georgia, serif;
-  --font-reading: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  /* Comfortable line length for extracted paper text and AI reports. */
   --reading-measure: 72ch;
-
-  /* ======================= DEFAULT PALETTE: WARM SEPIA ===================== */
-  --bg-main: #f5efe6;
-  --bg-card: #fffcf7;
-  --bg-card-hover: #eee7db;
-  --bg-sidebar: #2c221e;
-  --text-sidebar: #b0a598;
-  --text-sidebar-active: #f7f2ea;
-  --text-main: #2c1d11;
-  --text-muted: #78665c;
-
-  /* #c25e00 darkened to #a94f00: same burnt-orange hue, but now clears WCAG AA
-     both as a fill under white text (5.5:1) and as text on the cream page
-     (4.8:1). The old value failed both at 4.29:1 and 3.75:1. */
-  --primary: #a94f00;
-  --primary-hover: #8a3f00;
-  --primary-light: #f8ecdb;
-  --primary-text: #5c2c0c;
-  --secondary: #8a5a3c;
-  --accent-gold: #9a6c0b;
-  --accent-gold-light: #fbf1da;
-
-  --success: #2f7048;
-  --success-bg: #e8f2ea;
-  --success-border: #bcd7c4;
-  --danger: #a52b1f;
-  --danger-bg: #fbeae7;
-  --danger-border: #eec4bd;
-  --info-bg: #f1ece3;
-  --info-border: #ded2c0;
-
-  --border-color: #e3d7c5;
-  --border-strong: #cfbfa8;
-  --border-focus: #a94f00;
-  --card-shadow: 0 1px 2px rgba(76, 44, 20, 0.06);
-  --shadow-overlay: 0 16px 40px rgba(60, 38, 20, 0.18);
-  --scrim: rgba(44, 29, 17, 0.5);
-  --header-bg: #fffcf7;
-  --badge-bg: #ece0cf;
-  --badge-text: #5c2c0c;
 }
 
-/* ==========================================================================
-   THEMES
-   Each theme is a surface treatment plus ONE restrained accent. None of them
-   uses a neon, a default framework brand colour, or a gradient.
-   ========================================================================== */
-
-/* Warm Sepia — cream paper, burnt orange. The default, repeated explicitly so
-   selecting it from the theme menu resolves to the same values. */
-[data-theme="warm-sepia"] {
-  --bg-main: #f5efe6;
-  --bg-card: #fffcf7;
-  --bg-card-hover: #eee7db;
-  --bg-sidebar: #2c221e;
-  --text-sidebar: #b0a598;
-  --text-sidebar-active: #f7f2ea;
-  --text-main: #2c1d11;
-  --text-muted: #78665c;
-  --primary: #a94f00;
-  --primary-hover: #8a3f00;
-  --primary-light: #f8ecdb;
-  --primary-text: #5c2c0c;
-  --secondary: #8a5a3c;
-  --accent-gold: #9a6c0b;
-  --accent-gold-light: #fbf1da;
-  --success: #2f7048;
-  --success-bg: #e8f2ea;
-  --success-border: #bcd7c4;
-  --danger: #a52b1f;
-  --danger-bg: #fbeae7;
-  --danger-border: #eec4bd;
-  --info-bg: #f1ece3;
-  --info-border: #ded2c0;
-  --border-color: #e3d7c5;
-  --border-strong: #cfbfa8;
-  --border-focus: #a94f00;
-  --card-shadow: 0 1px 2px rgba(76, 44, 20, 0.06);
-  --shadow-overlay: 0 16px 40px rgba(60, 38, 20, 0.18);
-  --scrim: rgba(44, 29, 17, 0.5);
-  --header-bg: #fffcf7;
-  --badge-bg: #ece0cf;
-  --badge-text: #5c2c0c;
-}
-
-/* Scholarly Light — off-white paper, slate navy primary. */
-[data-theme="scholarly-light"] {
-  --bg-main: #f6f6f4;
-  --bg-card: #fdfdfc;
-  --bg-card-hover: #eeeeeb;
-  --bg-sidebar: #1c2024;
-  --text-sidebar: #a3a8ad;
-  --text-sidebar-active: #f7f8f8;
-  --text-main: #1b1e21;
-  --text-muted: #61666b;
-  --primary: #2C3E50;
-  --primary-hover: #1f2d3a;
-  --primary-light: #e8ebee;
-  --primary-text: #263644;
-  --secondary: #5c6570;
-  --accent-gold: #B08D57;
-  --accent-gold-light: #f4ecdd;
-  --success: #2c6a46;
-  --success-bg: #e9f1ec;
-  --success-border: #bdd5c5;
-  --danger: #9f2a1e;
-  --danger-bg: #fbebe9;
-  --danger-border: #ecc6c1;
-  --info-bg: #eef0f2;
-  --info-border: #d8dcdf;
-  --border-color: #e0e1de;
-  --border-strong: #c6c8c4;
-  --border-focus: #2C3E50;
-  --card-shadow: 0 1px 2px rgba(28, 32, 36, 0.06);
-  --shadow-overlay: 0 16px 40px rgba(28, 32, 36, 0.18);
-  --scrim: rgba(27, 30, 33, 0.5);
-  --header-bg: #fdfdfc;
-  --badge-bg: #e8eaed;
-  --badge-text: #2c3237;
-}
-
-/* Cyber Emerald — dark forest surfaces, deep emerald primary. */
+/* Theme: Cyber Emerald (Explicit Data Attribute) */
+/* Theme: Cyber Emerald (Explicit Data Attribute) */
 [data-theme="cyber-emerald"] {
   --bg-main: #141815;
   --bg-card: #1b201c;
@@ -223,7 +87,37 @@
   --badge-text: #b6cfbe;
 }
 
-/* Midnight OLED — true black surfaces, gold amber primary. */
+/* Theme: Warm Sepia */
+[data-theme="warm-sepia"] {
+  --bg-main: #f5efe6;
+  --bg-card: #fffcf7;
+  --bg-card-hover: #eae3d2;
+  --bg-sidebar: #2c221e;
+  --text-sidebar: #a89f91;
+  --text-sidebar-active: #f5efe6;
+  --text-main: #2c1d11;
+  --text-muted: #78665c;
+  --primary: #c25e00;
+  --primary-hover: #9e4900;
+  --primary-light: #fdf5e6;
+  --primary-text: #5c2c0c;
+  --secondary: #a0522d;
+  --accent-gold: #b8860b;
+  --accent-gold-light: #fdf5e6;
+  --border-color: #e6dac8;
+  --border-focus: #c25e00;
+  --card-shadow: 0 4px 18px rgba(139, 69, 19, 0.1);
+  --header-bg: rgba(255, 252, 247, 0.9);
+  --badge-bg: #e8d8c8;
+  --badge-text: #5c2c0c;
+  --reader-bg: #faf0e6;
+  --reader-text: #2c1d11;
+  --gradient-primary: linear-gradient(135deg, #c25e00 0%, #8b4513 100%);
+  --gradient-glow: linear-gradient(135deg, #c25e00 0%, #b8860b 100%);
+  --gradient-card: linear-gradient(145deg, #fffcf7 0%, #f5efe6 100%);
+}
+
+/* Theme: Midnight OLED */
 [data-theme="midnight-oled"] {
   --bg-main: #000000;
   --bg-card: #0d0d0e;
@@ -259,10 +153,43 @@
   --badge-text: #d7d7d3;
 }
 
-/* ==========================================================================
-   RESET & BASE
-   ========================================================================== */
+/* Theme: Scholarly Light */
+[data-theme="scholarly-light"] {
+  --bg-main: #f6f6f4;
+  --bg-card: #fdfdfc;
+  --bg-card-hover: #eeeeeb;
+  --bg-sidebar: #1c2024;
+  --text-sidebar: #a3a8ad;
+  --text-sidebar-active: #f7f8f8;
+  --text-main: #1b1e21;
+  --text-muted: #61666b;
+  --primary: #2C3E50;
+  --primary-hover: #1f2d3a;
+  --primary-light: #e8ebee;
+  --primary-text: #263644;
+  --secondary: #5c6570;
+  --accent-gold: #B08D57;
+  --accent-gold-light: #f4ecdd;
+  --success: #2c6a46;
+  --success-bg: #e9f1ec;
+  --success-border: #bdd5c5;
+  --danger: #9f2a1e;
+  --danger-bg: #fbebe9;
+  --danger-border: #ecc6c1;
+  --info-bg: #eef0f2;
+  --info-border: #d8dcdf;
+  --border-color: #e0e1de;
+  --border-strong: #c6c8c4;
+  --border-focus: #2C3E50;
+  --card-shadow: 0 1px 2px rgba(28, 32, 36, 0.06);
+  --shadow-overlay: 0 16px 40px rgba(28, 32, 36, 0.18);
+  --scrim: rgba(27, 30, 33, 0.5);
+  --header-bg: #fdfdfc;
+  --badge-bg: #e8eaed;
+  --badge-text: #2c3237;
+}
 
+/* Global Reset & Base Styles */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -271,31 +198,26 @@
 
 html, body {
   width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
+  max-width: 100vw;
+  overflow-x: hidden !important;
   position: relative;
-  margin: 0;
-  padding: 0;
   box-sizing: border-box;
-  touch-action: pan-y;
 }
 
 #root, .app-layout {
   width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
+  max-width: 100vw;
+  overflow-x: hidden !important;
   box-sizing: border-box;
 }
 
 body {
   font-family: var(--font-sans);
-  font-size: 1rem;
   background-color: var(--bg-main);
   color: var(--text-main);
-  line-height: var(--leading-normal);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 button {
@@ -303,471 +225,533 @@ button {
   cursor: pointer;
   border: none;
   background: none;
-  color: inherit;
 }
 
 input, textarea, select {
   font-family: inherit;
-  font-size: var(--text-base);
   color: var(--text-main);
   background-color: var(--bg-main);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 9px 12px;
-  min-height: 40px;
-  transition: border-color 0.15s ease;
+  border-radius: 8px;
+  padding: 8px 12px;
 }
 
-input:hover:not(:disabled),
-textarea:hover:not(:disabled),
-select:hover:not(:disabled) {
-  border-color: var(--border-strong);
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
 }
 
-input:focus,
-textarea:focus,
-select:focus {
-  border-color: var(--border-focus);
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-textarea {
-  min-height: 68px;
-  line-height: var(--leading-snug);
-}
-
-::placeholder {
-  color: var(--text-muted);
-  opacity: 0.85;
-}
-
-/* Scrollbars stay neutral. --primary means "action", and a scrollbar is not
-   one, so hovering a scrollbar no longer paints it the brand colour. */
+/* Utility Animations & Scrollbars */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 5px;
+  background: var(--text-muted);
+  opacity: 0.4;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: var(--primary);
 }
 
-/* ==========================================================================
-   TYPOGRAPHY
-   Every page header used to hand-roll its own font size, weight and family —
-   one of eight was even sans while the rest were serif. These two classes are
-   the single definition of a page header now.
-   ========================================================================== */
-
-.page-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-3);
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.page-title {
-  font-family: var(--font-serif);
-  font-size: var(--text-2xl);
-  font-weight: 700;
-  line-height: var(--leading-tight);
-  letter-spacing: -0.012em;
-  color: var(--text-main);
-  text-wrap: balance;
+@keyframes pulseGlowEmerald {
+  0%, 100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); }
+  50% { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); }
 }
 
-.page-subtitle {
-  font-size: var(--text-base);
-  color: var(--text-muted);
-  line-height: var(--leading-snug);
-  margin-top: 5px;
-  max-width: 68ch;
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
 }
 
-.section-title {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  letter-spacing: -0.006em;
-  color: var(--text-main);
-}
-
-/* Small uppercase label. letter-spacing is what makes uppercase readable at
-   this size; weight above 600 just makes it shout. */
-.overline {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-muted);
-}
-
-/* Long-form text: extracted paper pages, AI reports. Caps line length so a
-   wide desktop window doesn't produce 100-character lines. */
-.reading-column {
-  font-family: var(--font-reading);
-  max-width: var(--reading-measure);
-  line-height: var(--leading-relaxed);
-}
-
-/* Paper and section titles must wrap between words. `word-break: break-word`
-   was being applied to every heading on mobile, which can split a term like
-   "Backpropagation" mid-word. */
-.wrap-title {
-  overflow-wrap: break-word;
-  word-break: normal;
-  hyphens: none;
-}
-
-/* The wordmark's second half carries the accent colour. It used to be a
-   gradient with -webkit-text-fill-color: transparent, which also meant the
-   word vanished entirely in any engine without background-clip: text. */
 .text-gradient-emerald {
-  color: var(--primary);
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-/* ==========================================================================
-   SURFACES
-   Four class names (.glass-panel, .glass-card, .glass-card-accent, .neu-card)
-   already resolved to one identical rule, so they are kept as aliases rather
-   than renamed across 20 files. Borders carry the hierarchy; the shadow is a
-   hairline, and only genuinely floating things (modals, drawers) get depth.
-   ========================================================================== */
+.text-gradient-glow {
+  background: var(--gradient-glow);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 
+/* Restrained Editorial Card System (No Glassmorphism or Neumorphic Overlays) */
 .glass-panel,
 .glass-card,
 .glass-card-accent,
 .neu-card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
   box-shadow: var(--card-shadow);
+  border-radius: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   position: relative;
 }
 
-/* Opt in for cards that are actually clickable. The blanket `.glass-card:hover`
-   lift used to animate non-interactive <article> and <div> cards too, which
-   promised a click target that wasn't there. */
-.card-interactive {
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-  cursor: pointer;
+.glass-card:hover,
+.neu-card:hover {
+  border-color: var(--border-focus);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
-.card-interactive:hover {
-  border-color: var(--border-strong);
-  background-color: var(--bg-card-hover);
+.neu-pressed {
+  background-color: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
 }
 
 .neu-button {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-main);
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  border-radius: 12px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
   cursor: pointer;
 }
 
-.neu-button:hover:not(:disabled) {
+.neu-button:hover {
   background-color: var(--bg-card-hover);
-  border-color: var(--border-strong);
+  border-color: var(--border-focus);
 }
 
-.neu-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* A metadata label, not a marketing pill. Filled = the paper's own type;
-   .badge-quiet = supplementary facts, so three badges in a row no longer
-   carry identical weight and compete with the title. */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
   font-weight: 600;
-  line-height: 1.45;
   background-color: var(--badge-bg);
   color: var(--badge-text);
-  border: 1px solid transparent;
-}
-
-.badge-quiet {
-  background-color: transparent;
-  color: var(--text-muted);
-  border-color: var(--border-color);
-  font-weight: 500;
-}
-
-.badge-success {
-  background-color: var(--success-bg);
-  color: var(--success);
-  border-color: var(--success-border);
-}
-
-/* ==========================================================================
-   BUTTONS
-   Hover now darkens the fill instead of lifting the button 1px. Motion was
-   standing in for a state change that a colour change states outright, and
-   :disabled had no styling at all — every caller patched it with an inline
-   opacity.
-   ========================================================================== */
-
-.btn-primary,
-.btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: 9px 16px;
-  min-height: 38px;
-  border-radius: var(--radius-md);
-  font-size: var(--text-md);
-  font-weight: 600;
-  line-height: 1.2;
-  white-space: nowrap;
-  box-shadow: none;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  border: 1px solid var(--border-color);
 }
 
 .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   background-color: var(--primary);
   color: #ffffff;
-  border: 1px solid var(--primary);
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: none;
+  box-shadow: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 [data-theme="midnight-oled"] .btn-primary {
   color: #12100c;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--primary-hover);
-  border-color: var(--primary-hover);
+.btn-primary:hover {
+  transform: translateY(-1px);
+  opacity: 0.92;
 }
 
 .btn-secondary {
-  background-color: transparent;
-  color: var(--text-main);
-  border: 1px solid var(--border-strong);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: var(--bg-card-hover);
-}
-
-.btn-primary:disabled,
-.btn-secondary:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-/* Destructive actions get their own class so the colour is defined once
-   instead of being re-tinted inline at each of the five call sites. */
-.btn-danger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  padding: 9px 16px;
-  min-height: 38px;
-  border-radius: var(--radius-md);
-  font-size: var(--text-md);
+  gap: 8px;
+  background-color: var(--primary-light);
+  color: var(--primary-text);
   font-weight: 600;
-  background-color: var(--danger);
-  color: #ffffff;
-  border: 1px solid var(--danger);
-  transition: opacity 0.15s ease;
-}
-
-.btn-danger:hover:not(:disabled) {
-  opacity: 0.88;
-}
-
-/* Quiet icon-only control. Used for the secondary actions on a paper card so
-   that delete is no longer the most saturated thing in the row. */
-.icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 7px;
-  border-radius: var(--radius-sm);
-  background-color: transparent;
-  border: 1px solid transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-
-.icon-button:hover {
-  background-color: var(--bg-card-hover);
-  border-color: var(--border-color);
-  color: var(--text-main);
-}
-
-.icon-button-danger:hover {
-  color: var(--danger);
-  border-color: var(--danger-border);
-  background-color: var(--danger-bg);
-}
-
-/* Segmented control — reader mode switch, review mode tabs, citation styles. */
-.segmented {
-  display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  background-color: var(--bg-main);
+  padding: 10px 18px;
+  border-radius: 12px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  box-shadow: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.segmented-item {
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--text-muted);
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.segmented-item:hover:not([aria-pressed='true']) {
-  color: var(--text-main);
-}
-
-.segmented-item[aria-pressed='true'] {
-  background-color: var(--primary);
-  color: #ffffff;
-}
-
-[data-theme="midnight-oled"] .segmented-item[aria-pressed='true'] {
-  color: #12100c;
-}
-
-/* Inline status/notice strip. Replaces the six separate hand-rolled banners
-   that each hardcoded their own translucent blue or emerald. */
-.notice {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 9px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--info-border);
-  background-color: var(--info-bg);
-  color: var(--text-main);
-  font-size: var(--text-md);
-  line-height: var(--leading-snug);
-}
-
-.notice-success {
-  border-color: var(--success-border);
-  background-color: var(--success-bg);
-}
-
-.notice-danger {
-  border-color: var(--danger-border);
-  background-color: var(--danger-bg);
-  color: var(--danger);
+.btn-secondary:hover {
+  background-color: var(--border-color);
 }
 
 .sidebar-btn {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: 9px 12px;
-  border-radius: var(--radius-md);
-  font-size: var(--text-md);
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--text-sidebar);
   background-color: transparent;
   text-align: left;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: all 0.2s ease;
   cursor: pointer;
   width: 100%;
 }
 
 .sidebar-btn:hover {
   color: var(--text-sidebar-active);
-  background-color: rgba(255, 255, 255, 0.07);
+  background-color: var(--bg-card-hover);
 }
 
 .sidebar-btn.active {
   color: #ffffff;
   background-color: var(--primary);
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: none;
 }
 
-[data-theme="midnight-oled"] .sidebar-btn.active {
-  color: #12100c;
+[data-theme="cyber-emerald"] .sidebar-btn.active {
+  color: #05140a;
 }
 
 /* ==========================================================================
-   GRIDS
+   RESPONSIVE MEDIA QUERIES FOR PHONES, TABLETS & DESKTOPS
    ========================================================================== */
 
+/* Responsive Card Grids */
 .paper-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 20px;
 }
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1px;
-  background-color: var(--border-color);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-/* The four counters were four separate floating cards with four coloured icon
-   chips. They are one panel divided by hairlines now: same numbers, same
-   order, same responsive behaviour, a quarter of the chrome. */
-.metric-cell {
-  background-color: var(--bg-card);
-  padding: var(--space-4) var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.metric-label {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--text-muted);
-  letter-spacing: 0.02em;
-}
-
-.metric-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  color: var(--text-main);
-  font-variant-numeric: tabular-nums;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 18px;
 }
 
 .quick-actions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--space-3);
+  gap: 14px;
+}
+
+/* Mobile Phones (<= 768px) */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+
+  main {
+    padding: 14px 10px !important;
+  }
+
+  .app-layout {
+    flex-direction: column !important;
+  }
+
+  .mobile-hide {
+    display: none !important;
+  }
+
+  /* Header mobile adjustments */
+  header {
+    padding: 10px 12px !important;
+  }
+
+  .nav-container {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+
+  .nav-search-bar {
+    order: 3;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Sidebar transforms into compact horizontal mobile navigation */
+  aside {
+    width: 100% !important;
+    min-height: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    padding: 8px 10px !important;
+    position: sticky;
+    top: 0px;
+    z-index: 30;
+    background-color: var(--bg-sidebar) !important;
+  }
+
+  .sidebar-nav-list {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    padding-bottom: 4px !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .sidebar-nav-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sidebar-btn {
+    white-space: nowrap !important;
+    padding: 8px 12px !important;
+    font-size: 0.8rem !important;
+    flex-shrink: 0 !important;
+    width: auto !important;
+  }
+
+  /* Hide sidebar footer info on small screens */
+  aside > div:last-child {
+    display: none !important;
+  }
+
+  /* Dashboard Hero Mobile Scaling */
+  .hero-banner {
+    padding: 20px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .hero-banner h1 {
+    font-size: 1.45rem !important;
+    line-height: 1.25 !important;
+    margin-bottom: 8px !important;
+  }
+
+  .hero-banner p {
+    font-size: 0.85rem !important;
+    margin-bottom: 16px !important;
+  }
+
+  .hero-buttons {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 10px !important;
+  }
+
+  .hero-buttons button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .hero-bg-icon {
+    display: none !important;
+  }
+
+  /* Grid Layouts on Mobile */
+  .paper-card-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .metrics-grid .neu-card {
+    padding: 14px !important;
+  }
+
+  .quick-actions-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .quick-actions-grid button {
+    padding: 12px 10px !important;
+  }
+
+  /* Modals on Mobile */
+  .glass-card {
+    max-width: 95vw !important;
+    padding: 16px !important;
+  }
+
+  /* Reader View & Notes Drawer on Mobile */
+  .document-reader-content {
+    padding: 16px 12px !important;
+  }
+
+  .notes-drawer-mobile {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    top: auto !important;
+    bottom: 0 !important;
+    height: 60vh !important;
+    border-left: none !important;
+    border-top: 2px solid var(--border-color) !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+}
+
+/* Extra Small Mobile (<= 400px) */
+@media (max-width: 400px) {
+  .metrics-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .quick-actions-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Tablets (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  aside {
+    width: 200px !important;
+    padding: 16px 10px !important;
+  }
+
+  main {
+    padding: 24px 20px !important;
+  }
+
+  .paper-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite !important;
+}
+
+/* Hidden on desktop screens by default */
+.mobile-bottom-nav {
+  display: none;
+}
+
+/* Mobile Screens (768px and below) */
+@media (max-width: 768px) {
+  /* Hide desktop sidebar on mobile */
+  aside {
+    display: none !important;
+  }
+
+  /* Fixed Bottom Navigation Bar */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background-color: var(--header-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-color);
+    justify-content: space-around;
+    align-items: center;
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-bottom-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    padding: 6px 0;
+    flex: 1;
+  }
+
+  .mobile-bottom-nav-btn.active {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  /* Add bottom padding to main content area to prevent bottom nav overlay */
+  main {
+    padding-bottom: 84px !important;
+  }
+
+  /* Stack grid layouts vertically */
+  .synthesis-grid,
+  .comparison-container,
+  .ai-review-layout {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+
+  /* Prevent text and code blocks from expanding past screen edges */
+  .ai-review-card,
+  .synthesis-output {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+  }
+
+  /* Wrap control toolbars cleanly */
+  .ai-toolbar,
+  .action-button-group {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  /* Make action buttons take full width for easier tapping */
+  .ai-toolbar button,
+  .action-button-group button {
+    flex: 1 1 100% !important;
+    justify-content: center !important;
+  }
+
+  .synthesis-output-content {
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+    padding: 12px !important;
+  }
+}
+
+/* Long words and URLs must not push the panel wider than its column.
+ *
+ * `white-space: pre-wrap` used to be set here too, back when this panel printed
+ * the model's raw Markdown source. Now that the text is rendered through
+ * MarkdownMessage it must NOT be: pre-wrap preserves the newlines of the
+ * Markdown *source*, so every rendered paragraph would pick up the blank line
+ * that separated it in the source and the whole review would come out
+ * double-spaced. Code blocks get `white-space: pre` back explicitly in the
+ * .md-body rules below, which is the only place it is actually wanted. */
+.synthesis-output-content {
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
 }
 
 /* ==========================================================================
    RENDERED MARKDOWN (AI OUTPUT) — see src/components/MarkdownMessage.jsx
    ==========================================================================
    Every AI surface renders through .md-body, so spacing and colour live here
-   once instead of being duplicated as inline styles on four pages.
+   once instead of being duplicated as inline styles on four pages. Colours are
+   all variables, so light and dark themes are covered without new tokens.
 
    The first/last-child margin resets matter: without them each block adds a
    leading margin that stacks on the container's own padding, and short chat
@@ -776,7 +760,7 @@ textarea {
 .md-body {
   color: inherit;
   overflow-wrap: break-word;
-  word-break: normal;
+  word-break: break-word;
 }
 
 .md-body > *:first-child { margin-top: 0 !important; }
@@ -791,24 +775,26 @@ textarea {
 .md-body h6 {
   color: var(--text-main);
   font-weight: 700;
-  line-height: var(--leading-tight);
-  letter-spacing: -0.006em;
-  margin: 1.5em 0 0.5em;
+  line-height: 1.3;
+  margin: 1.4em 0 0.5em;
 }
 
 .md-body h1 {
-  font-size: 1.25em;
+  font-size: 1.3em;
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--border-color);
 }
 
-.md-body h2 { font-size: 1.12em; }
-.md-body h3 { font-size: 1.02em; }
+.md-body h2 {
+  font-size: 1.15em;
+  color: var(--primary);
+}
 
+.md-body h3 { font-size: 1.03em; }
 .md-body h4,
 .md-body h5,
 .md-body h6 {
-  font-size: 0.95em;
+  font-size: 0.97em;
   color: var(--text-muted);
   text-transform: none;
 }
@@ -816,7 +802,7 @@ textarea {
 /* Text ------------------------------------------------------------------- */
 .md-body p {
   margin: 0 0 0.85em;
-  line-height: var(--leading-relaxed);
+  line-height: 1.65;
 }
 
 .md-body strong {
@@ -840,22 +826,22 @@ textarea {
 .md-body hr {
   border: none;
   border-top: 1px solid var(--border-color);
-  margin: 1.5em 0;
+  margin: 1.4em 0;
 }
 
 /* Lists ------------------------------------------------------------------ */
 .md-body ul,
 .md-body ol {
   margin: 0 0 0.9em;
-  padding-left: 1.4em;
+  padding-left: 1.45em;
 }
 
 .md-body li {
   margin-bottom: 0.35em;
-  line-height: var(--leading-normal);
+  line-height: 1.6;
 }
 
-.md-body li::marker { color: var(--text-muted); }
+.md-body li::marker { color: var(--primary); }
 
 /* Nested lists sit tighter than top-level ones. */
 .md-body li > ul,
@@ -869,16 +855,15 @@ textarea {
 .md-body li input[type='checkbox'] {
   margin-right: 0.45em;
   accent-color: var(--primary);
-  min-height: 0;
 }
 
 /* Quotes ----------------------------------------------------------------- */
 .md-body blockquote {
   margin: 0 0 0.9em;
-  padding: 0.55em 0.95em;
-  border-left: 2px solid var(--border-strong);
-  background: var(--info-bg);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.6em 0.95em;
+  border-left: 3px solid var(--primary);
+  background: var(--primary-light);
+  border-radius: 0 8px 8px 0;
   color: var(--text-main);
 }
 
@@ -887,10 +872,10 @@ textarea {
 /* Code ------------------------------------------------------------------- */
 .md-body code {
   font-family: var(--font-mono);
-  font-size: 0.87em;
-  background: var(--info-bg);
+  font-size: 0.88em;
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: 5px;
   padding: 0.12em 0.36em;
   white-space: pre-wrap;
 }
@@ -898,9 +883,9 @@ textarea {
 .md-body pre {
   margin: 0 0 0.9em;
   padding: 0.85em 1em;
-  background: var(--info-bg);
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   overflow-x: auto;
 }
 
@@ -912,7 +897,7 @@ textarea {
   border: none;
   padding: 0;
   font-size: 0.86em;
-  line-height: var(--leading-normal);
+  line-height: 1.55;
 }
 
 /* Tables ----------------------------------------------------------------- */
@@ -922,7 +907,7 @@ textarea {
   overflow-x: auto;
   margin: 0 0 1em;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -947,8 +932,8 @@ textarea {
 .md-body tr:last-child td { border-bottom: none; }
 
 .md-body thead th {
-  background: var(--info-bg);
-  color: var(--text-main);
+  background: var(--primary-light);
+  color: var(--primary-text);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -965,12 +950,12 @@ textarea {
 }
 
 .md-compact h1 {
-  font-size: 1.08em;
+  font-size: 1.1em;
   border-bottom: none;
   padding-bottom: 0;
 }
 
-.md-compact h2 { font-size: 1.05em; }
+.md-compact h2 { font-size: 1.06em; }
 
 .md-compact p { margin-bottom: 0.6em; }
 
@@ -985,78 +970,42 @@ textarea {
 .md-compact pre,
 .md-compact .md-table-wrap { margin-bottom: 0.7em; }
 
+@media (max-width: 768px) {
+  .md-body th,
+  .md-body td {
+    padding: 7px 9px;
+    font-size: 0.95em;
+  }
+}
+
 /* Shown in place of the timestamp while a reply is still streaming in, so a
    part-written answer is never mistaken for a finished one. */
 .md-streaming {
   color: var(--primary);
-  font-weight: 600;
+  font-weight: 700;
   animation: md-pulse 1.4s ease-in-out infinite;
 }
 
 @keyframes md-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.35; }
 }
 
-/* Long words and URLs must not push the panel wider than its column.
- *
- * `white-space: pre-wrap` used to be set here too, back when this panel printed
- * the model's raw Markdown source. Now that the text is rendered through
- * MarkdownMessage it must NOT be: pre-wrap preserves the newlines of the
- * Markdown *source*, so every rendered paragraph would pick up the blank line
- * that separated it in the source and the whole review would come out
- * double-spaced. Code blocks get `white-space: pre` back explicitly in the
- * .md-body rules above, which is the only place it is actually wanted. */
-.synthesis-output-content {
-  word-break: normal !important;
-  overflow-wrap: break-word !important;
+@media (prefers-reduced-motion: reduce) {
+  .md-streaming { animation: none; }
 }
 
 /* ==========================================================================
-   ANIMATION
-   Two `fadeIn` keyframes used to be declared in this file with different
-   bodies; the second silently won, so `.animate-fade-in` never actually
-   performed the rise it was written for. One definition now.
+   MOBILE SLIDING NAVIGATION DRAWER STYLES
    ========================================================================== */
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slideInLeft {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes toastIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.18s ease-out forwards;
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite !important;
-}
-
-/* ==========================================================================
-   MOBILE NAVIGATION
-   ========================================================================== */
-
 .mobile-nav-toggle-btn {
   display: none;
 }
 
-.mobile-bottom-nav {
-  display: none;
+@media (max-width: 768px) {
+  .mobile-nav-toggle-btn {
+    display: flex !important;
+  }
 }
 
 .mobile-drawer-wrapper {
@@ -1075,84 +1024,160 @@ textarea {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--scrim);
-  animation: fadeIn 0.2s ease-out forwards;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.25s ease-out forwards;
 }
 
 .mobile-drawer-panel {
   position: relative;
   z-index: 210;
-  width: 288px;
-  max-width: 84vw;
+  width: 280px;
+  max-width: 82vw;
   height: 100%;
   background-color: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
-  padding: var(--space-5) var(--space-4);
+  padding: 20px 16px;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-overlay);
-  animation: slideInLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.35);
+  animation: slideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 /* ==========================================================================
-   RESPONSIVE
-   Mobile phones (<= 768px). The sidebar is hidden here and replaced by the
-   bottom tab bar plus the sliding drawer, so the old rules that reflowed
-   <aside> into a horizontal scroller were unreachable and have been dropped.
+   STRICT MOBILE & TABLET RESPONSIVE CONSTRAINTS (NO HORIZONTAL OVERFLOW)
    ========================================================================== */
+html, body {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+  position: relative !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  touch-action: pan-y;
+}
+
+#root, .app-layout, main, header, footer, section, div {
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+
+.onboarding-carousel-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
 
 @media (max-width: 768px) {
-  /* 14px base was too small for reading paper metadata on a phone. */
-  body {
-    font-size: 15px;
-  }
-
   html, body, #root, .app-layout, main {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-    box-sizing: border-box;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
   }
 
-  /* One declaration for the main padding. It used to be set three times in
-     three different blocks with three different values. */
+  /* Prevent text, buttons, and flex containers from breaking screen width */
+  div, p, span, h1, h2, h3, h4, h5, h6, input, select, button, form {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    word-break: break-word;
+  }
+
+  /* Resource Card Mobile Footer Fix: Ensures Read button is always visible & accessible */
+  .card-footer-bar {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+
+  .card-action-group {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    justify-content: flex-end !important;
+    width: 100% !important;
+  }
+
+  .card-read-btn {
+    flex-shrink: 0 !important;
+    font-weight: 700 !important;
+  }
+
+  @media (max-width: 520px) {
+    .card-action-group {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      width: 100% !important;
+      margin-top: 4px !important;
+    }
+
+    .card-read-btn {
+      flex: 1 1 auto !important;
+      justify-content: center !important;
+      padding: 8px 16px !important;
+      font-size: 0.85rem !important;
+    }
+  }
+
   main {
-    padding: var(--space-4) var(--space-3) 104px !important;
+    padding: 14px 12px 120px 12px !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
   }
 
-  .app-layout {
-    flex-direction: column !important;
+  /* Reader Mobile Header & Container fixes */
+  .reader-mobile-header {
+    padding: 8px 12px !important;
+    gap: 8px !important;
   }
 
-  aside {
+  .reader-mobile-actions {
+    gap: 4px !important;
+  }
+
+  .reader-mobile-actions button, .reader-mobile-actions a {
+    padding: 6px 8px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .reader-mobile-actions .btn-text {
     display: none !important;
-  }
-
-  .mobile-hide {
-    display: none !important;
-  }
-
-  .mobile-nav-toggle-btn {
-    display: flex !important;
   }
 
   header {
-    padding: 10px var(--space-3) !important;
-  }
-
-  /* Long words break only when there is no other option. */
-  p, span, h1, h2, h3, h4, h5, h6, div {
-    overflow-wrap: break-word;
-    word-break: normal;
+    padding: 10px 12px !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
   }
 
   .nav-container {
     flex-wrap: wrap !important;
-    gap: var(--space-2) !important;
-    width: 100%;
-    max-width: 100%;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
+  /* Smooth Horizontal Sliding Action Bar for Header Controls on Mobile */
   .nav-actions-bar {
     display: flex !important;
     align-items: center !important;
@@ -1160,19 +1185,21 @@ textarea {
     overflow-x: auto !important;
     width: 100% !important;
     max-width: 100% !important;
-    padding: 2px !important;
-    gap: var(--space-2) !important;
+    padding: 4px 2px !important;
+    gap: 8px !important;
     -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
+    scroll-snap-type: x mandatory !important;
+    scrollbar-width: none !important; /* Firefox */
+    -ms-overflow-style: none !important; /* IE 10+ */
   }
 
   .nav-actions-bar::-webkit-scrollbar {
-    display: none !important;
+    display: none !important; /* Chrome, Safari, Opera */
   }
 
   .nav-actions-bar > * {
     flex-shrink: 0 !important;
+    scroll-snap-align: start !important;
   }
 
   .nav-search-bar {
@@ -1181,250 +1208,106 @@ textarea {
     max-width: 100% !important;
   }
 
-  /* 44px minimum touch target on every control that is tapped. */
-  .btn-primary,
-  .btn-secondary,
-  .btn-danger,
-  .neu-button,
-  .segmented-item,
-  input, select, textarea {
-    min-height: 44px;
-  }
-
-  .icon-button {
-    min-width: 40px;
-    min-height: 40px;
-  }
-
-  .mobile-bottom-nav {
-    display: flex;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: var(--header-bg);
-    border-top: 1px solid var(--border-color);
-    justify-content: space-around;
-    align-items: stretch;
-    z-index: 100;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .mobile-bottom-nav-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    min-height: 56px;
-    font-size: 0.7rem;
-    font-weight: 500;
-    color: var(--text-muted);
-    background: transparent;
-    border: none;
-    border-top: 2px solid transparent;
-    padding: 8px 0;
-    flex: 1;
-  }
-
-  .mobile-bottom-nav-btn.active {
-    color: var(--primary);
-    font-weight: 600;
-    border-top-color: var(--primary);
-  }
-
-  /* Grids */
   .paper-card-grid {
     grid-template-columns: 1fr !important;
-    gap: var(--space-3) !important;
+    width: 100% !important;
+    gap: 14px !important;
   }
 
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-  }
-
-  .metric-cell {
-    padding: var(--space-3) var(--space-4) !important;
-  }
-
-  .metric-value {
-    font-size: 1.45rem;
+    width: 100% !important;
+    gap: 10px !important;
   }
 
   .quick-actions-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: var(--space-2) !important;
+    width: 100% !important;
+    gap: 10px !important;
   }
 
-  /* Dashboard header block */
   .hero-banner {
-    padding: var(--space-5) var(--space-4) !important;
+    padding: 20px 14px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    width: 100% !important;
+  }
+
+  .hero-banner h1 {
+    font-size: 1.6rem !important;
   }
 
   .hero-buttons {
     width: 100% !important;
+    flex-direction: column !important;
   }
 
   .hero-buttons button {
-    flex: 1 1 auto !important;
+    width: 100% !important;
     justify-content: center !important;
   }
 
-  /* Resource card footer: the Read button must stay reachable. */
-  .card-footer-bar {
-    flex-wrap: wrap !important;
-    gap: var(--space-2) !important;
-  }
-
-  .card-action-group {
-    flex-wrap: nowrap !important;
-    gap: var(--space-1) !important;
-    justify-content: space-between !important;
-    width: 100% !important;
-  }
-
-  .card-read-btn {
-    flex-shrink: 0 !important;
-  }
-
-  /* Reader */
-  .document-reader-content {
-    padding: var(--space-4) var(--space-3) !important;
-  }
-
-  .reader-mobile-header {
-    padding: var(--space-2) var(--space-3) !important;
-    gap: var(--space-2) !important;
-  }
-
-  .reader-mobile-actions {
-    gap: var(--space-1) !important;
-  }
-
-  .reader-mobile-actions .btn-text {
+  .hero-bg-icon {
     display: none !important;
   }
 
-  .notes-drawer-mobile {
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    top: auto !important;
-    bottom: 0 !important;
-    height: 62vh !important;
-    border-left: none !important;
-    border-top: 1px solid var(--border-color) !important;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
-  }
-
-  /* AI assistant side panel becomes a full-screen sheet. */
-  .ai-reader-panel {
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    border-left: none !important;
-    z-index: 200 !important;
-  }
-
-  /* Review / synthesis columns stack */
-  .synthesis-grid,
-  .comparison-container,
-  .ai-review-layout {
-    grid-template-columns: 1fr !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: var(--space-4) !important;
-  }
-
-  .ai-review-card,
-  .synthesis-output {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  .ai-toolbar,
-  .action-button-group {
-    flex-wrap: wrap !important;
-    width: 100% !important;
-    gap: var(--space-2) !important;
-  }
-
-  .ai-toolbar button,
-  .action-button-group button {
-    flex: 1 1 auto !important;
-    justify-content: center !important;
-  }
-
-  .synthesis-output-content {
-    font-size: var(--text-base) !important;
-    padding: var(--space-3) !important;
-  }
-
-  /* Modals */
-  .modal-overlay {
-    padding: var(--space-2) !important;
-  }
-
-  .modal-overlay > div {
-    max-width: 100% !important;
-    width: 100% !important;
-  }
-
   .onboarding-carousel-card {
+    border-radius: 16px !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
   }
 
   .onboarding-slide-card {
-    padding: var(--space-4) var(--space-3) !important;
+    padding: 16px 12px !important;
   }
 
   .carousel-side-arrow {
-    display: none !important;
+    display: none !important; /* Hide floating side arrows on phone screens */
   }
 
-  /* Wide content scrolls inside its own box, never the page. */
-  table, .table-wrapper, pre {
+  .modal-overlay {
+    padding: 6px !important;
+    align-items: center !important;
+  }
+
+  .modal-overlay > div {
+    max-width: 100% !important;
+    width: 100% !important;
+    border-radius: 16px !important;
+    margin: 0 !important;
+  }
+
+  /* Internal scrolling for tables & code so the page never moves horizontally */
+  table, .table-wrapper, pre, code {
+    display: block !important;
     overflow-x: auto !important;
     max-width: 100% !important;
   }
-
-  .md-body th,
-  .md-body td {
-    padding: 7px 9px;
-  }
 }
 
-/* Extra small phones */
-@media (max-width: 420px) {
-  .metrics-grid,
-  .quick-actions-grid {
+@media (max-width: 480px) {
+  .metrics-grid, .quick-actions-grid {
     grid-template-columns: 1fr !important;
   }
 }
 
-/* Tablets */
-@media (min-width: 769px) and (max-width: 1024px) {
-  aside {
-    width: 208px !important;
-    padding: var(--space-4) 10px !important;
-  }
-
-  main {
-    padding: var(--space-6) var(--space-5) !important;
-  }
-
-  .paper-card-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+/* AI Assistant side panel: full-screen overlay on mobile */
+@media (max-width: 768px) {
+  .ai-reader-panel {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-left: none !important;
+    z-index: 200 !important;
   }
 }
 
 /* ==========================================================================
    ACCESSIBILITY LAYER
-   Kept last so these rules win over the component-level inline styles used
+   Keyboard, screen-reader and motion-preference support. Kept at the end of
+   the file so these rules win over the component-level inline styles used
    throughout the app.
    ========================================================================== */
 
@@ -1440,7 +1323,6 @@ textarea {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-  min-height: 0;
 }
 
 /* Skip link — first tab stop on the page, reveals itself on focus. */
@@ -1451,11 +1333,11 @@ textarea {
   z-index: 2000;
   transform: translateY(-120%);
   padding: 12px 20px;
-  border-radius: 0 0 var(--radius-md) 0;
+  border-radius: 0 0 12px 0;
   background-color: var(--primary);
   color: #ffffff;
-  font-size: var(--text-md);
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 700;
   text-decoration: none;
   transition: transform 0.15s ease-out;
 }
@@ -1464,27 +1346,31 @@ textarea {
   transform: translateY(0);
 }
 
-/* One focus ring for every interactive element. This used to be declared
-   twice at two different widths, so the first declaration was dead.
+/* A single, consistent focus ring for every interactive element.
    :focus-visible means mouse users never see it, keyboard users always do. */
-:focus-visible,
+:focus-visible {
+  outline: 3px solid var(--border-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Sidebar and bottom-nav sit on dark backgrounds in every theme, so the
+   themed focus colour can lack contrast there. Force a light ring. */
+.sidebar-btn:focus-visible,
+.mobile-bottom-nav-btn:focus-visible,
+.mobile-drawer-panel :focus-visible {
+  outline-color: #ffffff;
+}
+
+/* Never strip the ring on the elements most likely to be styled bare. */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
-label:focus-within,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--border-focus);
+  outline: 3px solid var(--border-focus);
   outline-offset: 2px;
-}
-
-/* Sidebar, drawer and bottom nav sit on dark backgrounds in every theme, so
-   the themed focus colour can lack contrast there. Force a light ring. */
-.sidebar-btn:focus-visible,
-.mobile-bottom-nav-btn:focus-visible,
-.mobile-drawer-panel :focus-visible {
-  outline-color: #ffffff;
 }
 
 /* Interactive text that behaves like a button (e.g. a card title that opens
@@ -1501,14 +1387,10 @@ label:focus-within,
   cursor: pointer;
 }
 
-.text-button:hover {
-  color: var(--primary);
-}
-
 /* Toast notifications — replaces window.alert() */
 .toast-region {
   position: fixed;
-  bottom: var(--space-6);
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 3000;
@@ -1523,14 +1405,14 @@ label:focus-within,
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 13px 15px;
-  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  border-radius: 14px;
   background-color: var(--bg-card);
-  border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-overlay);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
   color: var(--text-main);
-  font-size: var(--text-md);
-  line-height: var(--leading-snug);
+  font-size: 0.88rem;
+  line-height: 1.45;
   pointer-events: auto;
   animation: toastIn 0.18s ease-out;
 }
@@ -1540,12 +1422,9 @@ label:focus-within,
   margin-top: 1px;
 }
 
-.toast-error   { border-left: 3px solid var(--danger); }
-.toast-error .toast-icon { color: var(--danger); }
-.toast-success { border-left: 3px solid var(--success); }
-.toast-success .toast-icon { color: var(--success); }
-.toast-info    { border-left: 3px solid var(--primary); }
-.toast-info .toast-icon { color: var(--primary); }
+.toast-error   { border-left: 4px solid #ef4444; }
+.toast-success { border-left: 4px solid #10b981; }
+.toast-info    { border-left: 4px solid var(--primary); }
 
 .toast-dismiss {
   flex-shrink: 0;
@@ -1554,13 +1433,18 @@ label:focus-within,
   display: inline-flex;
   align-items: center;
   padding: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 768px) {
   /* Clear the bottom nav bar so toasts are never hidden behind it. */
   .toast-region {
-    bottom: 88px;
+    bottom: 84px;
   }
 }
 
@@ -1578,10 +1462,6 @@ label:focus-within,
   .skip-link {
     transition: none;
   }
-
-  .md-streaming {
-    animation: none;
-  }
 }
 
 /* Honour forced-colours / high-contrast mode. */
@@ -1590,10 +1470,8 @@ label:focus-within,
     outline: 3px solid Highlight;
   }
 
-  .toast,
-  .glass-card,
-  .neu-card,
-  .glass-panel {
+  .toast {
     border: 1px solid CanvasText;
   }
 }
+

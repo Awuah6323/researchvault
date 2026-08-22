@@ -365,7 +365,7 @@ export default function App() {
           isStandalone={isStandalone}
         />
 
-        <main id="main-content" tabIndex={-1} style={{ flex: 1, minWidth: 0, padding: 'var(--space-6) var(--space-8)', overflowX: 'hidden' }}>
+        <main id="main-content" tabIndex={-1} style={{ flex: 1, padding: '28px 36px', overflowX: 'hidden' }}>
           {activeTab === 'home' && (
             <HomeDashboard
               resources={resources}

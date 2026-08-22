@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, RefreshCw, Loader2, Download, FileText, UploadCloud } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, Grid, List, UploadCloud, RefreshCw, Loader2, Download, FileText } from 'lucide-react';
 import ResourceCard from '../components/ResourceCard';
 import { exportLibraryCitationsPdf } from '../services/citationPdfExporter';
 
@@ -55,29 +55,24 @@ export default function MyLibrary({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      {/* Header Bar.
-          This h1 was the one page title in the app set in the sans face while
-          the other seven were serif. It uses the shared .page-title now. */}
-      <div className="page-header">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Header Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 className="page-title">Literature Library</h1>
-          <p className="page-subtitle">
-            {resources.length} {resources.length === 1 ? 'paper' : 'papers'} saved
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Literature Library</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>
+            Manage, read, and analyze your research papers ({resources.length} saved records)
           </p>
         </div>
 
-        {/* Add Paper is the only primary action here. Export, Sync and .BIB are
-            all secondary and now look it — "Export PDF Citations" used to be a
-            third, hardcoded emerald button colour sitting between two outline
-            buttons, for no semantic reason. */}
-        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
             onClick={onOpenAddModal}
             className="btn-primary"
+            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
           >
-            <UploadCloud size={16} aria-hidden="true" />
-            <span>Add paper</span>
+            <UploadCloud size={16} />
+            <span>Add Paper</span>
           </button>
 
           {onSyncCloud && (
@@ -85,22 +80,22 @@ export default function MyLibrary({
               onClick={handleManualSync}
               className="btn-secondary"
               disabled={syncing}
+              style={{ padding: '8px 14px', fontSize: '0.85rem' }}
               title="Sync library across devices"
             >
-              {syncing
-                ? <Loader2 size={15} aria-hidden="true" className="animate-spin" />
-                : <RefreshCw size={15} aria-hidden="true" />}
-              <span>{syncing ? 'Syncing…' : 'Sync'}</span>
+              {syncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+              <span>{syncing ? 'Syncing...' : 'Sync Cloud'}</span>
             </button>
           )}
 
           <button
             onClick={() => exportLibraryCitationsPdf(filtered, 'APA')}
             className="btn-secondary"
-            title="Export the papers currently shown as a formatted PDF citation list"
+            style={{ padding: '8px 14px', fontSize: '0.85rem', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)', backgroundColor: 'rgba(16, 185, 129, 0.08)' }}
+            title="Export filtered papers as formatted PDF citation document"
           >
-            <Download size={15} aria-hidden="true" />
-            <span>Export PDF</span>
+            <Download size={15} />
+            <span>Export PDF Citations</span>
           </button>
 
           <button
@@ -115,28 +110,27 @@ export default function MyLibrary({
               a.click();
             }}
             className="btn-secondary"
-            disabled={filtered.length === 0}
-            title="Export the papers currently shown as a BibTeX (.bib) file"
+            style={{ padding: '8px 12px', fontSize: '0.8rem', opacity: 0.8 }}
+            title="Export as raw BibTeX (.bib) file"
           >
-            <FileText size={15} aria-hidden="true" />
-            <span>BibTeX</span>
+            .BIB
           </button>
         </div>
       </div>
 
       {/* Control Bar: Search input, Category Dropdown, Sort */}
-      <div className="glass-card" style={{ padding: 'var(--space-3) var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+      <div className="glass-card" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
         {/* Search */}
         <div style={{ flex: 1, minWidth: '220px', position: 'relative' }}>
-          <Search size={15} aria-hidden="true" style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+          <Search size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <label htmlFor="library-filter" className="sr-only">Filter library papers</label>
           <input
             id="library-filter"
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter by title, author or category…"
-            style={{ width: '100%', paddingLeft: '34px', fontSize: 'var(--text-md)' }}
+            placeholder="Filter library papers..."
+            style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem' }}
           />
         </div>
 
@@ -146,9 +140,9 @@ export default function MyLibrary({
           id="library-category"
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
-          style={{ fontSize: 'var(--text-md)', fontWeight: 500 }}
+          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem', fontWeight: 600 }}
         >
-          <option value="">All categories</option>
+          <option value="">All Categories</option>
           {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
         </select>
 
@@ -158,27 +152,23 @@ export default function MyLibrary({
           id="library-sort"
           value={sortOption}
           onChange={(e) => setSortOption(e.target.value)}
-          style={{ fontSize: 'var(--text-md)', fontWeight: 500 }}
+          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem', fontWeight: 600 }}
         >
-          <option value="RECENT">Recently added</option>
-          <option value="TITLE">Title (A–Z)</option>
-          <option value="YEAR">Publication year</option>
-          <option value="CITATIONS">Citation count</option>
+          <option value="RECENT">Recently Added</option>
+          <option value="TITLE">Title (A-Z)</option>
+          <option value="YEAR">Publication Year</option>
+          <option value="CITATIONS">Citation Count</option>
         </select>
       </div>
 
       {/* Grid of Resource Cards */}
       {filtered.length === 0 ? (
-        <div className="glass-card" style={{ padding: 'var(--space-10) var(--space-5)', textAlign: 'center' }}>
-          <div className="section-title" style={{ marginBottom: '6px' }}>No papers found</div>
-          <div style={{ fontSize: 'var(--text-base)', color: 'var(--text-muted)' }}>
-            {resources.length === 0
-              ? 'Add your first paper to get started.'
-              : 'Try clearing your filters or search query.'}
-          </div>
+        <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px' }}>No research papers found</div>
+          <div style={{ fontSize: '0.85rem' }}>Try clearing your filters or search query.</div>
         </div>
       ) : (
-        <div className="paper-card-grid" style={{ paddingBottom: 'var(--space-6)' }}>
+        <div className="paper-card-grid" style={{ paddingBottom: '40px' }}>
           {filtered.map(r => (
             <ResourceCard
               key={r.id}

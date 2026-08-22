@@ -20,16 +20,14 @@ export default function NotesManager({ onOpenReader, resources }) {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Research Notes & Highlights</h1>
-          <p className="page-subtitle">Central repository of all notes, observations, and AI summaries across your papers.</p>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div>
+        <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 800 }}>Research Notes & Highlights</h1>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Central repository of all notes, observations, and AI summaries across your papers.</p>
       </div>
 
       {/* Filter Bar */}
-      <div className="glass-card" style={{ padding: 'var(--space-3) var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+      <div className="glass-card" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
         <div style={{ flex: 1, position: 'relative' }}>
           <Search size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <label htmlFor="notes-filter" className="sr-only">Search notes content or paper title</label>

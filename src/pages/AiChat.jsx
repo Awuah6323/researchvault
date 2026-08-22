@@ -223,29 +223,29 @@ export default function AiChat({ onSaveNote, resources = [] }) {
   const awaitingFirstToken = loading && !extractingPaperText && !streamingText.trim();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', height: 'calc(100vh - 130px)' }}>
-      {/* Header.
-          The title carried a sparkle icon and read "Gemini AI Research Chat
-          Assistant" at 1.8rem/800 — a product banner for what is a working
-          panel. It uses the same page header as every other route now. */}
-      <div className="page-header">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: 'calc(100vh - 120px)' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 className="page-title">Research Chat</h1>
-          <p className="page-subtitle">Ask a research question, or attach a paper to ask about that paper specifically.</p>
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Sparkles style={{ color: 'var(--primary)' }} /> Gemini AI Research Chat Assistant
+          </h1>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Chat with AI or tag a paper with 📎 to ask questions about it.</p>
         </div>
 
         <button
           onClick={() => { stopStreaming(); setMessages([messages[0]]); setTaggedPaper(null); }}
           className="btn-secondary"
-          title="Clear conversation"
+          style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+          title="Clear Conversation"
         >
-          <RefreshCw size={15} aria-hidden="true" /> Clear chat
+          <RefreshCw size={14} /> Clear Chat
         </button>
       </div>
 
       {/* Chat Messages Container */}
-      <div className="glass-card" style={{ flex: 1, minHeight: 0, padding: 'var(--space-5)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ flex: 1, overflowY: 'auto', paddingRight: 'var(--space-2)', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+      <div className="glass-card" style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {messages.map(msg => {
             // An AI bubble exists from before the first token arrives. Rendering
             // it while empty would flash a blank box under the typing
@@ -253,92 +253,98 @@ export default function AiChat({ onSaveNote, resources = [] }) {
             if (msg.sender === 'ai' && !msg.text) return null;
 
             const isStreaming = msg.id === streamingId;
-            const isUser = msg.sender === 'user';
 
             return (
             <div
               key={msg.id}
               style={{
                 display: 'flex',
-                gap: 'var(--space-3)',
-                alignSelf: isUser ? 'flex-end' : 'flex-start',
-                maxWidth: isUser ? '80%' : '100%',
-                width: isUser ? 'auto' : '100%'
+                gap: '12px',
+                alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                maxWidth: msg.sender === 'user' ? '75%' : '85%'
               }}
             >
-              {/* Assistant replies are the content of this page, so they read
-                  as text on the page rather than as a bubble. The 36px filled
-                  avatar circle became a thin rule: it still marks "this side is
-                  the assistant" without a decorative disc on every turn. */}
-              {!isUser && (
-                <div aria-hidden="true" style={{ width: '2px', borderRadius: '1px', backgroundColor: 'var(--border-color)', flexShrink: 0 }} />
+              {msg.sender === 'ai' && (
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Bot size={20} />
+                </div>
               )}
 
               <div style={{
-                padding: isUser ? '11px 15px' : '0',
-                borderRadius: isUser ? 'var(--radius-lg)' : '0',
-                backgroundColor: isUser ? 'var(--primary)' : 'transparent',
-                color: isUser ? '#ffffff' : 'var(--text-main)',
-                lineHeight: 'var(--leading-normal)',
-                fontSize: 'var(--text-base)',
+                padding: '14px 18px',
+                borderRadius: '16px',
+                backgroundColor: msg.sender === 'user' ? 'var(--primary)' : 'var(--bg-main)',
+                color: msg.sender === 'user' ? '#ffffff' : 'var(--text-main)',
+                border: msg.sender === 'user' ? 'none' : '1px solid var(--border-color)',
+                lineHeight: 1.6,
+                fontSize: '0.9rem',
                 minWidth: 0,
-                flex: isUser ? '0 1 auto' : 1,
                 // Only the user's own text is plain, so only it needs newlines
                 // preserved. AI output is rendered Markdown — pre-wrap there
                 // would re-introduce the blank lines of the Markdown source and
                 // double-space every paragraph.
-                whiteSpace: isUser ? 'pre-wrap' : 'normal'
+                whiteSpace: msg.sender === 'user' ? 'pre-wrap' : 'normal'
               }}>
-                {isUser
-                  ? <div>{msg.text}</div>
-                  : <MarkdownMessage compact>{msg.text}</MarkdownMessage>}
-                <div style={{ fontSize: 'var(--text-xs)', color: isUser ? 'rgba(255,255,255,0.75)' : 'var(--text-muted)', marginTop: 'var(--space-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-4)' }}>
+                {msg.sender === 'ai'
+                  ? <MarkdownMessage compact>{msg.text}</MarkdownMessage>
+                  : <div>{msg.text}</div>}
+                <div style={{ fontSize: '0.7rem', opacity: 0.7, marginTop: '6px', textAlign: 'right', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   {isStreaming
                     ? <span className="md-streaming">Generating…</span>
                     : <span>{msg.timestamp}</span>}
 
                   {/* Hidden mid-stream: copying or saving a half-written answer
                       is almost never what someone means to do. */}
-                  {!isUser && !isStreaming && (
-                    <div style={{ display: 'flex', gap: '2px' }}>
+                  {msg.sender === 'ai' && !isStreaming && (
+                    <div style={{ display: 'flex', gap: '6px', marginLeft: '12px' }}>
                       <button
                         onClick={() => handleCopy(msg.id, msg.text)}
-                        className="icon-button"
-                        title="Copy response"
-                        aria-label="Copy this response"
-                        style={{ padding: '4px' }}
+                        style={{ color: 'var(--primary)', padding: '2px' }}
+                        title="Copy Response"
                       >
-                        {copiedId === msg.id ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
+                        {copiedId === msg.id ? <Check size={14} /> : <Copy size={14} />}
                       </button>
 
                       <button
                         onClick={() => handleSaveToNotes(msg.id, msg.text)}
-                        className="icon-button"
-                        title="Save to research notes"
-                        aria-label="Save this response to research notes"
-                        style={{ padding: '4px' }}
+                        style={{ color: 'var(--primary)', padding: '2px' }}
+                        title="Save to Research Notes"
                       >
-                        {savedId === msg.id ? <Check size={13} aria-hidden="true" /> : <BookmarkPlus size={13} aria-hidden="true" />}
+                        {savedId === msg.id ? <Check size={14} /> : <BookmarkPlus size={14} />}
                       </button>
                     </div>
                   )}
                 </div>
               </div>
+
+              {msg.sender === 'user' && (
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--bg-main)', color: 'var(--primary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <User size={20} />
+                </div>
+              )}
             </div>
             );
           })}
 
           {extractingPaperText && (
-            <div role="status" style={{ display: 'flex', gap: 'var(--space-3)', alignSelf: 'flex-start', alignItems: 'center', fontSize: 'var(--text-md)', color: 'var(--text-muted)' }}>
-              <FileText size={16} aria-hidden="true" />
-              <span>Reading the PDF…</span>
+            <div style={{ display: 'flex', gap: '12px', alignSelf: 'flex-start' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FileText size={20} />
+              </div>
+              <div style={{ padding: '12px 18px', borderRadius: '16px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>
+                Reading PDF content from your paper...
+              </div>
             </div>
           )}
 
           {awaitingFirstToken && (
-            <div role="status" style={{ display: 'flex', gap: 'var(--space-3)', alignSelf: 'flex-start', alignItems: 'center', fontSize: 'var(--text-md)', color: 'var(--text-muted)' }}>
-              <Loader2 size={16} aria-hidden="true" className="animate-spin" />
-              <span>Thinking…</span>
+            <div style={{ display: 'flex', gap: '12px', alignSelf: 'flex-start' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Loader2 size={20} className="animate-spin" />
+              </div>
+              <div style={{ padding: '12px 18px', borderRadius: '16px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>
+                Gemini AI is reasoning & composing answer...
+              </div>
             </div>
           )}
           <div ref={chatEndRef} />
@@ -346,40 +352,51 @@ export default function AiChat({ onSaveNote, resources = [] }) {
 
         {/* Tagged Paper Indicator */}
         {taggedPaper && (
-          <div className="notice" style={{ marginTop: 'var(--space-3)' }}>
-            <FileText size={15} aria-hidden="true" style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 12px',
+            borderRadius: '10px',
+            backgroundColor: 'var(--primary-light)',
+            border: '1px solid var(--primary)',
+            marginTop: '10px',
+            fontSize: '0.82rem'
+          }}>
+            <FileText size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {taggedPaper.title}
+              <div style={{ fontWeight: 700, color: 'var(--primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                📎 {taggedPaper.title}
               </div>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                Answers will be based on this paper
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                Questions will be answered based on this paper's content
               </div>
             </div>
-            <button type="button" onClick={() => setTaggedPaper(null)} className="icon-button" title="Remove attached paper" aria-label={`Remove attached paper "${taggedPaper?.title || ''}"`} style={{ flexShrink: 0 }}>
-              <X size={15} aria-hidden="true" />
+            <button type="button" onClick={() => setTaggedPaper(null)} style={{ color: 'var(--primary)', padding: '2px', flexShrink: 0 }} title="Remove paper tag" aria-label={`Remove tagged paper "${taggedPaper?.title || ''}"`}>
+              <X size={16} aria-hidden="true" />
             </button>
           </div>
         )}
 
-        {/* Quick Prompts. The 💡 prefix on each was decoration on a control
-            whose text already says what it does. */}
-        {!taggedPaper && messages.length <= 1 && (
-          <div style={{ display: 'flex', gap: 'var(--space-2)', paddingTop: 'var(--space-4)', marginTop: 'var(--space-3)', overflowX: 'auto', borderTop: '1px solid var(--border-color)' }}>
+        {/* Quick Prompts */}
+        {!taggedPaper && (
+          <div style={{ display: 'flex', gap: '8px', padding: '10px 0', overflowX: 'auto', borderTop: '1px solid var(--border-color)', marginTop: '12px' }}>
             {quickPrompts.map((qp, idx) => (
               <button
                 key={idx}
                 onClick={() => handleSendMessage(qp)}
-                className="btn-secondary"
                 style={{
-                  fontSize: 'var(--text-xs)',
-                  padding: '6px 11px',
-                  minHeight: '30px',
+                  padding: '6px 12px',
+                  borderRadius: '16px',
+                  backgroundColor: 'var(--bg-main)',
+                  border: '1px solid var(--border-color)',
+                  fontSize: '0.75rem',
                   color: 'var(--text-muted)',
-                  flexShrink: 0
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer'
                 }}
               >
-                {qp}
+                💡 {qp}
               </button>
             ))}
           </div>
@@ -388,61 +405,71 @@ export default function AiChat({ onSaveNote, resources = [] }) {
         {/* Paper Picker Dropdown */}
         {showPaperPicker && (
           <div style={{
-            marginTop: 'var(--space-2)',
-            padding: 'var(--space-3)',
-            borderRadius: 'var(--radius-md)',
-            backgroundColor: 'var(--bg-main)',
+            marginTop: '8px',
+            padding: '12px',
+            borderRadius: '12px',
+            backgroundColor: 'var(--bg-card)',
             border: '1px solid var(--border-color)',
-            maxHeight: '260px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            maxHeight: '240px',
             display: 'flex',
             flexDirection: 'column',
-            gap: 'var(--space-2)'
+            gap: '8px'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="overline">Attach a paper</span>
-              <button type="button" onClick={() => setShowPaperPicker(false)} className="icon-button" aria-label="Close paper picker" style={{ padding: '4px' }}>
-                <X size={15} aria-hidden="true" />
+              <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>📎 Tag a paper from your library</span>
+              <button type="button" onClick={() => setShowPaperPicker(false)} aria-label="Close paper picker" style={{ color: 'var(--text-muted)', padding: '2px' }}>
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
-            <label htmlFor="aichat-paper-search" className="sr-only">Search your papers to attach one</label>
+            <label htmlFor="aichat-paper-search" className="sr-only">Search your papers to tag one</label>
             <input
               id="aichat-paper-search"
               type="search"
               value={paperSearchQuery}
               onChange={(e) => setPaperSearchQuery(e.target.value)}
-              placeholder="Search your papers…"
+              placeholder="Search your papers..."
               autoFocus
-              style={{ fontSize: 'var(--text-md)', backgroundColor: 'var(--bg-card)' }}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-main)',
+                fontSize: '0.82rem'
+              }}
             />
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {filteredPapers.length === 0 ? (
-                <div style={{ padding: 'var(--space-4)', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-md)' }}>
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                   {resources.length === 0 ? 'No papers in your library yet.' : 'No papers match your search.'}
                 </div>
               ) : (
                 filteredPapers.slice(0, 15).map(paper => (
-                  /* Hover used to be applied with two inline mouse handlers
-                     that fought the selected state; it is one CSS class now. */
                   <button
                     key={paper.id}
                     onClick={() => handleSelectPaper(paper)}
-                    className="card-interactive"
                     style={{
                       padding: '8px 10px',
-                      borderRadius: 'var(--radius-sm)',
-                      backgroundColor: taggedPaper?.id === paper.id ? 'var(--primary-light)' : 'transparent',
-                      border: 'none',
+                      borderRadius: '8px',
+                      backgroundColor: taggedPaper?.id === paper.id ? 'var(--primary-light)' : 'var(--bg-main)',
+                      border: taggedPaper?.id === paper.id ? '1px solid var(--primary)' : '1px solid transparent',
                       textAlign: 'left',
+                      cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '2px'
+                      gap: '2px',
+                      transition: 'all 0.1s ease'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-light)'; }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = taggedPaper?.id === paper.id ? 'var(--primary-light)' : 'var(--bg-main)';
                     }}
                   >
-                    <span style={{ fontWeight: 600, fontSize: 'var(--text-md)', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {paper.title}
                     </span>
-                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                      {paper.authors} · {paper.publicationYear}
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      {paper.authors} • {paper.publicationYear}
                     </span>
                   </button>
                 ))
@@ -452,31 +479,36 @@ export default function AiChat({ onSaveNote, resources = [] }) {
         )}
 
         {/* Chat Input Form */}
-        <form
+        <form 
           onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
-          style={{ display: 'flex', gap: 'var(--space-2)', paddingTop: 'var(--space-4)', marginTop: 'var(--space-3)', borderTop: '1px solid var(--border-color)', alignItems: 'center' }}
+          style={{ display: 'flex', gap: '10px', paddingTop: '10px', alignItems: 'center' }}
         >
           {/* Paper Tag Button */}
           <button
             type="button"
             onClick={() => setShowPaperPicker(!showPaperPicker)}
-            className="icon-button"
-            title={taggedPaper ? `Attached: ${taggedPaper.title}` : 'Attach a paper to ask about it'}
-            aria-label={taggedPaper ? `Change attached paper (currently "${taggedPaper.title}")` : 'Attach a paper to ask about it'}
+            title={taggedPaper ? `Tagged: ${taggedPaper.title}` : "Tag a paper to ask about it"}
+            aria-label={taggedPaper ? `Change tagged paper (currently "${taggedPaper.title}")` : 'Tag a paper to ask about it'}
             aria-expanded={showPaperPicker}
             style={{
               padding: '10px',
+              borderRadius: '10px',
               border: '1px solid var(--border-color)',
-              backgroundColor: taggedPaper ? 'var(--primary-light)' : 'transparent',
+              backgroundColor: taggedPaper ? 'var(--primary-light)' : 'var(--bg-main)',
               color: taggedPaper ? 'var(--primary)' : 'var(--text-muted)',
-              flexShrink: 0
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              transition: 'all 0.15s ease'
             }}
           >
-            <FileText size={17} aria-hidden="true" />
+            <FileText size={18} aria-hidden="true" />
           </button>
 
           <label htmlFor="aichat-message" className="sr-only">
-            Your message to the research assistant
+            Your message to the AI research assistant
           </label>
           <input
             id="aichat-message"
@@ -484,12 +516,15 @@ export default function AiChat({ onSaveNote, resources = [] }) {
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             placeholder={taggedPaper
-              ? `Ask about “${taggedPaper.title.slice(0, 36)}${taggedPaper.title.length > 36 ? '…' : ''}”`
-              : 'Ask a research question…'}
+              ? `Ask about "${taggedPaper.title.slice(0, 40)}${taggedPaper.title.length > 40 ? '...' : ''}"...`
+              : "Ask Gemini AI any research question or tag a 📎 paper..."}
             style={{
               flex: 1,
-              minWidth: 0,
-              padding: '11px 14px',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              border: '1px solid var(--border-color)',
+              backgroundColor: 'var(--bg-main)',
+              fontSize: '0.9rem',
               outline: 'none'
             }}
           />
@@ -498,15 +533,15 @@ export default function AiChat({ onSaveNote, resources = [] }) {
               type="button"
               onClick={stopStreaming}
               className="btn-secondary"
-              style={{ padding: '0 18px', flexShrink: 0 }}
+              style={{ padding: '0 20px' }}
               title="Stop generating"
             >
-              <Square size={15} aria-hidden="true" />
+              <Square size={16} />
               <span>Stop</span>
             </button>
           ) : (
-            <button type="submit" className="btn-primary" disabled={!inputMessage.trim()} style={{ padding: '0 18px', flexShrink: 0 }}>
-              <Send size={16} aria-hidden="true" />
+            <button type="submit" className="btn-primary" disabled={!inputMessage.trim()} style={{ padding: '0 20px' }}>
+              <Send size={18} />
               <span>Send</span>
             </button>
           )}

@@ -149,17 +149,17 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
             /* iOS Specific Instructions */
             <div>
               <div style={{
-                backgroundColor: 'var(--primary-light)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-lg)',
-                padding: 'var(--space-3) var(--space-4)',
-                marginBottom: 'var(--space-5)',
+                backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                border: '1px solid rgba(99, 102, 241, 0.2)',
+                borderRadius: '16px',
+                padding: '14px',
+                marginBottom: '20px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 'var(--space-3)'
+                gap: '12px'
               }}>
-                <Smartphone size={24} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-main)', lineHeight: 1.4 }}>
+                <Smartphone size={24} style={{ color: '#6366f1', flexShrink: 0 }} />
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: 1.4 }}>
                   Install on <strong>iPhone or iPad</strong> directly from Safari in 3 easy steps:
                 </div>
               </div>
