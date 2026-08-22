@@ -194,13 +194,13 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
                 width: '100%',
                 padding: '12px',
                 borderRadius: '12px',
-                background: 'var(--gradient-glow)',
+                background: 'var(--primary)',
                 border: 'none',
                 color: '#ffffff',
                 fontWeight: 700,
                 fontSize: '0.9rem',
                 cursor: 'pointer',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+                boxShadow: 'none',
                 transition: 'all 0.2s ease',
                 letterSpacing: '0.2px'
               }}

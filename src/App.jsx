@@ -414,6 +414,7 @@ export default function App() {
           {activeTab === 'categories' && (
             <Categories
               categories={categories}
+              resources={resources}
               onAddCategory={handleAddCategory}
               onSelectCategory={(catName) => {
                 handleNavigate('library');

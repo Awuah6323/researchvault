@@ -213,7 +213,7 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
             style={{
               padding: '10px 20px',
               borderRadius: '14px',
-              background: 'var(--gradient-glow)',
+              background: 'var(--primary)',
               color: '#ffffff',
               border: 'none',
               fontWeight: 700,
@@ -222,7 +222,7 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
               alignItems: 'center',
               gap: '8px',
               cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)'
+              boxShadow: 'none'
             }}
           >
             <Download size={18} style={{ strokeWidth: 2.5 }} />

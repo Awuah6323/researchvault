@@ -112,7 +112,7 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
       ? rawExtracted.slice(0, 400) + '...' 
       : (rawExtracted || 'Imported paper document in ResearchVault digital library.');
 
-    const finalCategory = (category && category !== 'Computer Science') ? category : suggestCategory(title.trim(), rawExtracted);
+    const finalCategory = category || suggestCategory(title.trim(), rawExtracted);
 
     onAdd({
       title: title.trim(),

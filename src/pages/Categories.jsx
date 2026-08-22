@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FolderPlus, BookOpen, Plus, X } from 'lucide-react';
 import Modal from '../components/Modal';
 
-export default function Categories({ categories, onAddCategory, onSelectCategory }) {
+export default function Categories({ categories = [], resources = [], onAddCategory, onSelectCategory }) {
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -10,11 +10,46 @@ export default function Categories({ categories, onAddCategory, onSelectCategory
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onAddCategory({ name: name.trim(), description: description.trim() || 'Custom Research Folder', icon: 'Folder' });
+    onAddCategory({ name: name.trim(), description: description.trim() || 'Custom Research Folder', icon: 'BookOpen' });
     setName('');
     setDescription('');
     setShowModal(false);
   };
+
+  const categoryMap = new Map();
+
+  (categories || []).forEach(cat => {
+    if (cat && cat.name) {
+      categoryMap.set(cat.name.trim().toLowerCase(), {
+        id: cat.id || cat.name,
+        name: cat.name,
+        description: cat.description || 'Custom Research Folder',
+        icon: cat.icon || 'BookOpen',
+        count: 0
+      });
+    }
+  });
+
+  (resources || []).forEach(r => {
+    if (r && r.category && r.category.trim()) {
+      const key = r.category.trim().toLowerCase();
+      if (!categoryMap.has(key)) {
+        categoryMap.set(key, {
+          id: key,
+          name: r.category.trim(),
+          description: 'Research Topic Folder',
+          icon: 'BookOpen',
+          count: 0
+        });
+      }
+    }
+  });
+
+  const displayCategories = Array.from(categoryMap.values()).map(cat => {
+    const key = cat.name.trim().toLowerCase();
+    const count = (resources || []).filter(r => (r.category || '').trim().toLowerCase() === key).length;
+    return { ...cat, count };
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -30,22 +65,21 @@ export default function Categories({ categories, onAddCategory, onSelectCategory
         </button>
       </div>
 
-      {/* Grid of Categories */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-        {categories.map((cat) => (
+        {displayCategories.map((cat) => (
           <button
             key={cat.id}
             type="button"
             onClick={() => onSelectCategory(cat.name)}
             className="glass-card"
-            aria-label={`${cat.name} — ${cat.count || 0} papers. ${cat.description || ''}`}
+            aria-label={`${cat.name} — ${cat.count} papers. ${cat.description || ''}`}
             style={{ padding: '24px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '180px', textAlign: 'left', width: '100%', font: 'inherit', color: 'inherit' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
               <div aria-hidden="true" style={{ padding: '10px', borderRadius: '12px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>
                 <BookOpen size={24} />
               </div>
-              <span className="badge">{cat.count || 0} Papers</span>
+              <span className="badge">{cat.count} {cat.count === 1 ? 'Paper' : 'Papers'}</span>
             </div>
 
             <div>
@@ -56,7 +90,6 @@ export default function Categories({ categories, onAddCategory, onSelectCategory
         ))}
       </div>
 
-      {/* New Category Modal */}
       {showModal && (
         <Modal
           onClose={() => setShowModal(false)}
