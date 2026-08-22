@@ -75,14 +75,16 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '720px' }}>
-      <div>
-        <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 800 }}>Profile & Preferences</h1>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Manage academic profile credentials, cloud sync, and local data persistence.</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', maxWidth: '720px' }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Profile & Preferences</h1>
+          <p className="page-subtitle">Manage academic profile credentials, cloud sync, and local data persistence.</p>
+        </div>
       </div>
 
       {/* Account Status Card */}
-      <div className="glass-card" style={{ padding: '24px' }}>
+      <div className="glass-card" style={{ padding: 'var(--space-6)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Active Scholar Session</h3>

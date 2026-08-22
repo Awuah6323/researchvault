@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FolderPlus, BookOpen, Plus, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import Modal from '../components/Modal';
 
 export default function Categories({ categories = [], resources = [], onAddCategory, onSelectCategory }) {
@@ -52,85 +52,96 @@ export default function Categories({ categories = [], resources = [], onAddCateg
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 800 }}>Categories & Folders</h1>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Organize literature by domain, field of study, and project topics.</p>
+          <h1 className="page-title">Categories &amp; Folders</h1>
+          <p className="page-subtitle">Organise literature by domain, field of study and project topic.</p>
         </div>
 
         <button onClick={() => setShowModal(true)} className="btn-primary">
-          <Plus size={18} />
-          <span>New Category</span>
+          <Plus size={16} aria-hidden="true" />
+          <span>New category</span>
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-        {displayCategories.map((cat) => (
-          <button
-            key={cat.id}
-            type="button"
-            onClick={() => onSelectCategory(cat.name)}
-            className="glass-card"
-            aria-label={`${cat.name} — ${cat.count} papers. ${cat.description || ''}`}
-            style={{ padding: '24px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '180px', textAlign: 'left', width: '100%', font: 'inherit', color: 'inherit' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
-              <div aria-hidden="true" style={{ padding: '10px', borderRadius: '12px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>
-                <BookOpen size={24} />
+      {displayCategories.length === 0 ? (
+        <div className="glass-card" style={{ padding: 'var(--space-10) var(--space-5)', textAlign: 'center' }}>
+          <div className="section-title" style={{ marginBottom: '6px' }}>No categories yet</div>
+          <div style={{ fontSize: 'var(--text-base)', color: 'var(--text-muted)' }}>
+            Categories are created automatically as you save papers, or add one yourself.
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 'var(--space-4)' }}>
+          {displayCategories.map((cat) => (
+            /* Every category rendered the same BookOpen glyph in the same
+               tinted square, so the icon distinguished nothing — eight cards,
+               eight identical chips. Dropping it lets the category name be the
+               thing you actually read, and the fixed 180px height (which forced
+               a gap under short descriptions) goes with it. */
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => onSelectCategory(cat.name)}
+              className="glass-card card-interactive"
+              aria-label={`${cat.name} — ${cat.count} papers. ${cat.description || ''}`}
+              style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', textAlign: 'left', width: '100%', font: 'inherit', color: 'inherit' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--space-3)', width: '100%' }}>
+                <h3 className="section-title wrap-title" style={{ fontFamily: 'var(--font-serif)' }}>{cat.name}</h3>
+                <span className="badge badge-quiet" style={{ flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  {cat.count}
+                </span>
               </div>
-              <span className="badge">{cat.count} {cat.count === 1 ? 'Paper' : 'Papers'}</span>
-            </div>
 
-            <div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '4px' }}>{cat.name}</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{cat.description}</p>
-            </div>
-          </button>
-        ))}
-      </div>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', lineHeight: 'var(--leading-snug)' }}>{cat.description}</p>
+            </button>
+          ))}
+        </div>
+      )}
 
       {showModal && (
         <Modal
           onClose={() => setShowModal(false)}
           labelledBy="new-category-title"
           zIndex={50}
-          panelStyle={{ width: '100%', maxWidth: '480px', padding: '24px' }}
+          panelStyle={{ width: '100%', maxWidth: '460px', padding: 'var(--space-6)' }}
         >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 id="new-category-title" style={{ fontSize: '1.1rem', fontWeight: 700 }}>Create New Category</h2>
-              <button type="button" onClick={() => setShowModal(false)} aria-label="Close create category dialog" style={{ color: 'var(--text-muted)' }}>
-                <X size={20} aria-hidden="true" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-5)' }}>
+              <h2 id="new-category-title" style={{ fontSize: 'var(--text-xl)', fontWeight: 700 }}>Create new category</h2>
+              <button type="button" onClick={() => setShowModal(false)} className="icon-button" aria-label="Close create category dialog">
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               <div>
-                <label htmlFor="new-category-name" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Category Name *</label>
+                <label htmlFor="new-category-name" className="overline" style={{ marginBottom: '6px', display: 'block' }}>Category name *</label>
                 <input
                   id="new-category-name"
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="E.g., Quantum Computing"
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)' }}
+                  placeholder="e.g. Quantum Computing"
+                  style={{ width: '100%' }}
                 />
               </div>
 
               <div>
-                <label htmlFor="new-category-description" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Description</label>
+                <label htmlFor="new-category-description" className="overline" style={{ marginBottom: '6px', display: 'block' }}>Description</label>
                 <textarea
                   id="new-category-description"
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Brief description of this research category..."
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)' }}
+                  placeholder="Brief description of this research category…"
+                  style={{ width: '100%' }}
                 />
               </div>
 
-              <button type="submit" className="btn-primary" style={{ width: '100%' }}>Create Category</button>
+              <button type="submit" className="btn-primary" style={{ width: '100%' }}>Create category</button>
             </form>
         </Modal>
       )}

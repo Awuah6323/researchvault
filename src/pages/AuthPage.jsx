@@ -275,24 +275,14 @@ export default function AuthPage({ onLoginSuccess }) {
             <div
               style={{
                 width: '50px',
-
                 height: '50px',
-
-                borderRadius: '14px',
-
-                background:
-                  'linear-gradient(135deg, #00ff88 0%, #10b981 50%, #059669 100%)',
-
+                borderRadius: 'var(--radius-lg)',
+                backgroundColor: 'var(--primary)',
                 display: 'flex',
-
                 alignItems: 'center',
-
                 justifyContent: 'center',
-
-                color: '#03140a',
-
-                boxShadow:
-                  '0 4px 14px rgba(0, 0, 0, 0.25)',
+                color: '#ffffff',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
               }}
             >
               <BookOpen size={28} />
@@ -403,7 +393,7 @@ export default function AuthPage({ onLoginSuccess }) {
               <Sparkles
                 size={20}
                 style={{
-                  color: '#00ff88',
+                  color: 'var(--primary)',
                 }}
               />
 
@@ -411,7 +401,6 @@ export default function AuthPage({ onLoginSuccess }) {
                 <div
                   style={{
                     fontWeight: 700,
-
                     fontSize: '0.95rem',
                   }}
                 >
@@ -421,9 +410,7 @@ export default function AuthPage({ onLoginSuccess }) {
                 <div
                   style={{
                     fontSize: '0.8rem',
-
-                    color:
-                      'var(--text-muted, #82a493)',
+                    color: 'var(--text-muted)',
                   }}
                 >
                   Conversational research advisor &
@@ -436,26 +423,18 @@ export default function AuthPage({ onLoginSuccess }) {
             <div
               style={{
                 display: 'flex',
-
                 alignItems: 'center',
-
                 gap: '12px',
-
                 padding: '14px 18px',
-
                 borderRadius: '14px',
-
-                backgroundColor:
-                  'var(--bg-card, #0d1510)',
-
-                border:
-                  '1px solid var(--border-color, #1a3325)',
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border-color)',
               }}
             >
               <Search
                 size={20}
                 style={{
-                  color: '#00e5ff',
+                  color: 'var(--primary)',
                 }}
               />
 

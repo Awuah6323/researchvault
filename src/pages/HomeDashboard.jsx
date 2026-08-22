@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Sparkles, Plus, TrendingUp, Star, Award, Search, ArrowRight, MessageSquare, FolderKanban, FileCode, Compass, Download } from 'lucide-react';
+import { BookOpen, Sparkles, Plus, Search, ArrowRight, MessageSquare, FolderKanban, Compass, Download } from 'lucide-react';
 import ResourceCard from '../components/ResourceCard';
 import OnboardingCarousel from '../components/OnboardingCarousel';
 
@@ -49,196 +49,154 @@ export default function HomeDashboard({
   const readingInProgress = resources.filter(r => r.readingProgressPercent > 0);
   const recentlyAdded = [...resources].sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt)).slice(0, 6);
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      {/* Glassmorphic Hero Welcome Banner */}
-      <div className="glass-card-accent hero-banner" style={{
-        padding: '32px',
-        borderRadius: '24px',
-        color: 'var(--text-main)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        <div style={{ maxWidth: '640px', zIndex: 10 }}>
-          <div className="badge" style={{ marginBottom: '12px' }}>
-            <Sparkles size={14} /> Gemini 2.5 AI Research Vault
-          </div>
-          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '12px' }}>
-            Welcome back, <span className="text-gradient-emerald">{userProfile?.name || (userProfile?.email ? userProfile.email.split('@')[0] : 'Researcher')}</span>
-          </h1>
-          <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '20px' }}>
-            {userProfile?.institution || 'Academic Workspace'} • {userProfile?.fieldOfStudy || 'Literature Research'}. Organize your literature library, synthesize research papers with Gemini AI, and export instant citations.
-          </p>
+  const displayName =
+    userProfile?.name ||
+    (userProfile?.email ? userProfile.email.split('@')[0] : 'Researcher');
 
-          <div className="hero-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <button onClick={onOpenAddModal} className="btn-primary">
-              <Plus size={18} />
-              <span>Import Paper</span>
-            </button>
-            <button onClick={() => onNavigate('search')} className="btn-secondary">
-              <Search size={18} />
-              <span>Search Academic Sources</span>
-            </button>
-            {!isStandalone && onOpenInstallPwa && (
-              <button 
-                onClick={onOpenInstallPwa} 
-                style={{ 
-                  padding: '10px 18px', 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '8px', 
-                  color: '#ffffff', 
-                  background: 'var(--gradient-glow)', 
-                  border: 'none', 
-                  borderRadius: '12px',
-                  fontWeight: 700,
-                  fontSize: '0.88rem',
-                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
-                  cursor: 'pointer'
-                }}
-              >
-                <Download size={18} style={{ strokeWidth: 2.5 }} />
-                <span>Install App on Device</span>
-              </button>
-            )}
-            <button 
-              onClick={handleToggleGuide} 
-              className="neu-button" 
-              style={{ padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontWeight: 600 }}
-            >
-              <Compass size={18} style={{ color: 'var(--primary)' }} />
-              <span>{showGuide ? 'Hide App Guide' : '💡 User Guide & Navigation'}</span>
-            </button>
-          </div>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
+      {/* Page header.
+          Was a 32px-padded "hero banner" card with a 280px BookOpen watermark
+          behind it, a gradient on the user's name and a sparkle badge claiming
+          a Gemini version that did not match the API being called. A dashboard
+          greeting does not need to be a marketing panel, so it is now a plain
+          page header — the buttons underneath are the part that does work. */}
+      <div className="hero-banner" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <div>
+          <h1 className="page-title" style={{ fontSize: '1.75rem' }}>
+            Welcome back, {displayName}
+          </h1>
+          <p className="page-subtitle">
+            {userProfile?.institution || 'Academic workspace'} · {userProfile?.fieldOfStudy || 'Literature research'}
+          </p>
         </div>
 
-        {/* Decorative background element */}
-        <div className="hero-bg-icon" style={{ opacity: 0.07, color: 'var(--primary)', position: 'absolute', right: '-20px', bottom: '-30px', pointerEvents: 'none' }}>
-          <BookOpen size={280} />
+        <div className="hero-buttons" style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <button onClick={onOpenAddModal} className="btn-primary">
+            <Plus size={16} aria-hidden="true" />
+            <span>Import paper</span>
+          </button>
+          <button onClick={() => onNavigate('search')} className="btn-secondary">
+            <Search size={16} aria-hidden="true" />
+            <span>Search academic sources</span>
+          </button>
+          {!isStandalone && onOpenInstallPwa && (
+            <button onClick={onOpenInstallPwa} className="btn-secondary">
+              <Download size={16} aria-hidden="true" />
+              <span>Install app</span>
+            </button>
+          )}
+          <button
+            onClick={handleToggleGuide}
+            className="btn-secondary"
+            aria-expanded={showGuide}
+          >
+            <Compass size={16} aria-hidden="true" />
+            <span>{showGuide ? 'Hide app guide' : 'App guide'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Auto-sliding 3s Feature Onboarding Carousel */}
+      {/* Auto-sliding Feature Onboarding Carousel */}
       {showGuide && (
-        <OnboardingCarousel 
+        <OnboardingCarousel
           onNavigate={onNavigate}
           onOpenAddModal={onOpenAddModal}
           onClose={handleCloseGuide}
         />
       )}
 
-      {/* Neumorphic Metric Cards Grid */}
+      {/* Library counters.
+          Four floating shadowed cards, each with its own tinted icon chip in
+          the corner, became one panel divided by hairlines. Same four numbers,
+          same order, same responsive collapse — but the value is now the
+          loudest thing in each cell, which is the only reason the row exists.
+          The icons were dropped outright: the label already says "Total Papers",
+          so a book glyph beside it carried no information. */}
       <div className="metrics-grid">
-        <div className="neu-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Total Papers</span>
-            <div style={{ width: '36px', height: '36px', borderRadius: '12px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BookOpen size={18} />
-            </div>
-          </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)' }}>{resources.length}</div>
+        <div className="metric-cell">
+          <span className="metric-label">Total papers</span>
+          <span className="metric-value">{resources.length}</span>
         </div>
 
-        <div className="neu-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Starred Favorites</span>
-            <div style={{ width: '36px', height: '36px', borderRadius: '12px', backgroundColor: 'var(--accent-gold-light)', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Star size={18} />
-            </div>
-          </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)' }}>{favoritePapers.length}</div>
+        <div className="metric-cell">
+          <span className="metric-label">Starred</span>
+          <span className="metric-value">{favoritePapers.length}</span>
         </div>
 
-        <div className="neu-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Active Reading</span>
-            <div style={{ width: '36px', height: '36px', borderRadius: '12px', backgroundColor: 'var(--primary-light)', color: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <TrendingUp size={18} />
-            </div>
-          </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)' }}>{readingInProgress.length}</div>
+        <div className="metric-cell">
+          <span className="metric-label">In progress</span>
+          <span className="metric-value">{readingInProgress.length}</span>
         </div>
 
-        <div className="neu-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Categories</span>
-            <div style={{ width: '36px', height: '36px', borderRadius: '12px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Award size={18} />
-            </div>
-          </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)' }}>{categories.length}</div>
+        <div className="metric-cell">
+          <span className="metric-label">Categories</span>
+          <span className="metric-value">{categories.length}</span>
         </div>
       </div>
 
-      {/* Quick Action Navigation Hub */}
-      <div className="glass-panel quick-actions-grid" style={{ padding: '16px' }}>
-        <button 
+      {/* Quick Action Navigation Hub.
+          Kept as four navigation buttons in the same order. The icons stay
+          (they match the sidebar's icon for the same destination, so they help
+          you aim) but lost their filled colour chips — four identical tinted
+          squares in a row read as decoration, not as four different places. */}
+      <div className="quick-actions-grid">
+        <button
           onClick={() => onNavigate('synthesis')}
           className="neu-button"
-          style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-main)', textAlign: 'left' }}
+          style={{ padding: 'var(--space-3) var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', textAlign: 'left' }}
         >
-          <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Sparkles size={18} />
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>AI Synthesis</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Literature Reviews</div>
-          </div>
+          <Sparkles size={18} aria-hidden="true" style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <span>
+            <span style={{ display: 'block', fontWeight: 600, fontSize: 'var(--text-md)' }}>AI synthesis</span>
+            <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Literature reviews</span>
+          </span>
         </button>
 
-        <button 
+        <button
           onClick={() => onNavigate('search')}
           className="neu-button"
-          style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-main)', textAlign: 'left' }}
+          style={{ padding: 'var(--space-3) var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', textAlign: 'left' }}
         >
-          <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Search size={18} />
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>Global Search</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>OpenAlex & DOIs</div>
-          </div>
+          <Search size={18} aria-hidden="true" style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <span>
+            <span style={{ display: 'block', fontWeight: 600, fontSize: 'var(--text-md)' }}>Global search</span>
+            <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>OpenAlex &amp; DOIs</span>
+          </span>
         </button>
 
-        <button 
+        <button
           onClick={() => onNavigate('categories')}
           className="neu-button"
-          style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-main)', textAlign: 'left' }}
+          style={{ padding: 'var(--space-3) var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', textAlign: 'left' }}
         >
-          <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: 'var(--primary-light)', color: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <FolderKanban size={18} />
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>Folders & Tags</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Topic Organization</div>
-          </div>
+          <FolderKanban size={18} aria-hidden="true" style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <span>
+            <span style={{ display: 'block', fontWeight: 600, fontSize: 'var(--text-md)' }}>Folders &amp; tags</span>
+            <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Topic organisation</span>
+          </span>
         </button>
 
-        <button 
+        <button
           onClick={() => onNavigate('aichat')}
           className="neu-button"
-          style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-main)', textAlign: 'left' }}
+          style={{ padding: 'var(--space-3) var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', textAlign: 'left' }}
         >
-          <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <MessageSquare size={18} />
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>AI Research Chat</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Conversational Assistant</div>
-          </div>
+          <MessageSquare size={18} aria-hidden="true" style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <span>
+            <span style={{ display: 'block', fontWeight: 600, fontSize: 'var(--text-md)' }}>AI research chat</span>
+            <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Conversational assistant</span>
+          </span>
         </button>
       </div>
 
       {/* Continue Reading Section */}
       {readingInProgress.length > 0 && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Continue Reading</h2>
-            <button onClick={() => onNavigate('library')} style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              View All <ArrowRight size={14} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 'var(--space-4)', gap: 'var(--space-3)' }}>
+            <h2 className="section-title">Continue reading</h2>
+            <button onClick={() => onNavigate('library')} style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              View all <ArrowRight size={14} aria-hidden="true" />
             </button>
           </div>
           <div className="paper-card-grid">
@@ -259,33 +217,29 @@ export default function HomeDashboard({
 
       {/* Recently Saved Literature */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Recently Added Literature</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 'var(--space-4)', gap: 'var(--space-3)' }}>
+          <h2 className="section-title">Recently added</h2>
           {resources.length > 0 && (
-            <button onClick={() => onNavigate('library')} style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              View Complete Library <ArrowRight size={14} />
+            <button onClick={() => onNavigate('library')} style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              View library <ArrowRight size={14} aria-hidden="true" />
             </button>
           )}
         </div>
 
         {resources.length === 0 ? (
-          <div className="glass-card" style={{ padding: '36px 16px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BookOpen size={28} />
-            </div>
-            <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '6px' }}>Your Vault is Currently Empty</h3>
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', maxWidth: '460px', margin: '0 auto 16px', lineHeight: 1.5 }}>
-                Query over 250M+ open-access papers, import DOIs, or attach local PDF files to build your personalized research library.
-              </p>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button onClick={() => onNavigate('search')} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-                  <Search size={15} /> Search Academic Papers
-                </button>
-                <button onClick={onOpenAddModal} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-                  <Plus size={15} /> Import Paper
-                </button>
-              </div>
+          <div className="glass-card" style={{ padding: 'var(--space-10) var(--space-6)', textAlign: 'center' }}>
+            <BookOpen size={26} aria-hidden="true" style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-3)' }} />
+            <h3 className="section-title" style={{ marginBottom: '6px' }}>Your vault is empty</h3>
+            <p style={{ fontSize: 'var(--text-base)', color: 'var(--text-muted)', maxWidth: '48ch', margin: '0 auto var(--space-5)', lineHeight: 'var(--leading-snug)' }}>
+              Search open-access repositories, import a DOI, or attach a local PDF to start building your library.
+            </p>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button onClick={() => onNavigate('search')} className="btn-primary">
+                <Search size={15} aria-hidden="true" /> Search papers
+              </button>
+              <button onClick={onOpenAddModal} className="btn-secondary">
+                <Plus size={15} aria-hidden="true" /> Import paper
+              </button>
             </div>
           </div>
         ) : (

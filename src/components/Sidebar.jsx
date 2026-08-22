@@ -15,31 +15,28 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenI
 
   return (
     <aside style={{
-      width: '240px',
+      width: '236px',
+      flexShrink: 0,
       backgroundColor: 'var(--bg-sidebar)',
-      minHeight: 'calc(100vh - 65px)',
-      padding: '20px 14px',
+      minHeight: 'calc(100vh - 57px)',
+      padding: 'var(--space-5) var(--space-3)',
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-between',
-      borderRight: '1px solid var(--border-color)',
-      transition: 'background-color 0.3s ease'
+      borderRight: '1px solid var(--border-color)'
     }}>
-      <div className="sidebar-nav-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div className="sidebar-nav-list" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
         <button
           type="button"
           onClick={onOpenAddModal}
           className="btn-primary"
-          style={{
-            width: '100%',
-            marginBottom: '8px'
-          }}
+          style={{ width: '100%', marginBottom: 'var(--space-5)' }}
         >
-          <PlusCircle size={18} aria-hidden="true" />
+          <PlusCircle size={17} aria-hidden="true" />
           <span>Add Paper</span>
         </button>
 
-        <h2 id="sidebar-nav-heading" className="mobile-hide" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-sidebar)', padding: '0 12px 6px' }}>
+        <h2 id="sidebar-nav-heading" className="mobile-hide overline" style={{ padding: '0 12px 8px' }}>
           Navigation
         </h2>
 
@@ -56,7 +53,7 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenI
                 className={`sidebar-btn ${isActive ? 'active' : ''}`}
                 aria-current={isActive ? 'page' : undefined}
               >
-                <Icon size={18} aria-hidden="true" />
+                <Icon size={17} aria-hidden="true" />
                 <span>{item.label}</span>
               </button>
             );
@@ -64,49 +61,38 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenI
         </nav>
       </div>
 
-      {/* Footer Info & PWA Install Button */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {!isStandalone && (
-          <button
-            type="button"
-            onClick={onOpenInstallPwa}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              width: '100%',
-              padding: '12px',
-              borderRadius: '12px',
-              background: 'var(--gradient-glow)',
-              border: 'none',
-              color: '#ffffff',
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
-              transition: 'all 0.2s ease',
-              letterSpacing: '0.2px'
-            }}
-          >
-            <Download size={17} aria-hidden="true" style={{ strokeWidth: 2.5 }} />
-            <span>Install App on Device</span>
-          </button>
-        )}
-
-        <div style={{
-          padding: '12px',
-          borderRadius: '12px',
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          fontSize: '0.75rem',
-          color: 'var(--text-sidebar)',
-          lineHeight: 1.4
-        }}>
-          <div style={{ fontWeight: 700, color: 'var(--text-sidebar-active)' }}>ResearchVault v2.0</div>
-          <div>Offline PWA Active</div>
-          <div>Gemini 2.0 Flash AI Enabled</div>
-        </div>
-      </div>
+      {/* Footer: PWA install prompt.
+          The install button used to carry --gradient-glow, which made an
+          optional, secondary action the single most saturated element in the
+          whole sidebar — louder than the active nav item. It is an outline
+          button now. The three-line "v2.0 / Offline PWA Active / Gemini 2.0
+          Flash AI Enabled" status block below it was decorative: none of it was
+          actionable, and its hardcoded model version had already drifted out of
+          step with the API the app actually calls. */}
+      {!isStandalone && (
+        <button
+          type="button"
+          onClick={onOpenInstallPwa}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 'var(--space-2)',
+            width: '100%',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: 'transparent',
+            border: '1px solid rgba(255, 255, 255, 0.22)',
+            color: 'var(--text-sidebar-active)',
+            fontSize: 'var(--text-md)',
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}
+        >
+          <Download size={16} aria-hidden="true" />
+          <span>Install app</span>
+        </button>
+      )}
     </aside>
   );
 }

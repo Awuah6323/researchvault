@@ -28,21 +28,21 @@ export default function AuthGate({ onLoginSuccess }) {
             <div style={{
               width: '48px',
               height: '48px',
-              borderRadius: '16px',
-              background: 'linear-gradient(135deg, var(--primary, #2563eb), #7c3aed)',
+              borderRadius: 'var(--radius-lg)',
+              backgroundColor: 'var(--primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fff',
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)'
+              color: '#ffffff',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
             }}>
               <BookOpen size={26} />
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: '1.6rem', letterSpacing: '-0.5px' }}>
-                Research<span style={{ color: 'var(--primary, #2563eb)' }}>Vault</span>
+                Research<span style={{ color: 'var(--primary)' }}>Vault</span>
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #94a3b8)', fontWeight: 500 }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
                 Academic Literature & Gemini AI Engine
               </div>
             </div>

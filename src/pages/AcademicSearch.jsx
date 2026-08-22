@@ -9,9 +9,7 @@ import {
   Download,
   Eye,
   X,
-  BookOpen,
   Award,
-  FileText,
   ArrowUpDown,
   AlertCircle,
   ChevronLeft,
@@ -400,28 +398,14 @@ export default function AcademicSearch({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '20px'
+        gap: 'var(--space-6)'
       }}
     >
       {/* PAGE HEADER */}
       <div>
-        <h1
-          style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: '1.8rem',
-            fontWeight: 800
-          }}
-        >
-          Academic Search Engine
-        </h1>
-
-        <p
-          style={{
-            fontSize: '0.9rem',
-            color: 'var(--text-muted)'
-          }}
-        >
-          Powered by Semantic Scholar AI & arXiv repositories for pinpoint Google Scholar-level paper matching.
+        <h1 className="page-title">Academic Search</h1>
+        <p className="page-subtitle">
+          Search Semantic Scholar, OpenAlex, Crossref and arXiv by title, author, keyword or DOI.
         </p>
       </div>
 
@@ -430,14 +414,14 @@ export default function AcademicSearch({
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '12px'
+          gap: 'var(--space-4)'
         }}
       >
         <form
           onSubmit={handleSearchSubmit}
           style={{
             display: 'flex',
-            gap: '10px',
+            gap: 'var(--space-2)',
             flexWrap: 'wrap'
           }}
         >
@@ -449,14 +433,15 @@ export default function AcademicSearch({
             }}
           >
             <Search
-              size={20}
+              size={18}
               aria-hidden="true"
               style={{
                 position: 'absolute',
-                left: '16px',
+                left: '14px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                color: 'var(--text-muted)'
+                color: 'var(--text-muted)',
+                pointerEvents: 'none'
               }}
             />
 
@@ -468,16 +453,13 @@ export default function AcademicSearch({
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search author names, titles, keywords, or DOI..."
+              placeholder="Author, title, keyword or DOI…"
               style={{
                 width: '100%',
-                padding: '14px 16px 14px 48px',
-                borderRadius: '16px',
-                border: '1px solid var(--border-color)',
+                padding: '12px 16px 12px 42px',
+                minHeight: '46px',
                 backgroundColor: 'var(--bg-card)',
-                fontSize: '1rem',
-                color: 'var(--text-main)',
-                outline: 'none'
+                fontSize: 'var(--text-lg)'
               }}
             />
           </div>
@@ -486,46 +468,30 @@ export default function AcademicSearch({
             type="submit"
             className="btn-primary"
             disabled={loading}
-            style={{
-              padding: '0 24px',
-              flexShrink: 0
-            }}
+            style={{ padding: '0 22px', minHeight: '46px', flexShrink: 0 }}
           >
             {loading ? (
-              <Loader2
-                size={20}
-                className="animate-spin"
-              />
+              <Loader2 size={18} aria-hidden="true" className="animate-spin" />
             ) : (
-              <Search size={20} />
+              <Search size={18} aria-hidden="true" />
             )}
-
             <span>Search</span>
           </button>
 
+          {/* Was a bespoke pill with an emoji mortarboard. It is an ordinary
+              secondary action that opens a new tab, so it looks like one. */}
           <button
             type="button"
             onClick={() => {
               const q = query.trim() || 'artificial intelligence';
-              window.open(`https://scholar.google.com/scholar?q=${encodeURIComponent(q)}`, '_blank');
+              window.open(`https://scholar.google.com/scholar?q=${encodeURIComponent(q)}`, '_blank', 'noopener,noreferrer');
             }}
-            className="neu-button"
-            style={{
-              padding: '0 18px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: 700,
-              fontSize: '0.86rem',
-              color: 'var(--text-main)',
-              borderRadius: '16px',
-              cursor: 'pointer',
-              flexShrink: 0
-            }}
-            title="Search paper directly on Google Scholar in a new tab"
+            className="btn-secondary"
+            style={{ padding: '0 16px', minHeight: '46px', flexShrink: 0 }}
+            title="Search this query on Google Scholar in a new tab"
           >
-            <ExternalLink size={16} style={{ color: 'var(--primary)' }} />
-            <span>🎓 Google Scholar</span>
+            <ExternalLink size={15} aria-hidden="true" />
+            <span>Google Scholar</span>
           </button>
         </form>
 
@@ -536,24 +502,27 @@ export default function AcademicSearch({
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: '10px'
+            gap: 'var(--space-3)'
           }}
         >
           <div
             style={{
-              fontSize: '0.82rem',
-              color: 'var(--text-muted)',
-              fontWeight: 600
+              fontSize: 'var(--text-md)',
+              color: 'var(--text-muted)'
             }}
+            role="status"
           >
             {loading ? (
-              'Searching global catalogs...'
+              'Searching…'
             ) : totalCount > 0 ? (
               <span>
-                Showing <strong style={{ color: 'var(--text-main)' }}>{(page - 1) * perPage + 1}–{Math.min(page * perPage, totalCount)}</strong> of <strong style={{ color: 'var(--text-main)' }}>{totalCount.toLocaleString()}</strong> papers (Page {page} of {totalPages || 1})
+                <strong style={{ color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>{(page - 1) * perPage + 1}–{Math.min(page * perPage, totalCount)}</strong>
+                {' of '}
+                <strong style={{ color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>{totalCount.toLocaleString()}</strong>
+                {` papers · page ${page} of ${totalPages || 1}`}
               </span>
             ) : (
-              `Found ${results.length} papers`
+              `${results.length} papers`
             )}
           </div>
 
@@ -561,65 +530,35 @@ export default function AcademicSearch({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: 'var(--space-2)',
               flexWrap: 'wrap'
             }}
           >
-            <span
-              style={{
-                fontSize: '0.8rem',
-                color: 'var(--text-muted)',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-            >
-              <ArrowUpDown size={14} />
-              Sort By:
+            <span className="overline" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <ArrowUpDown size={13} aria-hidden="true" />
+              Sort
             </span>
 
-            {[
-              {
-                id: 'relevance',
-                label: 'Relevance'
-              },
-              {
-                id: 'newest',
-                label: 'Newest Year'
-              },
-              {
-                id: 'citations',
-                label: 'Most Cited'
-              },
-              {
-                id: 'openaccess',
-                label: 'Open Access Only'
-              }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => handleSortChange(tab.id)}
-                style={{
-                  padding: '5px 10px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-color)',
-                  backgroundColor:
-                    sortBy === tab.id
-                      ? 'var(--primary)'
-                      : 'var(--bg-card)',
-                  color:
-                    sortBy === tab.id
-                      ? '#ffffff'
-                      : 'var(--text-muted)',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
+            {/* A segmented control now, so "which sort is active" is one
+                consistent affordance shared with the reader and review tabs. */}
+            <div className="segmented" role="group" aria-label="Sort results by">
+              {[
+                { id: 'relevance', label: 'Relevance' },
+                { id: 'newest', label: 'Newest' },
+                { id: 'citations', label: 'Most cited' },
+                { id: 'openaccess', label: 'Open access' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className="segmented-item"
+                  onClick={() => handleSortChange(tab.id)}
+                  aria-pressed={sortBy === tab.id}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -627,50 +566,44 @@ export default function AcademicSearch({
       {/* SEARCH RESULTS */}
       {loading ? (
         <div
+          className="glass-card"
           style={{
-            padding: '60px',
-            textAlign: 'center',
-            color: 'var(--primary)'
+            padding: 'var(--space-10)',
+            textAlign: 'center'
           }}
+          role="status"
         >
           <Loader2
-            size={36}
+            size={26}
+            aria-hidden="true"
             className="animate-spin"
-            style={{
-              margin: '0 auto 12px'
-            }}
+            style={{ margin: '0 auto var(--space-3)', color: 'var(--text-muted)' }}
           />
 
-          <div
-            style={{
-              fontWeight: 700,
-              fontSize: '1.05rem',
-              color: 'var(--text-main)'
-            }}
-          >
-            Searching Global Academic Catalogs...
-          </div>
+          <div className="section-title">Searching academic catalogues…</div>
 
           <div
             style={{
-              fontSize: '0.85rem',
+              fontSize: 'var(--text-base)',
               color: 'var(--text-muted)',
               marginTop: '4px'
             }}
           >
-            Connecting to OpenAlex & Crossref metadata services
+            Querying OpenAlex and Crossref metadata services
           </div>
         </div>
       ) : sortedResults.length === 0 ? (
         <div
           className="glass-card"
           style={{
-            padding: '40px',
-            textAlign: 'center',
-            color: 'var(--text-muted)'
+            padding: 'var(--space-10) var(--space-5)',
+            textAlign: 'center'
           }}
         >
-          No academic papers found matching "{query}".
+          <div className="section-title" style={{ marginBottom: '6px' }}>No papers found</div>
+          <div style={{ fontSize: 'var(--text-base)', color: 'var(--text-muted)' }}>
+            {query ? <>Nothing matched “{query}”. Try fewer or broader terms.</> : 'Enter a search above to begin.'}
+          </div>
         </div>
       ) : (
         <div
@@ -678,7 +611,7 @@ export default function AcademicSearch({
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: 'var(--space-3)'
           }}
         >
           {sortedResults.map((item, idx) => {
@@ -686,16 +619,18 @@ export default function AcademicSearch({
             const isSaved = savedMap[paperKey];
 
             return (
+              /* The 4px --primary left border used to run down every single
+                 result, which made the action colour the most repeated element
+                 on the page and marked nothing in particular. Results are
+                 separated by the card border alone now. */
               <div
                 key={`${paperKey}-${idx}`}
                 className="glass-card"
                 style={{
-                  padding: '22px',
+                  padding: 'var(--space-5)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '12px',
-                  borderLeft:
-                    '4px solid var(--primary)'
+                  gap: 'var(--space-3)'
                 }}
               >
                 {/* PAPER HEADER */}
@@ -704,36 +639,18 @@ export default function AcademicSearch({
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '10px',
+                      gap: '6px',
                       flexWrap: 'wrap',
-                      marginBottom: '6px'
+                      marginBottom: 'var(--space-2)'
                     }}
                   >
+                    <span className="badge">{item.resourceType}</span>
+
                     {hasPdf(item) && (
-                      <span
-                        className="badge"
-                        style={{
-                          backgroundColor:
-                            'rgba(16, 185, 129, 0.15)',
-                          color: '#10b981',
-                          fontWeight: 700
-                        }}
-                      >
-                        PDF Available
-                      </span>
+                      <span className="badge badge-success">PDF available</span>
                     )}
 
-                    <span className="badge">
-                      {item.resourceType}
-                    </span>
-
-                    <span
-                      className="badge"
-                      style={{
-                        backgroundColor:
-                          'var(--bg-main)'
-                      }}
-                    >
+                    <span className="badge badge-quiet">
                       {item.suggestedCategory}
                     </span>
                   </div>
@@ -741,224 +658,153 @@ export default function AcademicSearch({
                   <h3>
                     <button
                       type="button"
-                      className="text-button"
+                      className="text-button wrap-title"
                       onClick={() => openPreview(item)}
                       aria-label={`Preview "${item.title}"`}
                       style={{
-                        fontFamily:
-                          'var(--font-serif)',
-                        fontSize: '1.25rem',
-                        fontWeight: 800,
-                        cursor: 'pointer',
+                        fontFamily: 'var(--font-serif)',
+                        fontSize: '1.1875rem',
+                        fontWeight: 700,
                         color: 'var(--text-main)',
-                        lineHeight: 1.35
+                        lineHeight: 1.3,
+                        letterSpacing: '-0.008em'
                       }}
                     >
                       {item.title}
                     </button>
                   </h3>
 
+                  {/* The author line was painted #10b981 — an emerald that
+                      belongs to no theme and meant nothing here. Authors are
+                      the emphasis; venue and year are the subordinate detail. */}
                   <div
                     style={{
-                      fontSize: '0.86rem',
-                      color: '#10b981',
+                      fontSize: 'var(--text-sm)',
+                      color: 'var(--text-muted)',
                       marginTop: '6px',
-                      fontWeight: 600
+                      lineHeight: 'var(--leading-snug)'
                     }}
                   >
-                    <span
-                      style={{
-                        color: 'var(--text-main)',
-                        fontWeight: 700
-                      }}
-                    >
+                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
                       {item.authors}
                     </span>
-
                     {' — '}
-
-                    <span
-                      style={{
-                        color: 'var(--text-muted)'
-                      }}
-                    >
-                      {item.journalOrVenue},{' '}
-                      {item.publicationYear}
+                    <span style={{ fontStyle: 'italic' }}>
+                      {item.journalOrVenue}
                     </span>
+                    {item.publicationYear ? `, ${item.publicationYear}` : ''}
                   </div>
                 </div>
 
                 {/* ABSTRACT */}
                 <p
                   style={{
-                    fontSize: '0.9rem',
+                    fontSize: 'var(--text-base)',
                     color: 'var(--text-main)',
-                    lineHeight: 1.6,
+                    lineHeight: 'var(--leading-normal)',
+                    maxWidth: '86ch',
                     display: '-webkit-box',
                     WebkitLineClamp: 3,
                     WebkitBoxOrient: 'vertical',
                     overflow: 'hidden'
                   }}
                 >
-                  {item.abstractText ||
-                    'No abstract available.'}
+                  {item.abstractText || 'No abstract available.'}
                 </p>
 
                 {/* ACTION BAR */}
                 <div
                   style={{
                     display: 'flex',
-                    justifyContent:
-                      'space-between',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                     flexWrap: 'wrap',
-                    gap: '12px',
-                    paddingTop: '12px',
-                    borderTop:
-                      '1px solid var(--border-color)'
+                    gap: 'var(--space-3)',
+                    paddingTop: 'var(--space-3)',
+                    borderTop: '1px solid var(--border-color)'
                   }}
                 >
                   <div
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '14px',
+                      gap: 'var(--space-4)',
                       flexWrap: 'wrap',
-                      fontSize: '0.8rem'
+                      fontSize: 'var(--text-xs)',
+                      color: 'var(--text-muted)'
                     }}
                   >
-                    <span
-                      style={{
-                        color: 'var(--primary)',
-                        fontWeight: 700,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      <Award size={14} />
-                      Cited by{' '}
-                      {getCitationCount(item)}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <Award size={13} aria-hidden="true" />
+                      Cited by <strong style={{ color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>{getCitationCount(item)}</strong>
                     </span>
 
-                    <span
-                      style={{
-                        color: 'var(--text-muted)'
-                      }}
-                    >
+                    <span style={{ wordBreak: 'break-all' }}>
                       DOI: {item.doi || 'N/A'}
                     </span>
                   </div>
 
+                  {/* Save is the one primary action. "Open PDF" used to be a
+                      second filled button on the same row, so every result
+                      offered two equally-weighted "main" actions. */}
                   <div
                     style={{
                       display: 'flex',
-                      gap: '8px',
+                      gap: 'var(--space-2)',
                       flexWrap: 'wrap',
                       alignItems: 'center'
                     }}
                   >
-                    {/* GOOGLE SCHOLAR DIRECT LINK */}
-                    <a
-                      href={`https://scholar.google.com/scholar?q=${encodeURIComponent(item.title)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-secondary"
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '0.8rem',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        textDecoration: 'none'
-                      }}
-                      title="Search & view citations on Google Scholar in a new tab"
-                    >
-                      <ExternalLink size={14} />
-                      <span>🎓 Google Scholar</span>
-                    </a>
-
-                    {/* READ PAPER */}
                     <button
-                      onClick={() =>
-                        openPreview(item)
-                      }
-                      className="btn-secondary"
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '0.8rem'
-                      }}
-                    >
-                      <Eye size={14} />
-                      <span>
-                        Preview Paper
-                      </span>
-                    </button>
-
-                    {/* SAVE */}
-                    <button
-                      onClick={() =>
-                        handleSave(item)
-                      }
-                      className={
-                        isSaved
-                          ? 'btn-secondary'
-                          : 'btn-primary'
-                      }
+                      onClick={() => handleSave(item)}
+                      className={isSaved ? 'btn-secondary' : 'btn-primary'}
                       disabled={isSaved}
-                      style={{
-                        padding: '6px 14px',
-                        fontSize: '0.8rem'
-                      }}
                     >
-                      {isSaved ? (
-                        <Check size={14} />
-                      ) : (
-                        <Plus size={14} />
-                      )}
-
-                      <span>
-                        {isSaved
-                          ? 'Saved'
-                          : 'Save to Vault'}
-                      </span>
+                      {isSaved ? <Check size={15} aria-hidden="true" /> : <Plus size={15} aria-hidden="true" />}
+                      <span>{isSaved ? 'Saved' : 'Save to vault'}</span>
                     </button>
 
-                    {/* AI SUMMARY */}
                     <button
-                      onClick={() =>
-                        onOpenAiSummarizer(item)
-                      }
+                      onClick={() => openPreview(item)}
                       className="btn-secondary"
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '0.8rem'
-                      }}
                     >
-                      <Sparkles size={14} />
-                      <span>AI Summary</span>
+                      <Eye size={15} aria-hidden="true" />
+                      <span>Preview</span>
                     </button>
 
-                    {/* DIRECT PDF */}
+                    <button
+                      onClick={() => onOpenAiSummarizer(item)}
+                      className="btn-secondary"
+                    >
+                      <Sparkles size={15} aria-hidden="true" />
+                      <span>AI summary</span>
+                    </button>
+
                     {item.downloadUrl && (
                       <a
                         href={item.downloadUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn-primary"
-                        style={{
-                          padding: '6px 14px',
-                          fontSize: '0.8rem',
-                          textDecoration: 'none',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
+                        className="icon-button"
+                        title="Open PDF in a new tab"
+                        aria-label={`Open the PDF of "${item.title}" in a new tab`}
+                        style={{ textDecoration: 'none' }}
                       >
-                        <Download size={14} />
-                        <span>Open PDF</span>
+                        <Download size={16} aria-hidden="true" />
                       </a>
                     )}
+
+                    <a
+                      href={`https://scholar.google.com/scholar?q=${encodeURIComponent(item.title)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="icon-button"
+                      title="Find this paper on Google Scholar"
+                      aria-label={`Find "${item.title}" on Google Scholar`}
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <ExternalLink size={16} aria-hidden="true" />
+                    </a>
                   </div>
                 </div>
               </div>
@@ -969,28 +815,24 @@ export default function AcademicSearch({
 
       {/* SEARCH RESULTS PAGINATION */}
       {totalPages > 1 && (
-        <div
+        <nav
+          aria-label="Search results pages"
           className="glass-card"
           style={{
-            padding: '20px',
-            marginTop: '20px',
+            padding: 'var(--space-4)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '16px',
-            borderRadius: '16px',
-            border: '1px solid var(--border-color)',
-            backgroundColor: 'var(--bg-card)'
+            gap: 'var(--space-4)'
           }}
         >
-
           {/* PAGE CONTROLS BAR */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
+              gap: '4px',
               flexWrap: 'wrap'
             }}
           >
@@ -999,54 +841,42 @@ export default function AcademicSearch({
               type="button"
               onClick={() => handlePageChange(1)}
               disabled={page === 1 || loading}
-              className="btn-secondary"
-              title="First Page"
+              className="icon-button"
+              title="First page"
               aria-label="Go to first page of results"
-              style={{
-                padding: '8px 10px',
-                borderRadius: '10px',
-                opacity: page === 1 ? 0.4 : 1,
-                cursor: page === 1 ? 'not-allowed' : 'pointer'
-              }}
             >
               <ChevronsLeft size={16} aria-hidden="true" />
             </button>
 
             {/* PREVIOUS PAGE */}
             <button
+              type="button"
               onClick={() => handlePageChange(page - 1)}
               disabled={page === 1 || loading}
               className="btn-secondary"
-              style={{
-                padding: '8px 14px',
-                borderRadius: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                opacity: page === 1 ? 0.4 : 1,
-                cursor: page === 1 ? 'not-allowed' : 'pointer'
-              }}
+              style={{ padding: '7px 13px', minHeight: '34px' }}
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={15} aria-hidden="true" />
               <span>Previous</span>
             </button>
 
-            {/* NUMERIC PAGE BUTTONS */}
+            {/* NUMERIC PAGE BUTTONS.
+                The active page used to switch from a 1px to a 2px border,
+                which nudged its digit by a pixel every time you paged. Same
+                border width now; the fill carries the state. */}
             {getPageNumbers().map((pg, idx) => {
               if (pg === '...') {
                 return (
                   <span
                     key={`ellipsis-${idx}`}
+                    aria-hidden="true"
                     style={{
-                      padding: '6px 10px',
+                      padding: '6px 8px',
                       color: 'var(--text-muted)',
-                      fontSize: '0.9rem',
-                      fontWeight: 600
+                      fontSize: 'var(--text-md)'
                     }}
                   >
-                    ...
+                    …
                   </span>
                 );
               }
@@ -1055,21 +885,24 @@ export default function AcademicSearch({
               return (
                 <button
                   key={`page-btn-${pg}`}
+                  type="button"
                   onClick={() => handlePageChange(pg)}
                   disabled={loading}
+                  aria-label={`Page ${pg}`}
+                  aria-current={isActive ? 'page' : undefined}
                   style={{
-                    minWidth: '36px',
-                    height: '36px',
+                    minWidth: '34px',
+                    height: '34px',
                     padding: '0 8px',
-                    borderRadius: '10px',
-                    border: isActive ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                    backgroundColor: isActive ? 'var(--primary)' : 'var(--bg-card)',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid',
+                    borderColor: isActive ? 'var(--primary)' : 'var(--border-color)',
+                    backgroundColor: isActive ? 'var(--primary)' : 'transparent',
                     color: isActive ? '#ffffff' : 'var(--text-main)',
-                    fontSize: '0.88rem',
-                    fontWeight: isActive ? 800 : 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    boxShadow: 'none'
+                    fontSize: 'var(--text-md)',
+                    fontWeight: isActive ? 700 : 500,
+                    fontVariantNumeric: 'tabular-nums',
+                    cursor: 'pointer'
                   }}
                 >
                   {pg}
@@ -1079,23 +912,14 @@ export default function AcademicSearch({
 
             {/* NEXT PAGE */}
             <button
+              type="button"
               onClick={() => handlePageChange(page + 1)}
               disabled={page >= totalPages || loading}
               className="btn-secondary"
-              style={{
-                padding: '8px 14px',
-                borderRadius: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                opacity: page >= totalPages ? 0.4 : 1,
-                cursor: page >= totalPages ? 'not-allowed' : 'pointer'
-              }}
+              style={{ padding: '7px 13px', minHeight: '34px' }}
             >
               <span>Next</span>
-              <ChevronRight size={16} />
+              <ChevronRight size={15} aria-hidden="true" />
             </button>
 
             {/* LAST PAGE */}
@@ -1103,15 +927,9 @@ export default function AcademicSearch({
               type="button"
               onClick={() => handlePageChange(totalPages)}
               disabled={page >= totalPages || loading}
-              className="btn-secondary"
-              title="Last Page"
+              className="icon-button"
+              title="Last page"
               aria-label="Go to last page of results"
-              style={{
-                padding: '8px 10px',
-                borderRadius: '10px',
-                opacity: page >= totalPages ? 0.4 : 1,
-                cursor: page >= totalPages ? 'not-allowed' : 'pointer'
-              }}
             >
               <ChevronsRight size={16} aria-hidden="true" />
             </button>
@@ -1125,43 +943,41 @@ export default function AcademicSearch({
               justifyContent: 'space-between',
               width: '100%',
               flexWrap: 'wrap',
-              gap: '12px',
-              paddingTop: '12px',
+              gap: 'var(--space-3)',
+              paddingTop: 'var(--space-3)',
               borderTop: '1px solid var(--border-color)',
-              fontSize: '0.82rem',
+              fontSize: 'var(--text-sm)',
               color: 'var(--text-muted)'
             }}
           >
             <div>
-              Showing page <strong style={{ color: 'var(--text-main)' }}>{page}</strong> of{' '}
-              <strong style={{ color: 'var(--text-main)' }}>{totalPages.toLocaleString()}</strong> ({totalCount.toLocaleString()} papers found)
+              Page <strong style={{ color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>{page}</strong> of{' '}
+              <strong style={{ color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>{totalPages.toLocaleString()}</strong>
+              {' · '}{totalCount.toLocaleString()} papers
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label htmlFor="search-per-page">Results per page:</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <label htmlFor="search-per-page">Per page</label>
               <select
                 id="search-per-page"
                 value={perPage}
                 onChange={(e) => handlePerPageChange(e.target.value)}
                 style={{
-                  padding: '4px 8px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-color)',
+                  padding: '5px 8px',
+                  minHeight: '32px',
+                  borderRadius: 'var(--radius-sm)',
                   backgroundColor: 'var(--bg-card)',
-                  color: 'var(--text-main)',
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  outline: 'none',
+                  fontSize: 'var(--text-sm)',
                   cursor: 'pointer'
                 }}
               >
-                <option value={10}>10 per page</option>
-                <option value={20}>20 per page</option>
-                <option value={50}>50 per page</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
               </select>
             </div>
           </div>
-        </div>
+        </nav>
       )}
 
       {/* ========================================
@@ -1173,97 +989,51 @@ export default function AcademicSearch({
           onClose={closePreview}
           labelledBy="paper-preview-title"
           zIndex={300}
-          overlayStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(8px)', padding: '12px' }}
+          overlayStyle={{ padding: 'var(--space-3)' }}
           panelClassName="glass-card"
           panelStyle={{
             width: '100%',
-            maxWidth: '1100px',
+            maxWidth: '1000px',
             height: '94vh',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            borderRadius: '20px',
-            boxShadow:
-              '0 24px 60px rgba(0, 0, 0, 0.6)'
+            borderRadius: 'var(--radius-xl)',
+            boxShadow: 'var(--shadow-overlay)'
           }}
         >
-            {/* MODAL HEADER */}
+            {/* MODAL HEADER.
+                Dropped the tinted icon chip: the heading already says what
+                this dialog is. */}
             <div
               style={{
-                padding: '16px 20px',
-                borderBottom:
-                  '1px solid var(--border-color)',
+                padding: 'var(--space-4) var(--space-5)',
+                borderBottom: '1px solid var(--border-color)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent:
-                  'space-between',
-                backgroundColor:
-                  'var(--header-bg)'
+                justifyContent: 'space-between',
+                gap: 'var(--space-3)',
+                backgroundColor: 'var(--bg-card)',
+                flexShrink: 0
               }}
             >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px'
-                }}
-              >
-                <div
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '10px',
-                    backgroundColor:
-                      'var(--primary-light)',
-                    color: 'var(--primary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
+              <div>
+                <h2
+                  id="paper-preview-title"
+                  style={{ fontWeight: 700, fontSize: 'var(--text-lg)', color: 'var(--text-main)' }}
                 >
-                  <BookOpen size={20} />
-                </div>
-
-                <div>
-                  <h2
-                    id="paper-preview-title"
-                    style={{
-                      fontWeight: 800,
-                      fontSize: '1.05rem',
-                      color: 'var(--text-main)'
-                    }}
-                  >
-                    Paper Preview
-                  </h2>
-
-                  <div
-                    style={{
-                      fontSize: '0.75rem',
-                      color: 'var(--text-muted)'
-                    }}
-                  >
-                    ResearchVault Academic Reader
-                  </div>
-                </div>
+                  Paper preview
+                </h2>
+                <div className="overline">Academic reader</div>
               </div>
 
               <button
+                type="button"
                 onClick={closePreview}
-                aria-label="Close Reader"
-                style={{
-                  background: 'transparent',
-                  border:
-                    '1px solid var(--border-color)',
-                  borderRadius: '8px',
-                  color: 'var(--text-main)',
-                  padding: '6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
+                className="icon-button"
+                aria-label="Close paper preview"
               >
-                <X size={20} />
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
 
@@ -1272,31 +1042,28 @@ export default function AcademicSearch({
               style={{
                 flex: 1,
                 overflowY: 'auto',
-                padding: '20px',
-                backgroundColor:
-                  'var(--bg-main)',
+                padding: 'var(--space-5)',
+                backgroundColor: 'var(--bg-main)',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '16px'
+                gap: 'var(--space-4)'
               }}
             >
               {/* PAPER INFO */}
               <div
                 style={{
-                  backgroundColor:
-                    'var(--bg-card)',
-                  padding: '20px',
-                  borderRadius: '14px',
-                  border:
-                    '1px solid var(--border-color)'
+                  backgroundColor: 'var(--bg-card)',
+                  padding: 'var(--space-5)',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--border-color)'
                 }}
               >
                 <div
                   style={{
                     display: 'flex',
-                    gap: '8px',
+                    gap: '6px',
                     flexWrap: 'wrap',
-                    marginBottom: '10px'
+                    marginBottom: 'var(--space-3)'
                   }}
                 >
                   <span className="badge">
@@ -1304,43 +1071,26 @@ export default function AcademicSearch({
                   </span>
 
                   {previewPaper.openAccess && (
-                    <span
-                      className="badge"
-                      style={{
-                        backgroundColor:
-                          'rgba(16, 185, 129, 0.15)',
-                        color: '#10b981'
-                      }}
-                    >
-                      Open Access
+                    <span className="badge badge-success">
+                      Open access
                     </span>
                   )}
 
-                  <span
-                    className="badge"
-                    style={{
-                      backgroundColor:
-                        'var(--primary-light)',
-                      color:
-                        'var(--primary-text)'
-                    }}
-                  >
-                    {getCitationCount(
-                      previewPaper
-                    )}{' '}
-                    Citations
+                  <span className="badge badge-quiet">
+                    {getCitationCount(previewPaper)} citations
                   </span>
                 </div>
 
                 <h2
+                  className="wrap-title"
                   style={{
-                    fontFamily:
-                      'var(--font-serif)',
-                    fontSize: '1.4rem',
-                    fontWeight: 800,
+                    fontFamily: 'var(--font-serif)',
+                    fontSize: '1.375rem',
+                    fontWeight: 700,
                     color: 'var(--text-main)',
-                    marginBottom: '8px',
-                    lineHeight: 1.3
+                    marginBottom: 'var(--space-2)',
+                    lineHeight: 1.28,
+                    letterSpacing: '-0.01em'
                   }}
                 >
                   {previewPaper.title}
@@ -1348,32 +1098,17 @@ export default function AcademicSearch({
 
                 <div
                   style={{
-                    fontSize: '0.88rem',
-                    color: '#10b981',
-                    fontWeight: 600
+                    fontSize: 'var(--text-base)',
+                    color: 'var(--text-muted)',
+                    lineHeight: 'var(--leading-snug)'
                   }}
                 >
-                  <span
-                    style={{
-                      color: 'var(--text-main)',
-                      fontWeight: 700
-                    }}
-                  >
+                  <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
                     {previewPaper.authors}
                   </span>
-
                   {' — '}
-
-                  <span
-                    style={{
-                      color: 'var(--text-muted)'
-                    }}
-                  >
-                    {previewPaper.journalOrVenue}{' '}
-                    (
-                    {previewPaper.publicationYear}
-                    )
-                  </span>
+                  <span style={{ fontStyle: 'italic' }}>{previewPaper.journalOrVenue}</span>
+                  {previewPaper.publicationYear ? ` (${previewPaper.publicationYear})` : ''}
                 </div>
               </div>
 
@@ -1382,12 +1117,12 @@ export default function AcademicSearch({
               previewStage !== 'idle' ? (
                 <div
                   style={{
-                    minHeight: '650px',
+                    minHeight: '520px',
                     height: '65vh',
-                    borderRadius: '14px',
+                    borderRadius: 'var(--radius-lg)',
                     overflow: 'hidden',
                     border: '1px solid var(--border-color)',
-                    backgroundColor: '#ffffff',
+                    backgroundColor: 'var(--bg-card)',
                     position: 'relative',
                     display: 'flex',
                     flexDirection: 'column'
@@ -1396,56 +1131,48 @@ export default function AcademicSearch({
                   {/* PREVIEW TOOLBAR FOR BLOCKED IFRAME HANDLING */}
                   <div
                     style={{
-                      padding: '8px 16px',
-                      backgroundColor: 'var(--bg-card, #131f3d)',
+                      padding: 'var(--space-2) var(--space-4)',
+                      backgroundColor: 'var(--bg-card)',
                       borderBottom: '1px solid var(--border-color)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      gap: '10px',
+                      gap: 'var(--space-3)',
+                      flexWrap: 'wrap',
                       zIndex: 2
                     }}
                   >
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <AlertCircle size={14} style={{ color: 'var(--primary)' }} />
-                      <span>If blocked by publisher security headers, open directly in a new tab:</span>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <AlertCircle size={13} aria-hidden="true" />
+                      <span>Blocked by the publisher? Open it directly instead.</span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                       {previewPaper.downloadUrl && (
                         <a
                           href={previewPaper.downloadUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="btn-primary"
+                          className="btn-secondary"
                           style={{
-                            padding: '5px 12px',
-                            fontSize: '0.75rem',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
+                            padding: '5px 11px',
+                            minHeight: '30px',
+                            fontSize: 'var(--text-xs)',
                             textDecoration: 'none'
                           }}
                         >
-                          <ExternalLink size={14} />
-                          <span>Open PDF Direct</span>
+                          <ExternalLink size={13} aria-hidden="true" />
+                          <span>Open PDF</span>
                         </a>
                       )}
 
                       <button
                         type="button"
                         onClick={() => setPreviewStage('failed')}
-                        style={{
-                          padding: '5px 10px',
-                          fontSize: '0.75rem',
-                          borderRadius: '6px',
-                          border: '1px solid var(--border-color)',
-                          backgroundColor: 'transparent',
-                          color: 'var(--text-muted)',
-                          cursor: 'pointer'
-                        }}
+                        className="btn-secondary"
+                        style={{ padding: '5px 11px', minHeight: '30px', fontSize: 'var(--text-xs)' }}
                       >
-                        Switch to Fallback Card
+                        Show abstract instead
                       </button>
                     </div>
                   </div>
@@ -1454,6 +1181,7 @@ export default function AcademicSearch({
                     {(previewStage === 'checking' ||
                       previewStage === 'viewer-loading') && (
                       <div
+                        role="status"
                         style={{
                           position: 'absolute',
                           inset: 0,
@@ -1461,24 +1189,19 @@ export default function AcademicSearch({
                           flexDirection: 'column',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '10px',
-                          backgroundColor: '#ffffff',
+                          gap: 'var(--space-2)',
+                          backgroundColor: 'var(--bg-card)',
                           zIndex: 1
                         }}
                       >
                         <Loader2
-                          size={28}
+                          size={24}
+                          aria-hidden="true"
                           className="animate-spin"
-                          style={{ color: 'var(--primary)' }}
+                          style={{ color: 'var(--text-muted)' }}
                         />
-                        <div
-                          style={{
-                            fontSize: '0.82rem',
-                            color: 'var(--text-muted)',
-                            fontWeight: 600
-                          }}
-                        >
-                          Loading preview...
+                        <div style={{ fontSize: 'var(--text-md)', color: 'var(--text-muted)' }}>
+                          Loading preview…
                         </div>
                       </div>
                     )}
@@ -1514,41 +1237,28 @@ export default function AcademicSearch({
                   </div>
                 </div>
               ) : previewStage === 'failed' ? (
-                /* IN-APP EXECUTIVE LITERATURE OVERVIEW READER */
-                <div
-                  style={{
-                    backgroundColor: 'var(--bg-card)',
-                    borderRadius: '14px',
-                    border: '1px solid var(--border-color)',
-                    padding: '24px',
-                    marginBottom: '16px'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)', fontWeight: 700, fontSize: '0.9rem' }}>
-                      <BookOpen size={18} />
-                      <span>Executive Literature Overview</span>
-                    </div>
+                /* Abstract-only fallback. This used to duplicate the full
+                   abstract that the section immediately below already prints,
+                   so it now only carries the explanation and the publisher
+                   link — no second copy of the same paragraph. */
+                <div className="notice" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <AlertCircle size={15} aria-hidden="true" style={{ flexShrink: 0 }} />
+                    No embeddable PDF was available — the abstract is below.
+                  </span>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {previewPaper.downloadUrl && (
-                        <a
-                          href={previewPaper.downloadUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-secondary"
-                          style={{ textDecoration: 'none', padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <ExternalLink size={14} />
-                          <span>Open Publisher Page</span>
-                        </a>
-                      )}
-                    </div>
-                  </div>
-
-                  <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)', lineHeight: 1.65, marginBottom: '0' }}>
-                    {previewPaper.abstractText || 'No full abstract text was returned by the publisher for this item.'}
-                  </p>
+                  {previewPaper.downloadUrl && (
+                    <a
+                      href={previewPaper.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-secondary"
+                      style={{ textDecoration: 'none', padding: '6px 12px', minHeight: '32px', fontSize: 'var(--text-xs)' }}
+                    >
+                      <ExternalLink size={13} aria-hidden="true" />
+                      <span>Publisher page</span>
+                    </a>
+                  )}
                 </div>
               ) : null}
 
@@ -1556,38 +1266,37 @@ export default function AcademicSearch({
               <div
                 style={{
                   backgroundColor: 'var(--bg-card)',
-                  padding: '24px',
-                  borderRadius: '14px',
+                  padding: 'var(--space-5)',
+                  borderRadius: 'var(--radius-lg)',
                   border: '1px solid var(--border-color)'
                 }}
               >
                 <div
                   style={{
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.8px',
-                    color: 'var(--primary)',
-                    marginBottom: '12px',
+                    marginBottom: 'var(--space-3)',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    gap: 'var(--space-3)',
+                    flexWrap: 'wrap'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <FileText size={16} />
-                    <span>Full Paper Abstract & Literature Summary</span>
-                  </div>
-                  <span style={{ fontSize: '0.75rem', textTransform: 'none', color: 'var(--text-muted)', fontWeight: 500 }}>
-                    {previewPaper.abstractText ? `${previewPaper.abstractText.split(' ').length} words` : ''}
-                  </span>
+                  <span className="overline">Abstract</span>
+                  {previewPaper.abstractText && (
+                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                      {previewPaper.abstractText.split(/\s+/).length} words
+                    </span>
+                  )}
                 </div>
 
+                {/* Reading column: the abstract is prose, so it gets a measure
+                    and a text serif rather than running the full 1000px width
+                    of the dialog in the UI sans. */}
                 <p
+                  className="reading-column"
                   style={{
-                    fontSize: '0.96rem',
+                    fontSize: '1.0625rem',
                     color: 'var(--text-main)',
-                    lineHeight: 1.75,
                     whiteSpace: 'pre-wrap',
                     margin: 0
                   }}
@@ -1595,44 +1304,19 @@ export default function AcademicSearch({
                   {previewPaper.abstractText || 'No abstract is available for this paper.'}
                 </p>
 
-                {/* KEY CONCEPTS & TOPICS BADGES */}
+                {/* KEY CONCEPTS & TOPICS.
+                    Concepts were neon cyan chips and topics were mint green —
+                    two saturated colours that encoded nothing beyond "this came
+                    from a different array". They are one neutral chip style. */}
                 {((previewPaper.concepts && previewPaper.concepts.length > 0) || (previewPaper.topics && previewPaper.topics.length > 0)) && (
-                  <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                      Key Research Topics & Domains
+                  <div style={{ marginTop: 'var(--space-5)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--border-color)' }}>
+                    <div className="overline" style={{ marginBottom: 'var(--space-3)' }}>
+                      Research topics
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {(previewPaper.concepts || []).map((concept, idx) => (
-                        <span
-                          key={`c-${idx}`}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: '20px',
-                            backgroundColor: 'rgba(0, 229, 255, 0.1)',
-                            border: '1px solid rgba(0, 229, 255, 0.25)',
-                            color: '#00e5ff',
-                            fontSize: '0.78rem',
-                            fontWeight: 600
-                          }}
-                        >
-                          {concept}
-                        </span>
-                      ))}
-
-                      {(previewPaper.topics || []).map((topic, idx) => (
-                        <span
-                          key={`t-${idx}`}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: '20px',
-                            backgroundColor: 'rgba(52, 211, 153, 0.1)',
-                            border: '1px solid rgba(52, 211, 153, 0.25)',
-                            color: '#34d399',
-                            fontSize: '0.78rem',
-                            fontWeight: 600
-                          }}
-                        >
-                          {topic}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {[...(previewPaper.concepts || []), ...(previewPaper.topics || [])].map((term, i) => (
+                        <span key={`term-${i}`} className="badge badge-quiet">
+                          {term}
                         </span>
                       ))}
                     </div>
@@ -1644,67 +1328,54 @@ export default function AcademicSearch({
               <div
                 style={{
                   backgroundColor: 'var(--bg-card)',
-                  padding: '24px',
-                  borderRadius: '14px',
+                  padding: 'var(--space-5)',
+                  borderRadius: 'var(--radius-lg)',
                   border: '1px solid var(--border-color)'
                 }}
               >
-                <div
-                  style={{
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.8px',
-                    color: 'var(--primary)',
-                    marginBottom: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <BookOpen size={16} />
-                  <span>Publication Metadata & Indexing</span>
+                <div className="overline" style={{ marginBottom: 'var(--space-4)' }}>
+                  Publication metadata
                 </div>
 
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: '16px',
-                    fontSize: '0.88rem',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                    gap: 'var(--space-4)',
+                    fontSize: 'var(--text-base)',
                     color: 'var(--text-main)'
                   }}
                 >
                   <div>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.78rem', fontWeight: 600 }}>Category</span>
-                    <strong>{previewPaper.suggestedCategory || 'Computer Science'}</strong>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 'var(--text-xs)' }}>Category</span>
+                    <strong style={{ fontWeight: 600 }}>{previewPaper.suggestedCategory || '—'}</strong>
                   </div>
 
                   <div>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.78rem', fontWeight: 600 }}>Journal / Venue</span>
-                    <strong>{previewPaper.journalOrVenue || 'Academic Venue'}</strong>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 'var(--text-xs)' }}>Journal / venue</span>
+                    <strong style={{ fontWeight: 600 }}>{previewPaper.journalOrVenue || '—'}</strong>
                   </div>
 
                   <div>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.78rem', fontWeight: 600 }}>Publication Year</span>
-                    <strong>{previewPaper.publicationYear || 'N/A'}</strong>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 'var(--text-xs)' }}>Year</span>
+                    <strong style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{previewPaper.publicationYear || '—'}</strong>
                   </div>
 
                   <div>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.78rem', fontWeight: 600 }}>Citations</span>
-                    <strong>{previewPaper.citationCount ? previewPaper.citationCount.toLocaleString() : 'N/A'}</strong>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 'var(--text-xs)' }}>Citations</span>
+                    <strong style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{previewPaper.citationCount ? previewPaper.citationCount.toLocaleString() : '—'}</strong>
                   </div>
 
                   <div>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.78rem', fontWeight: 600 }}>Access Type</span>
-                    <strong style={{ color: previewPaper.openAccess ? '#34d399' : 'var(--text-muted)' }}>
-                      {previewPaper.openAccess ? 'Open Access (Free)' : 'Subscription / Paywall'}
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 'var(--text-xs)' }}>Access</span>
+                    <strong style={{ fontWeight: 600, color: previewPaper.openAccess ? 'var(--success)' : 'var(--text-main)' }}>
+                      {previewPaper.openAccess ? 'Open access' : 'Subscription'}
                     </strong>
                   </div>
 
                   <div>
-                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.78rem', fontWeight: 600 }}>DOI / Identifier</span>
-                    <strong style={{ wordBreak: 'break-all' }}>{previewPaper.doi || 'N/A'}</strong>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 'var(--text-xs)' }}>DOI</span>
+                    <strong style={{ fontWeight: 600, wordBreak: 'break-all' }}>{previewPaper.doi || '—'}</strong>
                   </div>
                 </div>
               </div>
@@ -1713,138 +1384,68 @@ export default function AcademicSearch({
             {/* FOOTER */}
             <div
               style={{
-                padding: '14px 20px',
-                borderTop:
-                  '1px solid var(--border-color)',
-                backgroundColor:
-                  'var(--header-bg)',
+                padding: 'var(--space-3) var(--space-5)',
+                borderTop: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-card)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent:
-                  'space-between',
+                justifyContent: 'space-between',
                 flexWrap: 'wrap',
-                gap: '12px'
+                gap: 'var(--space-3)',
+                flexShrink: 0
               }}
             >
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '10px',
-                  flexWrap: 'wrap'
-                }}
-              >
+              <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
                 <button
-                  onClick={() =>
-                    handleSave(previewPaper)
-                  }
-                  className={
-                    savedMap[
-                      previewPaper.doi ||
-                        previewPaper.title
-                    ]
-                      ? 'btn-secondary'
-                      : 'btn-primary'
-                  }
-                  disabled={
-                    savedMap[
-                      previewPaper.doi ||
-                        previewPaper.title
-                    ]
-                  }
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '0.84rem'
-                  }}
+                  onClick={() => handleSave(previewPaper)}
+                  className={savedMap[previewPaper.doi || previewPaper.title] ? 'btn-secondary' : 'btn-primary'}
+                  disabled={savedMap[previewPaper.doi || previewPaper.title]}
                 >
-                  {savedMap[
-                    previewPaper.doi ||
-                      previewPaper.title
-                  ] ? (
-                    <Check size={16} />
-                  ) : (
-                    <Plus size={16} />
-                  )}
-
+                  {savedMap[previewPaper.doi || previewPaper.title]
+                    ? <Check size={15} aria-hidden="true" />
+                    : <Plus size={15} aria-hidden="true" />}
                   <span>
-                    {savedMap[
-                      previewPaper.doi ||
-                        previewPaper.title
-                    ]
-                      ? 'Saved to Library'
-                      : 'Save to Library'}
+                    {savedMap[previewPaper.doi || previewPaper.title] ? 'Saved to library' : 'Save to library'}
                   </span>
                 </button>
 
                 <button
                   onClick={() => {
-                    const paper =
-                      previewPaper;
-
+                    const paper = previewPaper;
                     closePreview();
-
-                    onOpenAiSummarizer(
-                      paper
-                    );
+                    onOpenAiSummarizer(paper);
                   }}
                   className="btn-secondary"
-                  style={{
-                    padding: '8px 14px',
-                    fontSize: '0.84rem'
-                  }}
                 >
-                  <Sparkles size={16} />
-                  <span>AI Summary</span>
+                  <Sparkles size={15} aria-hidden="true" />
+                  <span>AI summary</span>
                 </button>
               </div>
 
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '10px',
-                  flexWrap: 'wrap'
-                }}
-              >
+              <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
                 {previewPaper.downloadUrl && (
                   <a
-                    href={
-                      previewPaper.downloadUrl
-                    }
+                    href={previewPaper.downloadUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn-primary"
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '0.84rem',
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
+                    className="btn-secondary"
+                    style={{ textDecoration: 'none' }}
                   >
-                    <Download size={16} />
-                    Open PDF
+                    <Download size={15} aria-hidden="true" />
+                    <span>Open PDF</span>
                   </a>
                 )}
 
                 {previewPaper.sourceUrl && (
                   <a
-                    href={
-                      previewPaper.sourceUrl
-                    }
+                    href={previewPaper.sourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn-secondary"
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '0.84rem',
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
+                    style={{ textDecoration: 'none' }}
                   >
-                    <ExternalLink size={16} />
-                    Source
+                    <ExternalLink size={15} aria-hidden="true" />
+                    <span>Source</span>
                   </a>
                 )}
               </div>
@@ -1858,16 +1459,16 @@ export default function AcademicSearch({
           onClose={closeInAppScholar}
           label={`Google Scholar results for ${scholarModalQuery}`}
           zIndex={1000}
-          overlayStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)', padding: '16px' }}
+          overlayStyle={{ padding: 'var(--space-4)' }}
           panelClassName=""
           panelStyle={{
             width: '100%',
-            maxWidth: '1050px',
+            maxWidth: '1000px',
             height: '88vh',
             backgroundColor: 'var(--bg-card)',
-            borderRadius: '24px',
+            borderRadius: 'var(--radius-xl)',
             border: '1px solid var(--border-color)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            boxShadow: 'var(--shadow-overlay)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden'
@@ -1875,56 +1476,40 @@ export default function AcademicSearch({
         >
             {/* Header Bar */}
             <div style={{
-              padding: '14px 20px',
-              backgroundColor: 'var(--bg-main)',
+              padding: 'var(--space-3) var(--space-5)',
+              backgroundColor: 'var(--bg-card)',
               borderBottom: '1px solid var(--border-color)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: '12px'
+              gap: 'var(--space-3)',
+              flexShrink: 0
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '10px',
-                  backgroundColor: '#4285F4',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 800,
-                  fontSize: '0.85rem'
-                }}>
-                  🎓
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 'var(--text-lg)', color: 'var(--text-main)' }}>
+                  Google Scholar
                 </div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)' }}>
-                    Google Scholar In-App Engine
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    Query: "{scholarModalQuery}"
-                  </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                  “{scholarModalQuery}”
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <a 
-                  href={`https://scholar.google.com/scholar?q=${encodeURIComponent(scholarModalQuery)}`} 
-                  target="_blank" 
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <a
+                  href={`https://scholar.google.com/scholar?q=${encodeURIComponent(scholarModalQuery)}`}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="btn-secondary"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  style={{ padding: '6px 12px', minHeight: '32px', fontSize: 'var(--text-xs)', textDecoration: 'none' }}
                 >
-                  <ExternalLink size={14} />
-                  <span>Open External Tab</span>
+                  <ExternalLink size={13} aria-hidden="true" />
+                  <span>Open in new tab</span>
                 </a>
                 <button
                   type="button"
                   onClick={closeInAppScholar}
-                  className="neu-button"
+                  className="icon-button"
                   aria-label="Close Google Scholar viewer"
-                  style={{ width: '32px', height: '32px', borderRadius: '50%', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                   <X size={18} aria-hidden="true" />
                 </button>

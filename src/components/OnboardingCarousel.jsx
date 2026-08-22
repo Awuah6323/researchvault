@@ -41,7 +41,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       navGuide: 'Use the Sidebar on desktop or the Bottom Navigation bar on mobile to switch between features seamlessly.',
       actionText: 'Explore App Features',
       actionTab: 'home',
-      gradient: 'linear-gradient(135deg, rgba(37, 99, 235, 0.15) 0%, rgba(147, 51, 234, 0.15) 100%)',
+      gradient: 'transparent',
       accentColor: 'var(--primary)',
       icon: BookOpen,
       features: [
@@ -61,8 +61,8 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       navGuide: 'Click "Academic Search" in the sidebar or press the top search bar anytime to query external literature and import papers with 1-click.',
       actionText: 'Try Academic Search',
       actionTab: 'search',
-      gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%)',
-      accentColor: '#10b981',
+      gradient: 'transparent',
+      accentColor: 'var(--primary)',
       icon: Search,
       features: [
         'Search OpenAlex, arXiv & CrossRef',
@@ -81,8 +81,8 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       navGuide: 'Navigate to "My Library" to filter by tags or "Categories & Folders" to manage topics. Click "Read" on any card to launch the reader.',
       actionText: 'Open My Library',
       actionTab: 'library',
-      gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(239, 68, 68, 0.15) 100%)',
-      accentColor: '#f59e0b',
+      gradient: 'transparent',
+      accentColor: 'var(--primary)',
       icon: Library,
       features: [
         'Custom Folder & Category Trees',
@@ -101,8 +101,8 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       navGuide: 'Click "AI Literature Review" in the sidebar to run synthesis matrices across saved papers or click "AI Summary" on any paper card.',
       actionText: 'Launch AI Synthesis',
       actionTab: 'synthesis',
-      gradient: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)',
-      accentColor: '#a855f7',
+      gradient: 'transparent',
+      accentColor: 'var(--primary)',
       icon: Sparkles,
       features: [
         'Comparative Paper Matrix Grid',
@@ -121,8 +121,8 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       navGuide: 'Select "AI Chat Assistant" from the menu to initiate an interactive Q&A session with prompt shortcuts for literature analysis.',
       actionText: 'Chat with AI Assistant',
       actionTab: 'aichat',
-      gradient: 'linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%)',
-      accentColor: '#06b6d4',
+      gradient: 'transparent',
+      accentColor: 'var(--primary)',
       icon: MessageSquare,
       features: [
         'Context-Aware Academic Q&A',
@@ -141,8 +141,8 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       navGuide: 'Click the quote icon on any paper card for quick citations, or visit "Research Notes" to compile personal annotations.',
       actionText: 'View Research Notes',
       actionTab: 'notes',
-      gradient: 'linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(244, 63, 94, 0.15) 100%)',
-      accentColor: '#ec4899',
+      gradient: 'transparent',
+      accentColor: 'var(--primary)',
       icon: Quote,
       features: [
         'APA 7, BibTeX, IEEE & MLA Citations',
@@ -161,21 +161,25 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       navGuide: 'Go to "Profile & Settings" to log in, enable background cloud sync, or change your theme via the top navbar palette button.',
       actionText: 'Profile & Settings',
       actionTab: 'profile',
-      gradient: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%)',
-      accentColor: '#22c55e',
+      gradient: 'transparent',
+      accentColor: 'var(--primary)',
       icon: Cloud,
       features: [
         'Cloud Vault Multi-Device Sync',
         '4 Premium Visual Themes',
         'PWA Offline App Installation',
-        'Data Export & Vault Backup'
+        'Local Data Export & Backup Restore'
       ]
     }
   ];
 
   const totalSlides = slides.length;
 
-  const handleCycleSpeed = () => {
+  const togglePlayPause = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  const cycleSpeed = () => {
     if (slideDuration === 5) setSlideDuration(7);
     else if (slideDuration === 7) setSlideDuration(10);
     else setSlideDuration(5);
@@ -218,6 +222,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
       if (e.key === 'ArrowRight') handleNext();
       else if (e.key === 'ArrowLeft') handlePrev();
     };

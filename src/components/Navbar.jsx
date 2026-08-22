@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, BookOpen, Moon, Sun, Sparkles, User, Palette, Menu, Cloud, CheckCircle2, RefreshCw, Download, Compass, HelpCircle } from 'lucide-react';
+import { Search, Palette, Menu, Cloud, CheckCircle2, RefreshCw, Compass } from 'lucide-react';
 import { storage } from '../services/storage';
 
 const SYNC_LABELS = {
@@ -43,10 +43,13 @@ export default function Navbar({
     return unsubscribe;
   }, []);
 
+  /* Emoji were previously baked into these labels and then stripped again with
+     two .replace() calls at render time. The labels are just labels now. Theme
+     ids are unchanged, so a stored preference still resolves. */
   const themes = [
-    { id: 'warm-sepia', label: '☕ Warm Sepia' },
-    { id: 'cyber-emerald', label: '⚡ Cyber Emerald' },
+    { id: 'warm-sepia', label: 'Warm Sepia' },
     { id: 'scholarly-light', label: 'Scholarly Light' },
+    { id: 'cyber-emerald', label: 'Cyber Emerald' },
     { id: 'midnight-oled', label: 'Midnight OLED' }
   ];
 
@@ -56,11 +59,10 @@ export default function Navbar({
       top: 0,
       zIndex: 40,
       backgroundColor: 'var(--header-bg)',
-      backdropFilter: 'blur(16px)',
       borderBottom: '1px solid var(--border-color)',
-      padding: '12px 16px',
+      padding: '10px 16px',
       width: '100%',
-      maxWidth: '100vw',
+      maxWidth: '100%',
       boxSizing: 'border-box',
       overflowX: 'hidden'
     }}>
@@ -81,23 +83,18 @@ export default function Navbar({
             <button
               type="button"
               onClick={onOpenMobileMenu}
-              className="mobile-nav-toggle-btn"
+              className="mobile-nav-toggle-btn neu-button"
               aria-label="Open navigation menu"
               aria-expanded={false}
               style={{
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '10px',
-                color: 'var(--primary)',
-                padding: '6px 8px',
-                cursor: 'pointer',
+                color: 'var(--text-main)',
+                padding: '8px',
                 /* No `display` here on purpose. The stylesheet hides this
                    button above 768px; an inline display would beat that rule
                    and leave a mobile hamburger on desktop, where it also
                    became the page's first tab stop. */
                 alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+                justifyContent: 'center'
               }}
             >
               <Menu size={22} aria-hidden="true" />
@@ -110,26 +107,25 @@ export default function Navbar({
             style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
           >
             <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '11px',
+              width: '34px',
+              height: '34px',
+              borderRadius: 'var(--radius-sm)',
               overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               border: '1px solid var(--border-color)',
-              boxShadow: 'var(--card-shadow)',
               flexShrink: 0,
               backgroundColor: 'var(--bg-card)'
             }}>
               <img src="/logo_icon.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <div style={{ fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.5px', color: 'var(--text-main)', lineHeight: 1.1 }}>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem', letterSpacing: '-0.02em', color: 'var(--text-main)', lineHeight: 1.15 }}>
                 Research<span className="text-gradient-emerald">Vault</span>
               </div>
-              <div className="mobile-hide" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.8px', marginTop: '2px' }}>
-                ACADEMIC LITERATURE ENGINE
+              <div className="mobile-hide overline" style={{ fontSize: '0.625rem', marginTop: '1px' }}>
+                Academic Literature Engine
               </div>
             </div>
           </button>
@@ -145,11 +141,11 @@ export default function Navbar({
           }}
           className="nav-search-bar"
           role="search"
-          style={{ flex: 1, maxWidth: '560px', position: 'relative' }}
+          style={{ flex: 1, maxWidth: '520px', position: 'relative' }}
         >
           <button
             type="submit"
-            aria-label="Execute Academic Search"
+            aria-label="Search academic sources"
             style={{
               position: 'absolute',
               left: '10px',
@@ -165,7 +161,7 @@ export default function Navbar({
               padding: '4px'
             }}
           >
-            <Search size={18} aria-hidden="true" />
+            <Search size={17} aria-hidden="true" />
           </button>
           <label htmlFor="global-search" className="sr-only">
             Search papers, DOI or authors
@@ -175,79 +171,68 @@ export default function Navbar({
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search papers, DOI, authors (e.g. Hinton, Vaswani)..."
+            placeholder="Search papers, authors or DOI…"
             style={{
               width: '100%',
-              padding: '10px 16px 10px 42px',
-              borderRadius: '24px',
-              border: '1px solid var(--border-color)',
-              backgroundColor: 'var(--bg-main)',
-              color: 'var(--text-main)',
-              fontSize: '0.88rem',
-              outline: 'none',
-              transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+              padding: '9px 14px 9px 38px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: 'var(--text-md)',
+              outline: 'none'
             }}
           />
         </form>
 
-        {/* Horizontal Sliding Action Controls Bar: User Account, Install App, User Guide, Theme Mode & Cloud Sync */}
+        {/* Horizontal Sliding Action Controls Bar: User Account, User Guide, Theme Mode & Cloud Sync */}
         <div className="nav-actions-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'nowrap' }}>
           {/* User Guide Carousel Trigger */}
           {onOpenUserGuide && (
             <button
               type="button"
               onClick={onOpenUserGuide}
-              title="Open App Guide & Navigation Tutorial"
+              className="neu-button"
+              title="Open app guide and navigation tutorial"
               aria-label="Open app guide and navigation tutorial"
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '5px',
-                padding: '6px 10px',
-                borderRadius: '16px',
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--primary)',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)'
+                gap: '6px',
+                padding: '7px 11px',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 600
               }}
             >
-              <Compass size={16} aria-hidden="true" />
+              <Compass size={15} aria-hidden="true" />
               <span className="mobile-hide">Guide</span>
             </button>
           )}
 
-
-
           {/* Cloud Sync Status Badge — a real button, and a polite live region
-              so sync state changes are announced instead of colour-only. */}
+              so sync state changes are announced instead of colour-only.
+
+              Colour is semantic here: --success when the vault is safe,
+              --danger when it is not, --accent-gold for the one state that is
+              neither. It no longer reaches for a raw hex. */}
           <button
             type="button"
             onClick={() => storage.pullCloudVault()}
+            className="neu-button"
             title={`${SYNC_LABELS[syncState] || syncState} — ${SYNC_DETAIL[syncState] || ''} Click to sync now.`}
             aria-label={`Cloud sync status: ${SYNC_LABELS[syncState] || syncState}. ${SYNC_DETAIL[syncState] || ''} Last synced ${lastSyncTime}. Activate to sync now.`}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
-              padding: '5px 8px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--bg-card)',
-              border: '1px solid var(--border-color)',
-              fontSize: '0.75rem',
+              gap: '5px',
+              padding: '7px 10px',
+              fontSize: 'var(--text-sm)',
               fontWeight: 600,
               color:
                 syncState === 'syncing'
                   ? 'var(--primary)'
                   : syncState === 'offline' || syncState === 'error'
-                  ? '#ef4444'
+                  ? 'var(--danger)'
                   : syncState === 'local-only'
                   ? 'var(--accent-gold)'
-                  : '#10b981',
-              cursor: 'pointer'
+                  : 'var(--success)'
             }}
           >
             {syncState === 'syncing' ? (
@@ -261,28 +246,27 @@ export default function Navbar({
           </button>
 
           {/* Theme Dropdown */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Palette size={16} aria-hidden="true" style={{ color: 'var(--primary)', flexShrink: 0 }} />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <Palette size={15} aria-hidden="true" style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
             <label htmlFor="theme-select" className="sr-only">Colour theme</label>
             <select
               id="theme-select"
               value={currentTheme}
               onChange={(e) => setTheme(e.target.value)}
-              title="Switch Theme Mode"
+              title="Switch theme"
               style={{
-                padding: '5px 6px',
-                borderRadius: '8px',
-                border: '1px solid var(--border-color)',
+                padding: '6px 8px',
+                minHeight: '34px',
+                borderRadius: 'var(--radius-sm)',
                 backgroundColor: 'var(--bg-card)',
-                color: 'var(--text-main)',
-                fontSize: '0.76rem',
+                fontSize: 'var(--text-sm)',
                 fontWeight: 600,
                 cursor: 'pointer',
-                maxWidth: '105px'
+                maxWidth: '132px'
               }}
             >
               {themes.map(t => (
-                <option key={t.id} value={t.id}>{t.label.replace('⚡ ', '').replace('☕ ', '')}</option>
+                <option key={t.id} value={t.id}>{t.label}</option>
               ))}
             </select>
           </div>
@@ -292,45 +276,44 @@ export default function Navbar({
             <button
               type="button"
               onClick={() => onNavigate('profile')}
-              title="Open Account Profile & Settings"
+              className="neu-button"
+              title="Open account profile and settings"
               aria-label={`Open account profile and settings for ${userProfile?.name || userProfile?.email || 'your account'}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '4px 8px',
-                borderRadius: '20px',
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-color)',
-                cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)'
+                gap: '7px',
+                padding: '5px 10px 5px 5px'
               }}
             >
               <div aria-hidden="true" style={{
                 width: '26px',
                 height: '26px',
-                borderRadius: '50%',
+                borderRadius: 'var(--radius-sm)',
                 backgroundColor: 'var(--primary)',
                 color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: '0.75rem',
+                fontWeight: 700,
+                fontSize: '0.7rem',
                 flexShrink: 0
               }}>
                 {userProfile?.name ? userProfile.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : (userProfile?.email ? userProfile.email[0].toUpperCase() : 'RV')}
               </div>
-              <span className="mobile-hide" style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
+              <span className="mobile-hide" style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--text-main)' }}>
                 {userProfile?.name || userProfile?.email ? (userProfile?.name || userProfile?.email.split('@')[0]) : 'Account'}
               </span>
             </button>
 
+            {/* Secondary to everything else in this bar: switching accounts is
+                a rare action, and as a filled primary button it was the
+                loudest thing in the header. */}
             <button
               type="button"
               onClick={onOpenAuthModal}
-              className="btn-primary"
-              style={{ padding: '6px 10px', fontSize: '0.76rem', borderRadius: '12px' }}
+              className="btn-secondary"
+              style={{ padding: '7px 11px', fontSize: 'var(--text-sm)', minHeight: '34px' }}
             >
               {userProfile?.isAuthenticated ? 'Switch' : 'Sign In'}
             </button>
