@@ -4,7 +4,7 @@ import { storage } from '../services/storage';
 import Modal from './Modal';
 
 export default function AuthModal({ onClose, onLoginSuccess }) {
-  const [mode, setMode] = useState('login'); // 'login', 'signup'
+  const [mode, setMode] = useState('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,9 +50,6 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
           fieldOfStudy.trim() || 'Computer Science'
         );
 
-        // Email confirmation is on by default, so the account exists but has no
-        // session yet. Closing the modal here would look like success and then
-        // silently fail to sync.
         if (user.needsEmailConfirmation) {
           setSuccess(
             `Almost there — we sent a confirmation link to ${email.trim()}. Open it, then sign in.`

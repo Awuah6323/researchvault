@@ -10,18 +10,7 @@ import { X, AlertTriangle, CheckCircle, Info, AlertCircle } from 'lucide-react';
 import Modal from './Modal';
 
 /**
- * App-wide user-feedback layer. Replaces the native window.alert() and
- * window.confirm() calls, which were blocking, unstyled, ignored the active
- * theme, and are unreliable inside an installed iOS PWA.
- *
- * Exposes three hooks:
- *   useToast()    -> notify({ message, tone })            — transient message
- *   useConfirm()  -> await confirm({ title, message })    — resolves to boolean
- *   useAnnounce() -> announce(message, { assertive })     — screen-reader only
- *
- * `announce` exists because most of this app's status changes (cloud sync
- * finishing, an AI summary arriving, search results loading) are conveyed with
- * colour and iconography alone, which is silent to a screen reader.
+ * App-wide feedback provider exposing `useToast`, `useConfirm`, and `useAnnounce` hooks.
  */
 
 const FeedbackContext = createContext(null);

@@ -5,12 +5,11 @@ import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 import Modal from './Modal';
 
 export default function AddResourceModal({ onClose, onAdd, categories, onNavigateSearch }) {
-  const [activeTab, setActiveTab] = useState('upload'); // upload, doi, manual
+  const [activeTab, setActiveTab] = useState('upload');
   const [doiUrl, setDoiUrl] = useState('');
   const [fetchingDoi, setFetchingDoi] = useState(false);
   const [doiError, setDoiError] = useState('');
 
-  // Manual & Upload Form State
   const [title, setTitle] = useState('');
   const [authors, setAuthors] = useState('');
   const [publicationYear, setPublicationYear] = useState(new Date().getFullYear());
@@ -35,7 +34,6 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
         setTitle(autoTitle);
       }
 
-      // Extract real text from the PDF file for Gemini AI
       try {
         const extractedText = await extractTextFromPdfFile(file);
         if (extractedText && extractedText.trim()) {
@@ -146,7 +144,6 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
           </button>
         </div>
 
-        {/* Tab Selection */}
         <div role="group" aria-label="How to add a paper" style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', overflowX: 'auto' }}>
           <button
             type="button"
@@ -209,7 +206,6 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
           </button>
         </div>
 
-        {/* Mode 0: Upload PDF directly from device */}
         {activeTab === 'upload' && (
           <form onSubmit={handleSubmitManual} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <label htmlFor="upload-pdf-file" style={{
@@ -225,9 +221,6 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
               textAlign: 'center',
               transition: 'all 0.2s ease'
             }}>
-              {/* .sr-only rather than display:none — a hidden input is removed
-                  from the tab order entirely, making upload keyboard-only
-                  users unable to reach the file picker at all. */}
               <input
                 id="upload-pdf-file"
                 type="file"

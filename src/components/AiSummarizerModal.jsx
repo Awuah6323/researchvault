@@ -130,7 +130,6 @@ export default function AiSummarizerModal({ resource, onClose, onSaveNote }) {
       zIndex={50}
       panelStyle={{ width: '100%', maxWidth: '680px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: '24px' }}
     >
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div aria-hidden="true" style={{ padding: '8px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>
@@ -146,15 +145,12 @@ export default function AiSummarizerModal({ resource, onClose, onSaveNote }) {
         </button>
       </div>
 
-      {/* Content Scrollable Container */}
       <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
-        {/* Paper Info */}
         <div style={{ padding: '12px', borderRadius: '12px', backgroundColor: 'var(--bg-main)', marginBottom: '16px' }}>
           <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{resource.title}</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{resource.authors} • {resource.publicationYear}</div>
         </div>
 
-        {/* Mode Tabs */}
         <div role="group" aria-label="Summary type" style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
           {summaryTypes.map(type => (
             <button
@@ -181,7 +177,6 @@ export default function AiSummarizerModal({ resource, onClose, onSaveNote }) {
           ))}
         </div>
 
-        {/* AI Result Box */}
         {extractingText && (
           <div role="status" style={{ padding: '24px', textAlign: 'center', color: 'var(--primary)' }}>
             <FileSearch size={28} aria-hidden="true" style={{ margin: '0 auto 10px', display: 'block' }} />
@@ -242,7 +237,6 @@ export default function AiSummarizerModal({ resource, onClose, onSaveNote }) {
           </div>
         )}
 
-        {/* Q&A Chat History */}
         {chatHistory.length > 0 && (
           <div style={{ marginBottom: '16px' }}>
             <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '10px' }}>Q&amp;A Conversation</h3>
@@ -260,7 +254,6 @@ export default function AiSummarizerModal({ resource, onClose, onSaveNote }) {
         )}
       </div>
 
-      {/* Question Input Form */}
       <form onSubmit={handleAskQuestion} style={{ display: 'flex', gap: '10px', paddingTop: '14px', borderTop: '1px solid var(--border-color)' }}>
         <label htmlFor="ai-paper-question" className="sr-only">
           Ask a question about this paper

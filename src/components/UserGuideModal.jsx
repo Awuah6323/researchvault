@@ -58,7 +58,6 @@ export default function UserGuideModal({ isOpen, onClose, onNavigate, onOpenAddM
           onClose={() => handleCloseModal()}
         />
 
-        {/* Modal Footer with "Don't Show Again" Checkbox & Button */}
         <div style={{
           padding: '12px 24px',
           backgroundColor: 'var(--bg-main)',
@@ -71,9 +70,6 @@ export default function UserGuideModal({ isOpen, onClose, onNavigate, onOpenAddM
           borderBottomLeftRadius: '24px',
           borderBottomRightRadius: '24px'
         }}>
-          {/* Checkbox Option — a real <input type="checkbox"> so it is
-              focusable, toggleable with Space, and announced with its state.
-              The icons are decorative; the native box is visually hidden. */}
           <label
             htmlFor="guide-dont-show-again"
             style={{
@@ -100,7 +96,6 @@ export default function UserGuideModal({ isOpen, onClose, onNavigate, onOpenAddM
             <span>Don&apos;t show this popup on startup again</span>
           </label>
 
-          {/* Quick Action Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
               type="button"

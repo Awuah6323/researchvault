@@ -7,18 +7,14 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
   const [isIOS, setIsIOS] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [installed, setInstalled] = useState(isStandalone);
-  // Shown when the browser gives us no install prompt to trigger (Firefox,
-  // desktop Safari, or Chrome that has already dismissed the prompt).
   const [showManualHint, setShowManualHint] = useState(false);
   const announce = useAnnounce();
 
   useEffect(() => {
-    // Detect iOS devices (Safari on iPhone, iPad, iPod)
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(isIosDevice);
 
-    // Detect if already installed / standalone
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
       setInstalled(true);
     }
@@ -26,9 +22,6 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      // Was a window.alert(). Inline guidance keeps the instructions next to
-      // the button that needed them, stays in-theme, and is reachable by
-      // screen readers via the live region below.
       setShowManualHint(true);
       announce(
         "This browser has no install button. Use the browser menu and choose Add to Home Screen or Install App.",
