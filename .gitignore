@@ -28,4 +28,5 @@ debug.keystore
 /captures
 .externalNativeBuild
 .cxx
+.freebuff/
 

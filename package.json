@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:health": "node scripts/healthCheck.js",
+    "health-check": "node scripts/healthCheck.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

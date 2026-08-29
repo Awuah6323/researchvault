@@ -147,3 +147,28 @@ alter table public.vaults replica identity full;
 --   set role anon;
 --   select * from public.vaults;
 --   reset role;
+
+
+-- ------------------------------------------------ OPTIONAL HEALTH CHECK LOG
+--
+-- Optional persistent health-check log table.
+-- Used if persistent recording of the 3x daily health check history is desired.
+
+create table if not exists public.system_health_checks (
+  id            bigint generated always as identity primary key,
+  checked_at    timestamptz not null default now(),
+  status        text not null check (status in ('ok', 'error')),
+  duration_ms   integer,
+  error_message text
+);
+
+alter table public.system_health_checks enable row level security;
+
+-- Only service_role can write/read health checks by default.
+-- Regular users / anon cannot access this table.
+drop policy if exists "Service role full access to health checks" on public.system_health_checks;
+create policy "Service role full access to health checks"
+  on public.system_health_checks
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
+
