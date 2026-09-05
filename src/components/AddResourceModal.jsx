@@ -3,6 +3,7 @@ import { X, Link2, FileText, Search, Loader2, UploadCloud, Check } from 'lucide-
 import { searchAcademicSources, suggestCategory } from '../services/academicSearch';
 import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 import { validatePdfFile } from '../utils/fileValidation';
+import { storePdfData } from '../services/pdfStorage';
 import Modal from './Modal';
 
 export default function AddResourceModal({ onClose, onAdd, categories, onNavigateSearch }) {
@@ -19,25 +20,26 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
   const [abstractText, setAbstractText] = useState('');
   const [pdfFileName, setPdfFileName] = useState('');
   const [pdfFileData, setPdfFileData] = useState('');
+  const [rawPdfFile, setRawPdfFile] = useState(null);
   const [readingFile, setReadingFile] = useState(false);
   const [extractionStatus, setExtractionStatus] = useState('');
 
   const handlePdfChange = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Size, extension, declared type, and the file's own magic bytes. The
-      // last one is the check that matters: the first three describe what the
-      // file claims to be, and renaming anything to .pdf satisfies all of them.
+      // Size, extension, declared type, and the file's own magic bytes.
       const check = await validatePdfFile(file);
       if (!check.ok) {
         setPdfFileName('');
         setPdfFileData('');
+        setRawPdfFile(null);
         setReadingFile(false);
         setExtractionStatus(check.error);
         e.target.value = '';
         return;
       }
 
+      setRawPdfFile(file);
       setPdfFileName(check.name);
       setReadingFile(true);
       setExtractionStatus('Extracting text content from PDF...');
@@ -117,7 +119,7 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
     }
   };
 
-  const handleSubmitManual = (e) => {
+  const handleSubmitManual = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
 
@@ -127,13 +129,9 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
       : (rawExtracted || 'Imported paper document in ResearchVault digital library.');
 
     const finalCategory = (category && category !== 'Computer Science') ? category : suggestCategory(title.trim(), rawExtracted);
-
-    // The vault is capped at 3 MB by a database constraint, and a rejected push
-    // is a confusing failure that surfaces long after the paste that caused it.
-    // Bounding the fields here keeps a runaway value from ever getting that far.
     const capped = (value, max) => String(value || '').slice(0, max);
 
-    onAdd({
+    const created = onAdd({
       title: capped(title.trim(), 500),
       authors: capped(authors.trim() || 'User Imported Author', 500),
       publicationYear: parseInt(publicationYear) || 2024,
@@ -143,9 +141,24 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
       fullText: capped(rawExtracted || shortAbstract, 500000),
       pdfFileName,
       pdfFileData,
+      hasPdf: Boolean(pdfFileData || rawPdfFile),
       openAccess: true,
       downloadStatus: 'COMPLETED'
     });
+
+    if (created?.id) {
+      if (rawPdfFile) {
+        try {
+          const buf = await rawPdfFile.arrayBuffer();
+          await storePdfData(created.id, new Uint8Array(buf));
+        } catch (err) {
+          console.warn('[AddResourceModal] Failed to store raw arrayBuffer:', err);
+        }
+      } else if (pdfFileData) {
+        await storePdfData(created.id, pdfFileData);
+      }
+    }
+
     onClose();
   };
 

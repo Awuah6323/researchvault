@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Sparkles, Bookmark, FileText, ChevronLeft, ChevronRight, Plus, Send, Download, ExternalLink, FileCode, ShieldCheck, X, Loader2, Copy, Check, BookmarkPlus, FileSearch, Trash2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Sparkles, FileText, ChevronLeft, ChevronRight, Send, Download, ExternalLink, Trash2, Loader2, X, FileSearch } from 'lucide-react';
 import { storage } from '../services/storage';
 import { generatePaperSummary, askPaperQuestion, generatePeerReview } from '../services/geminiService';
 import { extractTextFromPdfFile } from '../utils/pdfExtractor';
-import { resolvePdfSource } from '../services/pdfResolver';
+import { getPdfData, dataUrlToUint8Array } from '../services/pdfStorage';
 import MarkdownMessage from '../components/MarkdownMessage';
 import { useConfirm, useAnnounce } from '../components/FeedbackProvider';
 
@@ -29,7 +29,7 @@ function useIsSmallScreen(breakpoint = 880) {
 
 export default function DocumentReader({ resource, onClose, onDeleteResource }) {
   const [currentPage, setCurrentPage] = useState(resource.lastPageRead || 1);
-  const [fontSize, setFontSize] = useState(16);
+  const [fontSize, setFontSize] = useState(17);
   const [readerTheme, setReaderTheme] = useState('light');
   const [notes, setNotes] = useState([]);
   const [showNotesDrawer, setShowNotesDrawer] = useState(false);
@@ -46,7 +46,6 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   const [aiError, setAiError] = useState('');
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiChatHistory, setAiChatHistory] = useState([]);
-  const [aiCopied, setAiCopied] = useState(false);
   const [aiExtractingText, setAiExtractingText] = useState(false);
   const resolvedContentRef = useRef(null);
   const aiChatEndRef = useRef(null);
@@ -55,20 +54,48 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   const aiSummaryTypes = ['Executive Summary', 'Key Takeaways', 'Methodology & Proofs', 'Limitations & Critique', 'Peer Review'];
 
   const [extractedFullText, setExtractedFullText] = useState(resource.fullText || '');
-  const [isExtractingPdfText, setIsExtractingPdfText] = useState(false);
+  const [isExtractingText, setIsExtractingText] = useState(false);
   const extractedFullTextRef = useRef(resource.fullText || '');
-  useEffect(() => { isExtractingPdfTextRef.current = isExtractingPdfText; }, [isExtractingPdfText]);
+  useEffect(() => { isExtractingPdfTextRef.current = isExtractingText; }, [isExtractingText]);
   useEffect(() => { extractedFullTextRef.current = extractedFullText; }, [extractedFullText]);
 
   const isSmallScreen = useIsSmallScreen(880);
-  const hasPdfSource = Boolean(
-    resource.pdfFileData ||
-    resource.downloadUrl ||
-    resource.resolvedPdfUrl ||
-    resource.sourceUrl ||
-    resource.doi
-  );
-  
+
+  // Background auto-extraction if full text is missing but document bytes are available
+  useEffect(() => {
+    let active = true;
+    const currentText = (resource.fullText || extractedFullText || '').trim();
+    const needsExtraction = !currentText || currentText === PLACEHOLDER_TEXT || currentText.toLowerCase().includes('imported paper document in researchvault');
+
+    if (needsExtraction && resource.id) {
+      (async () => {
+        try {
+          let bytes = await getPdfData(resource.id);
+          if (!bytes && resource.pdfFileData) {
+            bytes = dataUrlToUint8Array(resource.pdfFileData);
+          }
+          if (active && bytes && bytes.length > 50) {
+            setIsExtractingText(true);
+            const file = new File([bytes], resource.pdfFileName || 'paper.pdf', { type: 'application/pdf' });
+            const extracted = await extractTextFromPdfFile(file);
+            if (active && extracted && extracted.trim().length > 40) {
+              const cleanText = extracted.trim();
+              setExtractedFullText(cleanText);
+              try {
+                storage.updateResource(resource.id, { fullText: cleanText });
+              } catch (e) {}
+            }
+          }
+        } catch (err) {
+          console.warn('[DocumentReader] Text extraction error:', err);
+        } finally {
+          if (active) setIsExtractingText(false);
+        }
+      })();
+    }
+    return () => { active = false; };
+  }, [resource.id]);
+
   const hasRealText = Boolean(
     extractedFullText &&
     extractedFullText.trim().length > 40 &&
@@ -80,148 +107,10 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   const rawPaperText = extractedFullText || resource.fullText || resource.abstractText || '';
   const isAbstractOnly = !hasRealText || (rawPaperText || '').length < 800 || rawPaperText === (resource.abstractText || '').trim();
 
-  // A locally uploaded PDF always renders, and it is the thing the user just
-  // handed us — open on it. Remote sources (DOI / search imports) still start on
-  // the extracted text, because resolving those can fail and an abstract is a
-  // better landing state than a retry card.
-  const [viewMode, setViewMode] = useState(resource.pdfFileData ? 'pdf' : 'page');
-
-  // `hasPdf` survives both sync and the quota eviction in storage.saveResources;
-  // the bytes do not. So this covers a paper added on another device and one
-  // whose attachment was dropped locally to make room.
-  const pdfMissingLocally = Boolean(resource.hasPdf && !resource.pdfFileData && !hasPdfSource);
-
-  const [readerState, setReaderState] = useState('idle');
-  const [statusMessage, setStatusMessage] = useState('Finding the PDF...');
-  const [pdfUint8Data, setPdfUint8Data] = useState(null);
-  const [pdfMeta, setPdfMeta] = useState({ sourceType: '', resolvedUrl: null, sourceName: '' });
-
-  const [pdfJsDoc, setPdfJsDoc] = useState(null);
-  const [pdfJsNumPages, setPdfJsNumPages] = useState(0);
-  const [pdfJsPageNum, setPdfJsPageNum] = useState(1);
-  const [pdfJsScale, setPdfJsScale] = useState(1.2);
-  const [pdfJsLoading, setPdfJsLoading] = useState(false);
-  const [pdfJsError, setPdfJsError] = useState('');
-  const pdfCanvasRef = useRef(null);
-  const pdfRenderTaskRef = useRef(null);
-
-  // Initialize PDF Acquisition Pipeline
-  const loadPdfDocument = async () => {
-    setReaderState('resolving');
-    setPdfJsError('');
-    try {
-      const resolved = await resolvePdfSource(resource, (msg) => setStatusMessage(msg));
-      setPdfUint8Data(resolved.data);
-      setPdfMeta({
-        sourceType: resolved.sourceType,
-        resolvedUrl: resolved.resolvedUrl,
-        sourceName: resolved.sourceName || ''
-      });
-      setReaderState('ready');
-    } catch (err) {
-      setReaderState('failed');
-    }
-  };
-
-  useEffect(() => {
-    if (hasPdfSource) {
-      loadPdfDocument();
-    }
-  }, [resource.id, resource.downloadUrl, resource.pdfFileData, resource.sourceUrl, resource.doi]);
-
-  // Render PDF via PDF.js when uint8 byte stream is ready
-  useEffect(() => {
-    let active = true;
-    if (!pdfUint8Data || readerState !== 'ready') return;
-
-    setPdfJsLoading(true);
-    (async () => {
-      try {
-        const pdfjsLib = await import('pdfjs-dist');
-        try {
-          const workerUrl = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url);
-          pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl.href;
-        } catch {
-          const ver = pdfjsLib.version || '4.0.379';
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${ver}/pdf.worker.min.mjs`;
-        }
-
-        const doc = await pdfjsLib.getDocument({ data: pdfUint8Data.slice(0) }).promise;
-        if (!active) return;
-        setPdfJsDoc(doc);
-        setPdfJsNumPages(doc.numPages);
-
-        // Background text extraction for AI Assistant & Pages mode
-        const storedFullText = (resource.fullText || '').trim();
-        const needsFullText = !storedFullText || storedFullText === PLACEHOLDER_TEXT || storedFullText.toLowerCase().includes('imported paper document in researchvault');
-
-        if (needsFullText) {
-          setIsExtractingPdfText(true);
-          const pdfFile = new File([pdfUint8Data.slice(0)], resource.pdfFileName || 'document.pdf', { type: 'application/pdf' });
-          extractTextFromPdfFile(pdfFile)
-            .then(extracted => {
-              if (active && extracted && extracted.trim().length > 40) {
-                const cleanText = extracted.trim();
-                setExtractedFullText(cleanText);
-                try {
-                  storage.updateResource(resource.id, { fullText: cleanText });
-                } catch (e) {}
-              }
-            })
-            .finally(() => { if (active) setIsExtractingPdfText(false); });
-        }
-      } catch (err) {
-        if (active) {
-          setPdfJsError("Could not render PDF pages directly. Try opening the external source.");
-        }
-      } finally {
-        if (active) setPdfJsLoading(false);
-      }
-    })();
-
-    return () => { active = false; };
-  }, [pdfUint8Data, readerState]);
-
-  // Render PDF.js Canvas Page
-  const safePdfPage = Math.min(Math.max(1, pdfJsPageNum), Math.max(1, pdfJsNumPages || 1));
-
-  // `viewMode` is a dependency because the canvas only exists while PDF mode is
-  // showing. The document usually finishes loading while the text view is
-  // mounted, so this effect's first run finds a null ref and gives up — and
-  // without viewMode here nothing re-runs it when the canvas finally appears,
-  // leaving an empty canvas until the reader happens to change page or zoom.
-  useEffect(() => {
-    let cancelled = false;
-    if (viewMode !== 'pdf' || !pdfJsDoc || !pdfCanvasRef.current) return;
-
-    (async () => {
-      try {
-        if (pdfRenderTaskRef.current) {
-          pdfRenderTaskRef.current.cancel();
-        }
-        const page = await pdfJsDoc.getPage(safePdfPage);
-        if (cancelled) return;
-        const viewport = page.getViewport({ scale: pdfJsScale });
-        const canvas = pdfCanvasRef.current;
-        if (!canvas) return;
-        const context = canvas.getContext('2d');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const renderTask = page.render({ canvasContext: context, viewport });
-        pdfRenderTaskRef.current = renderTask;
-        await renderTask.promise;
-      } catch (err) {
-        // Ignored when page changes quickly
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [pdfJsDoc, safePdfPage, pdfJsScale, viewMode]);
-
   // Text Pagination
   const paperPages = React.useMemo(() => {
     if (!rawPaperText || !rawPaperText.trim() || rawPaperText === PLACEHOLDER_TEXT) {
-      return ['No extracted text content available for this literature record.'];
+      return ['No text content available for this document.'];
     }
 
     const text = rawPaperText.trim();
@@ -252,10 +141,11 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   const activePageText = paperPages[safeCurrentPage - 1] || paperPages[0] || '';
   const progressPercent = Math.round((safeCurrentPage / totalPages) * 100);
 
+  // Sync reading progress and notes
   useEffect(() => {
     storage.updateReadingProgress(resource.id, progressPercent, safeCurrentPage);
     setNotes(storage.getNotes(resource.id));
-  }, [safeCurrentPage]);
+  }, [safeCurrentPage, resource.id]);
 
   const handleAddNote = (e) => {
     e.preventDefault();
@@ -330,33 +220,32 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
     if (aiChatEndRef.current) {
       aiChatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [aiChatHistory, aiLoading]);
+  }, [aiChatHistory]);
 
-  // The reader is a full-screen dialog: it needs the same Escape-to-close,
-  // focus-in / focus-restore and scroll-lock behaviour as the Modal shell.
-  // (It can't reuse Modal directly because it renders its own full-bleed
-  // chrome rather than a centred panel.)
+  // Modal setup, key navigation & focus management
   useEffect(() => {
     restoreFocusRef.current = document.activeElement;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     const raf = requestAnimationFrame(() => {
-      if (readerRef.current) {
-        try {
-          readerRef.current.focus({ preventScroll: true });
-        } catch (e) { /* unmounted between frames */ }
-      }
+      readerRef.current?.focus();
     });
 
-    announce(`Opened reader for ${resource.title}. Press Escape to close.`);
+    announce(`Opened reader for ${resource.title}. Page ${safeCurrentPage} of ${totalPages}.`);
 
     const handleKeyDown = (e) => {
-      if (e.key !== 'Escape') return;
-      // Let a nested confirm/alertdialog handle its own Escape first.
-      if (document.querySelector('[role="alertdialog"]')) return;
-      e.preventDefault();
-      onClose();
+      if (e.key === 'Escape') {
+        if (document.querySelector('[role="alertdialog"]')) return;
+        e.preventDefault();
+        onClose();
+      } else if (e.key === 'ArrowLeft') {
+        if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+        setCurrentPage(p => Math.max(1, p - 1));
+      } else if (e.key === 'ArrowRight') {
+        if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+        setCurrentPage(p => Math.min(totalPages, p + 1));
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);
@@ -368,19 +257,12 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
       if (previous && typeof previous.focus === 'function' && document.contains(previous)) {
         try {
           previous.focus({ preventScroll: true });
-        } catch (e) { /* opener already gone */ }
+        } catch (e) {}
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [totalPages, safeCurrentPage]);
 
-  const handleAiSaveNote = (text) => {
-    storage.addNote(resource.id, text, safeCurrentPage);
-    setNotes(storage.getNotes(resource.id));
-  };
-
-  // Shared by the mobile and desktop delete buttons. Replaces two identical
-  // window.confirm() calls.
+  // Delete paper confirmation
   const handleDeleteRequest = async () => {
     const ok = await confirm({
       title: 'Delete this paper?',
@@ -406,334 +288,226 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
     >
       {/* Header */}
       <header className="reader-mobile-header" style={{
-        padding: isSmallScreen ? '8px 12px' : '10px 16px',
+        padding: isSmallScreen ? '8px 12px' : '10px 18px',
         borderBottom: '1px solid var(--border-color)',
         display: 'flex',
-        flexDirection: isSmallScreen ? 'column' : 'row',
-        alignItems: isSmallScreen ? 'stretch' : 'center',
+        alignItems: 'center',
         justifyContent: 'space-between',
-        gap: isSmallScreen ? '8px' : '12px',
+        gap: '12px',
         backgroundColor: 'var(--header-bg)',
         backdropFilter: 'blur(8px)',
-        zIndex: 510
+        zIndex: 510,
+        flexShrink: 0
       }}>
-        {/* Row 1: Back Arrow + Paper Title (1-line Ellipsis) + Theme & Delete on Mobile */}
+        {/* Left: Back button + Title & Page Info */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-          <button type="button" onClick={onClose} title="Back to Library" aria-label="Close reader and return to library" style={{ color: 'inherit', padding: '6px', flexShrink: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            title="Back to Library"
+            aria-label="Close reader and return to library"
+            style={{ color: 'inherit', padding: '6px', flexShrink: 0, border: 'none', background: 'none', cursor: 'pointer', borderRadius: '6px' }}
+          >
             <ArrowLeft size={20} aria-hidden="true" />
           </button>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="reader-title-text" style={{
               fontWeight: 700,
-              fontSize: isSmallScreen ? '0.88rem' : '0.95rem',
+              fontSize: isSmallScreen ? '0.88rem' : '0.96rem',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              wordBreak: 'normal',
               lineHeight: 1.2
             }}>
               {resource.title}
             </div>
-            {!isSmallScreen && (
-              <div style={{ fontSize: '0.72rem', opacity: 0.8, marginTop: '2px', whiteSpace: 'nowrap' }}>
-                {viewMode === 'pdf' ? (pdfJsDoc ? `Page ${safePdfPage} of ${pdfJsNumPages}` : statusMessage) : `Page ${safeCurrentPage} of ${totalPages}`}
-              </div>
-            )}
-          </div>
-
-          {isSmallScreen && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-              <label htmlFor="reader-theme-mobile" className="sr-only">Reader colour theme</label>
-              <select id="reader-theme-mobile" value={readerTheme} onChange={(e) => setReaderTheme(e.target.value)} style={{ padding: '4px 6px', borderRadius: '6px', fontSize: '0.75rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'inherit' }}>
-                <option value="light">☀️</option>
-                <option value="sepia">📜</option>
-                <option value="dark">🌙</option>
-              </select>
-              {onDeleteResource && (
-                <button
-                  type="button"
-                  onClick={handleDeleteRequest}
-                  title="Delete paper"
-                  aria-label={`Delete "${resource.title}" from library`}
-                  style={{
-                    padding: '5px',
-                    borderRadius: '8px',
-                    color: '#ef4444',
-                    backgroundColor: 'rgba(239,68,68,0.1)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    border: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Trash2 size={15} aria-hidden="true" />
-                </button>
-              )}
+            <div style={{ fontSize: '0.74rem', opacity: 0.8, marginTop: '2px', whiteSpace: 'nowrap' }}>
+              Page {safeCurrentPage} of {totalPages} • {progressPercent}% read
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Row 2 (Mobile) / Right Actions (Desktop): Status Badge & Reader Mode Switcher */}
-        <div className="reader-mobile-actions" style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: isSmallScreen ? 'space-between' : 'flex-end',
-          gap: '6px',
-          flexShrink: 0,
-          width: isSmallScreen ? '100%' : 'auto',
-          borderTop: isSmallScreen ? '1px solid var(--border-color)' : 'none',
-          paddingTop: isSmallScreen ? '6px' : 0
-        }}>
-          {isSmallScreen && (
-            <div style={{
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              padding: '3px 8px',
-              borderRadius: '6px',
-              backgroundColor: 'rgba(16, 185, 129, 0.12)',
-              color: 'var(--primary)',
-              whiteSpace: 'nowrap'
-            }}>
-              {viewMode === 'pdf' ? (pdfJsDoc ? `Page ${safePdfPage} of ${pdfJsNumPages}` : 'PDF Stream') : `Page ${safeCurrentPage} of ${totalPages}`}
-            </div>
+        {/* Right Actions: Page Badge, AI, Notes, Links, Theme, Delete */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <span style={{
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            padding: '3px 9px',
+            borderRadius: '6px',
+            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+            color: 'var(--primary)',
+            whiteSpace: 'nowrap'
+          }}>
+            Page {safeCurrentPage} / {totalPages}
+          </span>
+
+          <button
+            type="button"
+            onClick={handleOpenAiPanel}
+            className="btn-primary"
+            style={{ padding: '5px 10px', fontSize: '0.78rem', backgroundColor: showAiPanel ? 'var(--secondary)' : undefined, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            title="Open AI Paper Assistant"
+          >
+            <Sparkles size={14} /> <span className="btn-text">AI</span>
+          </button>
+
+          {(resource.downloadUrl || resource.sourceUrl) && (
+            <a
+              href={resource.downloadUrl || resource.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ padding: '6px', color: '#10b981', display: 'inline-flex', alignItems: 'center' }}
+              title="Download or View Original Source"
+            >
+              <Download size={16} />
+            </a>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
-            {hasPdfSource && (
-              <div style={{ display: 'flex', backgroundColor: 'var(--bg-card)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                <button onClick={() => setViewMode('pdf')} style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'pdf' ? 'var(--primary)' : 'transparent', color: viewMode === 'pdf' ? '#fff' : 'var(--text-muted)', border: 'none', cursor: 'pointer' }}>PDF</button>
-                <button onClick={() => setViewMode('page')} style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: viewMode === 'page' ? 'var(--primary)' : 'transparent', color: viewMode === 'page' ? '#fff' : 'var(--text-muted)', border: 'none', cursor: 'pointer' }}>Pages</button>
-              </div>
-            )}
+          <button
+            type="button"
+            onClick={() => { setShowNotesDrawer(!showNotesDrawer); setShowAiPanel(false); }}
+            style={{ padding: '6px', color: 'inherit', border: 'none', background: 'none', cursor: 'pointer' }}
+            title="Notes for this page"
+            aria-label={showNotesDrawer ? 'Hide notes panel' : 'Show notes panel'}
+            aria-expanded={showNotesDrawer}
+          >
+            <FileText size={16} aria-hidden="true" />
+          </button>
 
-            <button onClick={handleOpenAiPanel} className="btn-primary" style={{ padding: '5px 9px', fontSize: '0.78rem', backgroundColor: showAiPanel ? 'var(--secondary)' : undefined, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-              <Sparkles size={14} /> <span className="btn-text">AI</span>
+          <label htmlFor="reader-theme-select" className="sr-only">Reader colour theme</label>
+          <select
+            id="reader-theme-select"
+            value={readerTheme}
+            onChange={(e) => setReaderTheme(e.target.value)}
+            style={{ padding: '4px 6px', borderRadius: '6px', fontSize: '0.75rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'inherit' }}
+          >
+            <option value="light">☀️</option>
+            <option value="sepia">📜</option>
+            <option value="dark">🌙</option>
+          </select>
+
+          {onDeleteResource && (
+            <button
+              type="button"
+              onClick={handleDeleteRequest}
+              title="Delete paper"
+              aria-label={`Delete "${resource.title}" from library`}
+              style={{
+                padding: '5px',
+                borderRadius: '8px',
+                color: '#ef4444',
+                backgroundColor: 'rgba(239,68,68,0.1)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <Trash2 size={15} aria-hidden="true" />
             </button>
-
-            {(pdfMeta.resolvedUrl || resource.downloadUrl || resource.sourceUrl) && (
-              <a href={pdfMeta.resolvedUrl || resource.downloadUrl || resource.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '5px', color: '#10b981', display: 'inline-flex', alignItems: 'center' }} title="Download PDF">
-                <Download size={16} />
-              </a>
-            )}
-
-            <button type="button" onClick={() => { setShowNotesDrawer(!showNotesDrawer); setShowAiPanel(false); }} style={{ padding: '5px', color: 'inherit', border: 'none', background: 'none', cursor: 'pointer' }} title="Notes" aria-label={showNotesDrawer ? 'Hide notes panel' : 'Show notes panel'} aria-expanded={showNotesDrawer}>
-              <FileText size={16} aria-hidden="true" />
-            </button>
-
-            {!isSmallScreen && (
-              <>
-                {onDeleteResource && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteRequest}
-                    title="Delete paper"
-                    aria-label={`Delete "${resource.title}" from library`}
-                    style={{
-                      padding: '5px',
-                      borderRadius: '8px',
-                      color: '#ef4444',
-                      backgroundColor: 'rgba(239,68,68,0.1)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      border: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Trash2 size={15} aria-hidden="true" />
-                  </button>
-                )}
-
-                <label htmlFor="reader-theme-desktop" className="sr-only">Reader colour theme</label>
-                <select id="reader-theme-desktop" value={readerTheme} onChange={(e) => setReaderTheme(e.target.value)} style={{ padding: '4px 6px', borderRadius: '6px', fontSize: '0.75rem', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'inherit' }}>
-                  <option value="light">☀️</option>
-                  <option value="sepia">📜</option>
-                  <option value="dark">🌙</option>
-                </select>
-              </>
-            )}
-          </div>
+          )}
         </div>
       </header>
 
       {/* Main Body */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: isSmallScreen ? '16px' : '24px max(16px, (100vw - 840px) / 2)' }}>
+        <div style={{
+          flex: 1,
+          minWidth: 0,
+          overflowY: 'auto',
+          padding: isSmallScreen ? '16px' : '24px max(20px, (100vw - 860px) / 2)'
+        }}>
+          {/* Paper Metadata Header */}
           <div style={{ marginBottom: '20px' }}>
-            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.65rem', fontWeight: 800, marginBottom: '6px' }}>{resource.title}</h1>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, opacity: 0.85 }}>{resource.authors} ({resource.publicationYear})</div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--primary)', fontWeight: 600, marginTop: '4px' }}>Published in: {resource.journal || 'Academic Repository'}</div>
+            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: isSmallScreen ? '1.4rem' : '1.75rem', fontWeight: 800, marginBottom: '6px', lineHeight: 1.25 }}>
+              {resource.title}
+            </h1>
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, opacity: 0.85 }}>
+              {resource.authors} {resource.publicationYear ? `(${resource.publicationYear})` : ''}
+            </div>
+            {resource.journal && (
+              <div style={{ fontSize: '0.82rem', color: 'var(--primary)', fontWeight: 600, marginTop: '4px' }}>
+                Published in: {resource.journal}
+              </div>
+            )}
           </div>
 
-          {/* MODE 1: PDF VIEWER */}
-          {viewMode === 'pdf' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
-              {pdfMeta.sourceName && (
-                <div style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: '0.78rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <ShieldCheck size={16} /> Open-access copy loaded from alternative repository: <strong>{pdfMeta.sourceName}</strong>
-                </div>
-              )}
-
-              <div style={{ height: 'calc(100dvh - 200px)', minHeight: '480px', width: '100%', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: '#1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', overflow: 'auto' }}>
-                {(readerState === 'resolving' || pdfJsLoading) ? (
-                  <div style={{ textAlign: 'center', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                    <Loader2 size={36} className="animate-spin" style={{ color: 'var(--primary)' }} />
-                    <div style={{ fontWeight: 700 }}>{statusMessage}</div>
-                  </div>
-                ) : readerState === 'ready' && !pdfJsError ? (
-                  <canvas ref={pdfCanvasRef} style={{ maxWidth: '100%', height: 'auto', boxShadow: '0 4px 18px rgba(0,0,0,0.45)', borderRadius: '4px' }} />
-                ) : (
-                  <div style={{ padding: '32px', textAlign: 'center', color: '#fff', maxWidth: '420px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
-                    <FileCode size={42} style={{ color: 'var(--primary)' }} />
-                    <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>We couldn't retrieve a readable PDF automatically.</div>
-                    <div style={{ fontSize: '0.82rem', opacity: 0.8, lineHeight: 1.5 }}>
-                      The paper may still be freely available on the publisher's site or institutional catalog. You can open the direct link or switch to extracted text reading mode.
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                      {/* A locally uploaded PDF has no source URL, and an anchor
-                          with href={undefined} is a button that reloads the app. */}
-                      {(resource.downloadUrl || resource.sourceUrl) && (
-                        <a href={resource.downloadUrl || resource.sourceUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <ExternalLink size={14} /> Open Source
-                        </a>
-                      )}
-                      <button onClick={loadPdfDocument} className="btn-secondary" style={{ padding: '8px 14px', fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', backgroundColor: 'transparent' }}>
-                        <RefreshCw size={14} /> Try Again
-                      </button>
-                      <button onClick={() => setViewMode('page')} style={{ padding: '8px 16px', fontSize: '0.82rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', backgroundColor: 'transparent' }}>
-                        Read Available Text
-                      </button>
-                    </div>
-                  </div>
-                )}
+          {/* Active Extraction Loading Spinner */}
+          {isExtractingText && (
+            <div style={{ padding: '24px 16px', borderRadius: '12px', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center', marginBottom: '20px' }}>
+              <Loader2 size={28} className="animate-spin" style={{ color: 'var(--primary)' }} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)' }}>Extracting Paper Pages & Text...</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>Preparing pages for your reader</div>
               </div>
             </div>
           )}
 
-          {/* MODE 2: PAGINATED TEXT VIEWER */}
-          {viewMode === 'page' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
-              {/* Active Extraction Loading Spinner */}
-              {(isExtractingPdfText || readerState === 'resolving') && (
-                <div style={{ padding: '24px 16px', borderRadius: '12px', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center' }}>
-                  <Loader2 size={28} className="animate-spin" style={{ color: 'var(--primary)' }} />
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)' }}>Extracting Paper Pages & Text...</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>Retrieving research document content for your device</div>
-                  </div>
-                </div>
-              )}
-
-              {/* Compact prompt when text extraction is placeholder but a PDF file/source is attached */}
-              {!hasRealText && !isExtractingPdfText && readerState !== 'resolving' && hasPdfSource && (
-                <div style={{
-                  margin: '8px 0 12px',
-                  padding: '8px 14px',
-                  borderRadius: '10px',
-                  backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                  border: '1px solid rgba(59, 130, 246, 0.25)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '10px',
-                  flexWrap: 'wrap'
-                }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <FileText size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                    <span>Original PDF Document Attached</span>
-                  </div>
-                  <button
-                    onClick={() => setViewMode('pdf')}
-                    className="btn-primary"
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: '7px',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      marginLeft: 'auto'
-                    }}
-                  >
-                    Switch to PDF Mode
-                  </button>
-                </div>
-              )}
-
-              {/* The record says a PDF was attached, but its bytes are not on
-                  this device — either it was added elsewhere (sync carries the
-                  metadata only) or it was evicted when localStorage filled up.
-                  Saying so beats a reader that just looks empty. */}
-              {pdfMissingLocally && !isExtractingPdfText && (
-                <div style={{
-                  margin: '8px 0 12px',
-                  padding: '10px 14px',
-                  borderRadius: '10px',
-                  backgroundColor: 'rgba(245, 158, 11, 0.08)',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '8px'
-                }}>
-                  <FileSearch size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                    <strong style={{ color: 'var(--text-main)' }}>The original PDF file isn't stored on this device.</strong>{' '}
-                    {hasRealText
-                      ? 'The text below was extracted when the paper was added. Re-upload the PDF if you need the original pages.'
-                      : 'Re-upload the PDF from the device you added it on to read the original pages.'}
-                  </div>
-                </div>
-              )}
-
-              {/* External Link Banner when only abstract/summary is available in Pages mode */}
-              {isAbstractOnly && !isExtractingPdfText && (resource.sourceUrl || resource.downloadUrl || resource.doi) && (
-                <div style={{
-                  margin: '8px 0 12px',
-                  padding: '8px 14px',
-                  borderRadius: '10px',
-                  backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                  border: '1px solid rgba(59, 130, 246, 0.25)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '10px',
-                  flexWrap: 'wrap'
-                }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <ExternalLink size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                    <span>Viewing Abstract Summary</span>
-                  </div>
-                  <a
-                    href={resource.sourceUrl || resource.downloadUrl || (resource.doi ? `https://doi.org/${resource.doi}` : '#')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-primary"
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: '7px',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      whiteSpace: 'nowrap',
-                      marginLeft: 'auto'
-                    }}
-                  >
-                    <ExternalLink size={13} /> Read Full Paper
-                  </a>
-                </div>
-              )}
-
-              <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: '16px', fontFamily: 'var(--font-serif)', fontSize: `${fontSize}px`, lineHeight: 1.75 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-                  <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>Page {safeCurrentPage} of {totalPages}</h2>
-                </div>
-                <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{activePageText}</div>
+          {/* External Link Banner when only abstract is available */}
+          {isAbstractOnly && !isExtractingText && (resource.sourceUrl || resource.downloadUrl || resource.doi) && (
+            <div style={{
+              margin: '8px 0 16px',
+              padding: '10px 14px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(59, 130, 246, 0.08)',
+              border: '1px solid rgba(59, 130, 246, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <ExternalLink size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                <span>Viewing Abstract Summary</span>
               </div>
+              <a
+                href={resource.sourceUrl || resource.downloadUrl || (resource.doi ? `https://doi.org/${resource.doi}` : '#')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary"
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '7px',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  whiteSpace: 'nowrap',
+                  marginLeft: 'auto'
+                }}
+              >
+                <ExternalLink size={13} /> Read Full Paper Online
+              </a>
             </div>
           )}
+
+          {/* Paginated Page Content */}
+          <div style={{
+            borderTop: '2px solid var(--border-color)',
+            paddingTop: '18px',
+            fontFamily: 'var(--font-serif)',
+            fontSize: `${fontSize}px`,
+            lineHeight: 1.8,
+            minHeight: '400px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
+                Page {safeCurrentPage} of {totalPages}
+              </h2>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                {progressPercent}% completed
+              </span>
+            </div>
+            <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', letterSpacing: '0.01em' }}>
+              {activePageText}
+            </div>
+          </div>
         </div>
 
-        {/* AI PANEL */}
+        {/* AI Paper Assistant Drawer */}
         {showAiPanel && (
           <div className="ai-reader-panel" style={{ width: isSmallScreen ? '100%' : '420px', borderLeft: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -741,13 +515,28 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                 <Sparkles size={16} style={{ color: 'var(--primary)' }} />
                 <div style={{ fontWeight: 800 }}>AI Paper Assistant</div>
               </div>
-              <button type="button" onClick={() => setShowAiPanel(false)} aria-label="Close AI paper assistant" style={{ color: 'var(--text-muted)' }}><X size={18} aria-hidden="true" /></button>
+              <button type="button" onClick={() => setShowAiPanel(false)} aria-label="Close AI paper assistant" style={{ color: 'var(--text-muted)', border: 'none', background: 'none', cursor: 'pointer' }}>
+                <X size={18} aria-hidden="true" />
+              </button>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
               <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', flexWrap: 'wrap' }}>
                 {aiSummaryTypes.map(type => (
-                  <button key={type} onClick={() => { setAiSummaryType(type); handleAiGenerateSummary(type); }} style={{ padding: '5px 10px', borderRadius: '8px', fontSize: '0.73rem', backgroundColor: aiSummaryType === type ? 'var(--primary)' : 'var(--bg-main)', color: aiSummaryType === type ? '#fff' : 'var(--text-muted)', border: '1px solid var(--border-color)' }}>
+                  <button
+                    key={type}
+                    onClick={() => { setAiSummaryType(type); handleAiGenerateSummary(type); }}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: '8px',
+                      fontSize: '0.73rem',
+                      fontWeight: 600,
+                      backgroundColor: aiSummaryType === type ? 'var(--primary)' : 'var(--bg-main)',
+                      color: aiSummaryType === type ? '#fff' : 'var(--text-muted)',
+                      border: '1px solid var(--border-color)',
+                      cursor: 'pointer'
+                    }}
+                  >
                     {type}
                   </button>
                 ))}
@@ -788,44 +577,63 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
 
             <form onSubmit={handleAiAskQuestion} style={{ display: 'flex', gap: '8px', padding: '12px 16px', borderTop: '1px solid var(--border-color)' }}>
               <label htmlFor="reader-ai-question" className="sr-only">Ask a question about this paper</label>
-              <input id="reader-ai-question" type="text" value={aiQuestion} onChange={(e) => setAiQuestion(e.target.value)} placeholder="Ask about this paper..." style={{ flex: 1, padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.82rem' }} />
-              <button type="submit" className="btn-primary" aria-label="Send question to AI assistant" style={{ padding: '8px 12px' }}><Send size={14} aria-hidden="true" /></button>
+              <input
+                id="reader-ai-question"
+                type="text"
+                value={aiQuestion}
+                onChange={(e) => setAiQuestion(e.target.value)}
+                placeholder="Ask about this paper..."
+                style={{ flex: 1, padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', fontSize: '0.82rem' }}
+              />
+              <button type="submit" className="btn-primary" aria-label="Send question to AI assistant" style={{ padding: '8px 12px' }}>
+                <Send size={14} aria-hidden="true" />
+              </button>
             </form>
           </div>
         )}
       </div>
 
-      {/* Footer Controls */}
-      <footer style={{ padding: '12px 24px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--header-bg)' }}>
-        {viewMode === 'pdf' && pdfJsDoc ? (
-          <>
-            <button disabled={safePdfPage <= 1} onClick={() => setPdfJsPageNum(p => Math.max(1, p - 1))} style={{ opacity: safePdfPage <= 1 ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <ChevronLeft size={20} /> <span className="btn-text">Previous</span>
-            </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
-              <button onClick={() => setPdfJsScale(s => Math.max(0.6, +(s - 0.2).toFixed(2)))} style={{ fontWeight: 800, padding: '2px 6px' }}>-</button>
-              <span>{Math.round(pdfJsScale * 100)}%</span>
-              <button onClick={() => setPdfJsScale(s => Math.min(3, +(s + 0.2).toFixed(2)))} style={{ fontWeight: 800, padding: '2px 6px' }}>+</button>
-            </div>
-            <button disabled={safePdfPage >= pdfJsNumPages} onClick={() => setPdfJsPageNum(p => Math.min(pdfJsNumPages, p + 1))} style={{ opacity: safePdfPage >= pdfJsNumPages ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span className="btn-text">Next</span> <ChevronRight size={20} />
-            </button>
-          </>
-        ) : (
-          <>
-            <button disabled={safeCurrentPage <= 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} style={{ opacity: safeCurrentPage <= 1 ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <ChevronLeft size={20} /> <span className="btn-text">Previous</span>
-            </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
-              <button onClick={() => setFontSize(prev => Math.max(12, prev - 2))} style={{ fontWeight: 800, padding: '2px 6px' }}>A-</button>
-              <span>{fontSize}pt</span>
-              <button onClick={() => setFontSize(prev => Math.min(28, prev + 2))} style={{ fontWeight: 800, padding: '2px 6px' }}>A+</button>
-            </div>
-            <button disabled={safeCurrentPage >= totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} style={{ opacity: safeCurrentPage >= totalPages ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span className="btn-text">Next</span> <ChevronRight size={20} />
-            </button>
-          </>
-        )}
+      {/* Footer Controls: Previous, Font Size A- / A+, Next */}
+      <footer style={{ padding: '12px 24px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--header-bg)', flexShrink: 0 }}>
+        <button
+          disabled={safeCurrentPage <= 1}
+          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          style={{ opacity: safeCurrentPage <= 1 ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: '4px', cursor: safeCurrentPage <= 1 ? 'default' : 'pointer' }}
+          aria-label="Previous Page"
+        >
+          <ChevronLeft size={18} /> <span className="btn-text">Previous</span>
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.85rem' }}>
+          <button
+            type="button"
+            onClick={() => setFontSize(prev => Math.max(12, prev - 2))}
+            style={{ fontWeight: 800, padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', color: 'inherit', cursor: 'pointer' }}
+            title="Decrease font size"
+            aria-label="Decrease font size"
+          >
+            A-
+          </button>
+          <span style={{ fontWeight: 600, minWidth: '40px', textAlign: 'center' }}>{fontSize}pt</span>
+          <button
+            type="button"
+            onClick={() => setFontSize(prev => Math.min(28, prev + 2))}
+            style={{ fontWeight: 800, padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', color: 'inherit', cursor: 'pointer' }}
+            title="Increase font size"
+            aria-label="Increase font size"
+          >
+            A+
+          </button>
+        </div>
+
+        <button
+          disabled={safeCurrentPage >= totalPages}
+          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          style={{ opacity: safeCurrentPage >= totalPages ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: '4px', cursor: safeCurrentPage >= totalPages ? 'default' : 'pointer' }}
+          aria-label="Next Page"
+        >
+          <span className="btn-text">Next</span> <ChevronRight size={18} />
+        </button>
       </footer>
 
       {/* Notes Drawer */}
@@ -842,15 +650,17 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '-4px 0 20px rgba(0,0,0,0.1)',
-          zIndex: 110
+          zIndex: 520
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Notes for Page {currentPage}</h3>
-            <button type="button" onClick={() => setShowNotesDrawer(false)} aria-label="Close notes panel"><X size={18} aria-hidden="true" /></button>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Notes for Page {safeCurrentPage}</h3>
+            <button type="button" onClick={() => setShowNotesDrawer(false)} aria-label="Close notes panel" style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <X size={18} aria-hidden="true" />
+            </button>
           </div>
 
           <form onSubmit={handleAddNote} style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
-            <label htmlFor="reader-new-note" className="sr-only">Add a note for page {currentPage}</label>
+            <label htmlFor="reader-new-note" className="sr-only">Add a note for page {safeCurrentPage}</label>
             <input
               id="reader-new-note"
               type="text"
@@ -859,7 +669,9 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
               placeholder="Add observation..."
               style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}
             />
-            <button type="submit" className="btn-primary" aria-label="Save note" style={{ padding: '8px' }}><Send size={14} aria-hidden="true" /></button>
+            <button type="submit" className="btn-primary" aria-label="Save note" style={{ padding: '8px' }}>
+              <Send size={14} aria-hidden="true" />
+            </button>
           </form>
 
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>

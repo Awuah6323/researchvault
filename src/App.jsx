@@ -309,6 +309,7 @@ export default function App() {
     if (created && created.storageWarning) {
       toast({ message: created.storageWarning, tone: 'error' });
     }
+    return created;
   };
 
   const handleAddCategory = (newCat) => {

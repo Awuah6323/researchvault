@@ -3,30 +3,63 @@
  * Tiered fallback system: Local Base64 -> Direct Browser Fetch -> Backend Proxy -> OpenAlex/SemanticScholar OA Discovery
  */
 
+import { getPdfData } from './pdfStorage';
+
 const PDF_MAGIC_BYTES = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
 
 /**
  * Validates whether an ArrayBuffer or Uint8Array starts with the %PDF- magic signature
+ * Checks within first 1024 bytes to accommodate UTF-8 BOM, carriage returns, or comments.
  */
 export function validatePdfBuffer(arrayBuffer) {
-  if (!arrayBuffer || arrayBuffer.byteLength < 5) return false;
+  if (!arrayBuffer) return false;
   const bytes = arrayBuffer instanceof Uint8Array 
-    ? arrayBuffer.subarray(0, 5) 
-    : new Uint8Array(arrayBuffer, 0, 5);
-  return PDF_MAGIC_BYTES.every((byte, i) => bytes[i] === byte);
+    ? arrayBuffer 
+    : new Uint8Array(arrayBuffer);
+  if (bytes.length < 5) return false;
+  
+  const limit = Math.min(bytes.length - 4, 1024);
+  for (let i = 0; i < limit; i++) {
+    if (
+      bytes[i] === PDF_MAGIC_BYTES[0] &&
+      bytes[i + 1] === PDF_MAGIC_BYTES[1] &&
+      bytes[i + 2] === PDF_MAGIC_BYTES[2] &&
+      bytes[i + 3] === PDF_MAGIC_BYTES[3] &&
+      bytes[i + 4] === PDF_MAGIC_BYTES[4]
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
- * Normalizes Base64 or Data URLs into Uint8Array
+ * Normalizes Base64 or Data URLs into Uint8Array safely.
  */
 export function dataUrlToUint8Array(dataUrl) {
-  const parts = dataUrl.split(';base64,');
-  const raw = atob(parts[1] || parts[0]);
-  const uint8Array = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) {
-    uint8Array[i] = raw.charCodeAt(i);
+  if (!dataUrl) return new Uint8Array(0);
+  if (dataUrl instanceof Uint8Array) return dataUrl;
+  if (dataUrl instanceof ArrayBuffer) return new Uint8Array(dataUrl);
+
+  try {
+    let base64 = String(dataUrl);
+    if (base64.includes(';base64,')) {
+      base64 = base64.split(';base64,')[1];
+    } else if (base64.startsWith('data:')) {
+      base64 = base64.replace(/^data:.*?,/, '');
+    }
+    // Remove whitespace, linebreaks, and URL encodings
+    base64 = base64.replace(/[\r\n\s]/g, '');
+    const raw = atob(base64);
+    const uint8Array = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) {
+      uint8Array[i] = raw.charCodeAt(i);
+    }
+    return uint8Array;
+  } catch (err) {
+    console.warn('[pdfResolver] Failed to decode base64 string:', err);
+    return new Uint8Array(0);
   }
-  return uint8Array;
 }
 
 /**
@@ -125,11 +158,11 @@ export async function resolvePdfSource(resource, onStatusChange = () => {}, back
     console.log('[ResearchVault PDF] Initializing acquisition for:', resource.title);
   }
 
-  // 1. Local PDF Upload
+  // 1. Local PDF Upload (Memory / State / Prop)
   if (resource.pdfFileData) {
     onStatusChange('Preparing local document for reading...');
     const bytes = dataUrlToUint8Array(resource.pdfFileData);
-    if (validatePdfBuffer(bytes)) {
+    if (bytes && bytes.length > 50) {
       return {
         data: bytes,
         sourceType: 'local',
@@ -138,7 +171,23 @@ export async function resolvePdfSource(resource, onStatusChange = () => {}, back
     }
   }
 
-  const targetUrl = resource.resolvedPdfUrl || resource.downloadUrl;
+  // 1b. Local PDF Stored in IndexedDB
+  if (resource.id) {
+    try {
+      const storedBytes = await getPdfData(resource.id);
+      if (storedBytes && storedBytes.length > 50) {
+        return {
+          data: storedBytes,
+          sourceType: 'local',
+          resolvedUrl: null
+        };
+      }
+    } catch (e) {
+      // Continue to URL acquisition
+    }
+  }
+
+  const targetUrl = resource.resolvedPdfUrl || resource.downloadUrl || (resource.sourceUrl && resource.sourceUrl.endsWith('.pdf') ? resource.sourceUrl : null);
   if (!targetUrl) {
     throw new Error('No valid PDF download URL available');
   }
