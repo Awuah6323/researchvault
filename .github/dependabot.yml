@@ -1,0 +1,46 @@
+﻿# .github/dependabot.yml
+# Automated dependency security monitoring for ResearchVault.
+#
+# Without this, vulnerable dependencies are only caught when someone remembers
+# to run `npm audit`. With it, GitHub opens a PR automatically whenever a
+# dependency with a known CVE is discovered.
+#
+# npm is checked weekly. A stricter schedule (daily) is an option but generates
+# more PRs; weekly is the common production default.
+#
+# github-actions is checked monthly. Actions are a supply-chain attack surface:
+# a compromised action that has write access to your repo can exfiltrate secrets.
+
+version: 2
+updates:
+  # ---------------------------------------------------------------- npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    groups:
+      patch-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+    ignore:
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+    labels:
+      - "dependencies"
+      - "security"
+
+  # ---------------------------------------------------------- GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"

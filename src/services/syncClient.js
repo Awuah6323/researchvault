@@ -73,6 +73,30 @@ export function isSessionReady() {
 }
 
 /**
+ * A fresh access token for calling this app's own /api endpoints.
+ *
+ * getSession() is asked rather than reading cachedSession.access_token, because
+ * the cached copy can be minutes old and an access token is short-lived by
+ * design. The Supabase client refreshes it here if it is close to expiring, so
+ * a long reading session does not start getting 401s from the AI proxy while
+ * the app itself still looks signed in.
+ *
+ * Returns null when there is no session — the caller decides what that means.
+ */
+export async function getAccessToken() {
+  if (!isSupabaseConfigured() || !supabase) return null;
+
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) return null;
+    if (data?.session) cachedSession = data.session;
+    return data?.session?.access_token || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
  * Shapes a Supabase user into the profile the rest of the app already expects.
  * The extra fields live in user_metadata, set at signup, so no profiles table
  * is needed for them.

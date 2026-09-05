@@ -1,141 +1,183 @@
 // api/pdfProxy.js
-// ResearchVault Backend PDF Proxy Endpoint (Vercel Serverless Function)
-// Bypasses browser CORS restrictions, follows HTTP redirects server-side, validates binary %PDF- magic bytes, and enforces anti-SSRF protections.
+// ResearchVault PDF proxy (Vercel serverless function).
+//
+// Fetches an open-access PDF the browser could not fetch itself because of CORS,
+// following redirects server-side and validating that what came back is really
+// a PDF.
+//
+// This endpoint fetches a URL chosen by the caller, from inside the hosting
+// network, which is the textbook setup for SSRF. api/_lib/ssrf.js is what makes
+// that safe; the rules it enforces are re-applied to every redirect hop below,
+// because a redirect is a new request to a new host and an allowlist checked
+// only at the start protects nothing.
 
-const http = require('http');
-const https = require('https');
-const { URL } = require('url');
+import https from 'node:https';
+import { beginRequest, fail, clientIp } from './_lib/http.js';
+import { enforce, LIMITS } from './_lib/rateLimit.js';
+import { getUserFromRequest } from './_lib/auth.js';
+import { resolveSafeUrl, isUnsafeUrlError } from './_lib/ssrf.js';
 
 const PDF_MAGIC = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d]); // %PDF-
 
-function isIpPrivate(ip) {
-  if (!ip) return false;
-  return (
-    ip.startsWith('127.') ||
-    ip.startsWith('10.') ||
-    ip.startsWith('0.') ||
-    ip === '::1' ||
-    ip === 'localhost' ||
-    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip) ||
-    ip.startsWith('192.168.') ||
-    ip.startsWith('169.254.')
-  );
-}
+const MAX_BYTES = 50 * 1024 * 1024; // 50 MB, unchanged from before
+const MAX_REDIRECTS = 5;
+const TIMEOUT_MS = 15000;
+const MAX_URL_LENGTH = 2048;
 
-function fetchPdfWithRedirects(targetUrlStr, maxRedirects = 5) {
+/**
+ * Fetches one URL, following redirects, revalidating each hop.
+ *
+ * Two details carry most of the security weight:
+ *
+ *   1. `lookup` pins the connection to the address resolveSafeUrl() already
+ *      approved, instead of letting the socket resolve the name a second time.
+ *      Without it, a DNS server can answer "public" for the check and
+ *      "169.254.169.254" for the connection (DNS rebinding), and the check
+ *      would have been decoration.
+ *
+ *   2. Redirects are followed by recursion through resolveSafeUrl(), never by
+ *      handing `location` to the HTTP client. A public URL redirecting to
+ *      http://169.254.169.254/ is the standard way to walk past a check that
+ *      only looked at the URL the caller supplied.
+ */
+async function fetchPdf(rawUrl, redirectsLeft = MAX_REDIRECTS) {
+  if (redirectsLeft <= 0) throw new Error('Too many redirects');
+
+  // https only. An open-access PDF served over plain http would be readable
+  // and modifiable in transit by anything between us and the publisher.
+  const { url, address } = await resolveSafeUrl(rawUrl, { allowHttp: false });
+
   return new Promise((resolve, reject) => {
-    if (maxRedirects <= 0) {
-      return reject(new Error('Too many redirects'));
-    }
-
-    let parsedUrl;
-    try {
-      parsedUrl = new URL(targetUrlStr);
-    } catch (e) {
-      return reject(new Error('Invalid URL format'));
-    }
-
-    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-      return reject(new Error('Only HTTP/HTTPS allowed'));
-    }
-
-    if (isIpPrivate(parsedUrl.hostname)) {
-      return reject(new Error('Access to internal network addresses forbidden'));
-    }
-
-    const transport = parsedUrl.protocol === 'https:' ? https : http;
-
-    const req = transport.get(
-      parsedUrl.href,
+    const request = https.get(
+      url.href,
       {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'application/pdf,application/octet-stream;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9'
+          'User-Agent': 'ResearchVault/1.0 (+https://github.com/researchvault; academic PDF retrieval)',
+          Accept: 'application/pdf,application/octet-stream;q=0.9,*/*;q=0.8'
         },
-        timeout: 15000
+        timeout: TIMEOUT_MS,
+        // Pin to the vetted address; see note 1 above.
+        lookup: (_hostname, opts, callback) => {
+          const family = address.includes(':') ? 6 : 4;
+          if (opts?.all) return callback(null, [{ address, family }]);
+          return callback(null, address, family);
+        }
       },
-      (res) => {
-        // Handle HTTP redirects (301, 302, 303, 307, 308) server-side internally!
-        if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
-          const redirectUrl = new URL(res.headers.location, parsedUrl.href).href;
-          req.destroy();
-          return fetchPdfWithRedirects(redirectUrl, maxRedirects - 1)
-            .then(resolve)
-            .catch(reject);
+      (response) => {
+        const status = response.statusCode;
+
+        if ([301, 302, 303, 307, 308].includes(status) && response.headers.location) {
+          const next = new URL(response.headers.location, url.href).href;
+          response.destroy();
+          request.destroy();
+          fetchPdf(next, redirectsLeft - 1).then(resolve, reject);
+          return;
         }
 
-        if (res.statusCode !== 200) {
-          req.destroy();
-          return reject(new Error(`Remote server responded with HTTP ${res.statusCode}`));
+        if (status !== 200) {
+          response.destroy();
+          request.destroy();
+          reject(new Error(`Upstream responded ${status}`));
+          return;
+        }
+
+        // Reject an oversized body before downloading it, when the server was
+        // honest enough to declare the length.
+        const declared = Number(response.headers['content-length'] || 0);
+        if (declared > MAX_BYTES) {
+          response.destroy();
+          request.destroy();
+          reject(new Error('PDF exceeds the 50 MB limit'));
+          return;
         }
 
         const chunks = [];
-        let totalLength = 0;
-        let headerValidated = false;
+        let total = 0;
+        let validated = false;
 
-        res.on('data', (chunk) => {
+        response.on('data', (chunk) => {
           chunks.push(chunk);
-          totalLength += chunk.length;
+          total += chunk.length;
 
-          if (!headerValidated && totalLength >= 5) {
-            const buffer = Buffer.concat(chunks);
-            if (!buffer.subarray(0, 5).equals(PDF_MAGIC)) {
-              req.destroy();
-              return reject(new Error('Remote URL returned non-PDF payload'));
+          // Check the magic bytes as soon as five have arrived, so an HTML
+          // error page or a disguised payload is dropped after a few hundred
+          // bytes rather than after fifty megabytes.
+          if (!validated && total >= PDF_MAGIC.length) {
+            if (!Buffer.concat(chunks).subarray(0, PDF_MAGIC.length).equals(PDF_MAGIC)) {
+              response.destroy();
+              request.destroy();
+              reject(new Error('Upstream returned a non-PDF payload'));
+              return;
             }
-            headerValidated = true;
+            validated = true;
           }
 
-          if (totalLength > 50 * 1024 * 1024) {
-            req.destroy();
-            return reject(new Error('PDF size exceeds limit (50MB)'));
+          if (total > MAX_BYTES) {
+            response.destroy();
+            request.destroy();
+            reject(new Error('PDF exceeds the 50 MB limit'));
           }
         });
 
-        res.on('end', () => {
-          if (!headerValidated) {
-            return reject(new Error('Incomplete or non-PDF payload received'));
-          }
-          const fullBuffer = Buffer.concat(chunks);
-          resolve({ buffer: fullBuffer, contentType: res.headers['content-type'] || 'application/pdf' });
+        response.on('end', () => {
+          if (!validated) return reject(new Error('Incomplete or non-PDF payload'));
+          resolve(Buffer.concat(chunks));
         });
+
+        response.on('error', reject);
       }
     );
 
-    req.on('error', (err) => reject(new Error(`Proxy request failed: ${err.message}`)));
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Request to remote PDF server timed out'));
+    request.on('error', (err) => reject(new Error(`Upstream request failed: ${err.message}`)));
+    request.on('timeout', () => {
+      request.destroy();
+      reject(new Error('Upstream request timed out'));
     });
   });
 }
 
-module.exports = async function handler(req, res) {
-  // CORS Headers
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-Type, Date');
+export default async function handler(req, res) {
+  if (!beginRequest(req, res, { methods: ['GET'] })) return;
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  // Signed in where possible, IP otherwise. The reader resolves PDFs through
+  // several tiers and a hard auth requirement here would break that path for a
+  // user whose token is mid-refresh, so this endpoint identifies rather than
+  // gates — it exposes no secret, only bandwidth.
+  const user = await getUserFromRequest(req);
+  const identity = user ? `u:${user.id}` : `ip:${clientIp(req)}`;
+
+  if (!(await enforce(req, res, 'pdf', { ...LIMITS.PDF_PER_MINUTE, identity }))) return;
+
+  const target = req.query?.url;
+
+  if (!target || typeof target !== 'string') {
+    return fail(res, 400, 'A url query parameter is required');
   }
-
-  const targetUrlStr = req.query?.url || (req.url && req.url.includes('url=') ? req.url.split('url=')[1] : null);
-
-  if (!targetUrlStr) {
-    return res.status(400).json({ error: 'Missing required parameter: url' });
+  if (target.length > MAX_URL_LENGTH) {
+    return fail(res, 400, 'The url parameter is too long');
   }
 
   try {
-    const decodedUrl = decodeURIComponent(targetUrlStr);
-    const { buffer } = await fetchPdfWithRedirects(decodedUrl);
+    const pdf = await fetchPdf(target);
+
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Length', buffer.length);
-    return res.status(200).send(buffer);
+    res.setHeader('Content-Length', String(pdf.length));
+    // Never let a proxied document be interpreted as anything but a download,
+    // and never let it run script in this origin.
+    res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; sandbox");
+    // A public PDF is safely cacheable, and the reader retries this URL often.
+    res.setHeader('Cache-Control', 'private, max-age=300');
+
+    return res.status(200).send(pdf);
   } catch (err) {
-    console.warn('[pdfProxy Error]:', err.message);
-    return res.status(502).json({ error: err.message });
+    // The reason is logged, never returned. Telling a caller "connection
+    // refused" versus "blocked address" versus "404" turns this endpoint into
+    // an internal network scanner that reports its findings.
+    if (isUnsafeUrlError(err)) {
+      return fail(res, 400, 'That URL cannot be retrieved.', err.message);
+    }
+    return fail(res, 502, 'Unable to retrieve the document from its source.', err);
   }
-};
+}

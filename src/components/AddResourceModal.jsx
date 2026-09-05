@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Link2, FileText, Search, Loader2, UploadCloud, Check } from 'lucide-react';
 import { searchAcademicSources, suggestCategory } from '../services/academicSearch';
 import { extractTextFromPdfFile } from '../utils/pdfExtractor';
+import { validatePdfFile } from '../utils/fileValidation';
 import Modal from './Modal';
 
 export default function AddResourceModal({ onClose, onAdd, categories, onNavigateSearch }) {
@@ -24,11 +25,24 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
   const handlePdfChange = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      setPdfFileName(file.name);
+      // Size, extension, declared type, and the file's own magic bytes. The
+      // last one is the check that matters: the first three describe what the
+      // file claims to be, and renaming anything to .pdf satisfies all of them.
+      const check = await validatePdfFile(file);
+      if (!check.ok) {
+        setPdfFileName('');
+        setPdfFileData('');
+        setReadingFile(false);
+        setExtractionStatus(check.error);
+        e.target.value = '';
+        return;
+      }
+
+      setPdfFileName(check.name);
       setReadingFile(true);
       setExtractionStatus('Extracting text content from PDF...');
 
-      const cleanName = file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ');
+      const cleanName = check.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ');
       const autoTitle = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
       if (!title) {
         setTitle(autoTitle);
@@ -108,20 +122,25 @@ export default function AddResourceModal({ onClose, onAdd, categories, onNavigat
     if (!title.trim()) return;
 
     const rawExtracted = abstractText.trim();
-    const shortAbstract = rawExtracted.length > 400 
-      ? rawExtracted.slice(0, 400) + '...' 
+    const shortAbstract = rawExtracted.length > 400
+      ? rawExtracted.slice(0, 400) + '...'
       : (rawExtracted || 'Imported paper document in ResearchVault digital library.');
 
     const finalCategory = (category && category !== 'Computer Science') ? category : suggestCategory(title.trim(), rawExtracted);
 
+    // The vault is capped at 3 MB by a database constraint, and a rejected push
+    // is a confusing failure that surfaces long after the paste that caused it.
+    // Bounding the fields here keeps a runaway value from ever getting that far.
+    const capped = (value, max) => String(value || '').slice(0, max);
+
     onAdd({
-      title: title.trim(),
-      authors: authors.trim() || 'User Imported Author',
+      title: capped(title.trim(), 500),
+      authors: capped(authors.trim() || 'User Imported Author', 500),
       publicationYear: parseInt(publicationYear) || 2024,
-      category: finalCategory,
+      category: capped(finalCategory, 100),
       resourceType,
-      abstractText: shortAbstract,
-      fullText: rawExtracted || shortAbstract,
+      abstractText: capped(shortAbstract, 2000),
+      fullText: capped(rawExtracted || shortAbstract, 500000),
       pdfFileName,
       pdfFileData,
       openAccess: true,

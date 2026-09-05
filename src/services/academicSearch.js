@@ -17,14 +17,40 @@ const SAMPLE_PAPERS = [
   }
 ];
 
+/** Longest query worth sending. Beyond this the upstream APIs reject it anyway. */
+const MAX_QUERY_LENGTH = 500;
+
+/**
+ * Bounds and cleans a search query before it is put into a third-party URL.
+ *
+ * Every interpolation below goes through encodeURIComponent, so this is not
+ * what prevents parameter injection. What it prevents is sending an unbounded
+ * or control-character-laden string to Semantic Scholar, OpenAlex and Crossref
+ * — three services whose rate limits and blocklists apply to the user's own IP.
+ */
+function normalizeQuery(raw) {
+  return String(raw || '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_QUERY_LENGTH);
+}
+
 export async function searchAcademicSources(query, page = 1, perPage = 10, sortBy = 'relevance') {
-  if (!query || !query.trim()) {
+  const clean = normalizeQuery(query);
+
+  if (!clean) {
     return { results: [], totalCount: 0, page: 1, perPage, totalPages: 0 };
   }
-  const clean = query.trim();
+
+  // Pagination arrives from a select element, but it is still arithmetic that
+  // ends up in a URL, so it is clamped rather than trusted.
+  page = Math.max(1, Math.min(1000, Math.floor(Number(page)) || 1));
+  perPage = Math.max(1, Math.min(100, Math.floor(Number(perPage)) || 10));
 
   const isDoi = /^10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/.test(clean);
-  
+
   const authorMatch = clean.match(/^author:(?:"([^"]+)"|([^\s]+))/i);
   const explicitAuthor = authorMatch ? (authorMatch[1] || authorMatch[2]) : null;
 

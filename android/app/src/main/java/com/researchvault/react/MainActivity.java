@@ -29,11 +29,19 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
+        // The app is a bundled asset that loads no local files at runtime, so
+        // file:// and content:// access buy nothing and would let a compromised
+        // page read app-private storage.
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        settings.setAllowFileAccessFromFileURLs(false);
+        settings.setAllowUniversalAccessFromFileURLs(false);
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        // Never load http:// subresources into an https:// page. The manifest
+        // already sets usesCleartextTraffic="false"; ALWAYS_ALLOW here was
+        // quietly contradicting it for anything the WebView loaded.
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
         webView.loadUrl("file:///android_asset/www/index.html");

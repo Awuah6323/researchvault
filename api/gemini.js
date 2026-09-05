@@ -1,5 +1,25 @@
+// api/gemini.js
+// ResearchVault Gemini proxy (Vercel serverless function).
+//
+// The whole reason this endpoint exists is that GEMINI_API_KEY must never reach
+// the browser. Everything else here follows from that: because the key is
+// spendable and this is the only door to it, the endpoint has to care who is
+// knocking, how often, and how large the request is.
+
+import { beginRequest, fail, readJsonBody, clientIp } from './_lib/http.js';
+import { enforce, LIMITS } from './_lib/rateLimit.js';
+import { getUserFromRequest, isAuthConfigured } from './_lib/auth.js';
+import { validate, str, bool, stripControlChars, isValidationError } from './_lib/validate.js';
+
 const MODEL = 'gemini-3.5-flash';
 const API_ROOT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}`;
+
+// The largest prompt the app itself builds is the multi-paper synthesis, whose
+// content budget is 24,000 characters plus its instructions. 48 KB leaves room
+// for that with margin, and refuses anything that is not this app.
+const MAX_PROMPT_CHARS = 48000;
+const MAX_BODY_BYTES = 128 * 1024;
+const UPSTREAM_TIMEOUT_MS = 55000; // under the 60s function limit in vercel.json
 
 const MODES = {
   chat: {
@@ -20,6 +40,12 @@ const MODES = {
     maxOutputTokens: 4096,
     thinkingConfig: { thinkingLevel: 'low' }
   }
+};
+
+const SCHEMA = {
+  promptText: str({ required: true, min: 1, max: MAX_PROMPT_CHARS }),
+  mode: str({ required: false, allow: Object.keys(MODES) }),
+  stream: bool({ fallback: false })
 };
 
 function extractText(rawEvent) {
@@ -67,23 +93,75 @@ function callGemini(promptText, generationConfig, apiKey, sse, signal) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (!beginRequest(req, res, { methods: ['POST'] })) return;
+
+  // ---------------------------------------------------------------- WHO
+  //
+  // Without this the endpoint is an open, unmetered LLM relay billed to the
+  // project owner: anyone who reads the JavaScript bundle knows the path and
+  // the body shape. The client already holds a Supabase access token for every
+  // signed-in user, so sending it costs the app nothing.
+  //
+  // The guard is conditional on Supabase being configured because the app is
+  // designed to run without it (see .env.example: no credentials means local
+  // only). A deployment in that state cannot verify anyone, and demanding a
+  // token there would simply break the AI features. Anonymous callers still
+  // face the IP-keyed rate limit below.
+  const user = await getUserFromRequest(req);
+
+  if (isAuthConfigured() && !user) {
+    return fail(res, 401, 'Sign in to use the AI features.');
   }
 
-  const { promptText, stream, mode } = req.body || {};
+  const identity = user ? `u:${user.id}` : `ip:${clientIp(req)}`;
 
-  if (!promptText) {
-    return res.status(400).json({ error: 'Missing promptText in request body' });
+  // Two windows: a burst limit for a runaway client, and a daily ceiling so a
+  // single account cannot quietly spend the month's quota one minute at a time.
+  if (!(await enforce(req, res, 'ai', {
+    ...LIMITS.AI_PER_MINUTE,
+    identity,
+    message: 'You are sending AI requests too quickly. Please wait a moment.'
+  }))) return;
+
+  if (!(await enforce(req, res, 'ai:day', {
+    ...LIMITS.AI_PER_DAY,
+    identity,
+    message: 'Daily AI request limit reached. Please try again tomorrow.'
+  }))) return;
+
+  // ---------------------------------------------------------------- WHAT
+
+  let input;
+  try {
+    input = validate(await readJsonBody(req, MAX_BODY_BYTES), SCHEMA);
+  } catch (err) {
+    if (err?.code === 'BODY_TOO_LARGE') {
+      return fail(res, 413, 'That request is too large to process.');
+    }
+    if (isValidationError(err)) {
+      // Validation messages are written by us and name only the field, so they
+      // are safe to return and genuinely useful to a developer.
+      return fail(res, 400, err.message);
+    }
+    return fail(res, 400, 'Invalid request.', err);
+  }
+
+  // Control and bidi characters are stripped after length validation: they
+  // carry no meaning for the model and are a way to smuggle text past a human
+  // reading the prompt.
+  const promptText = stripControlChars(input.promptText);
+  if (!promptText.trim()) {
+    return fail(res, 400, 'promptText is required');
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
-
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server' });
+    // The client is told the feature is unavailable; the operator is told why.
+    // Reversing those two is how a misconfiguration becomes a disclosure.
+    return fail(res, 503, 'The AI service is not available right now.', 'GEMINI_API_KEY is not set');
   }
 
-  const generationConfig = MODES[mode] || MODES.chat;
+  const generationConfig = MODES[input.mode] || MODES.chat;
 
   const controller = new AbortController();
   const onClientGone = () => {
@@ -91,21 +169,26 @@ export default async function handler(req, res) {
   };
   res.on('close', onClientGone);
 
+  // An upstream that never answers would otherwise hold the function open until
+  // the platform kills it, with the client waiting the whole time.
+  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+
   try {
-    if (!stream) {
+    if (!input.stream) {
       const response = await callGemini(promptText, generationConfig, apiKey, false, controller.signal);
 
       if (!response.ok) {
-        const errBody = await response.text().catch(() => '');
-        console.error(`Gemini API error ${response.status}:`, errBody);
-        return res.status(response.status).json({ error: 'Gemini API request failed', details: errBody });
+        const detail = await response.text().catch(() => '');
+        // Upstream status and body stay in the log. A provider error body can
+        // quote the request, name internal endpoints, and describe the account.
+        return fail(res, 502, 'The AI service could not complete that request.', `Gemini ${response.status}: ${detail}`);
       }
 
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!text) {
-        return res.status(502).json({ error: 'Gemini API returned no text' });
+        return fail(res, 502, 'The AI service returned an empty response.', JSON.stringify(data).slice(0, 500));
       }
 
       return res.status(200).json({ text });
@@ -114,11 +197,8 @@ export default async function handler(req, res) {
     const upstream = await callGemini(promptText, generationConfig, apiKey, true, controller.signal);
 
     if (!upstream.ok || !upstream.body) {
-      const errBody = await upstream.text().catch(() => '');
-      console.error(`Gemini stream error ${upstream.status}:`, errBody);
-      return res
-        .status(upstream.ok ? 502 : upstream.status)
-        .json({ error: 'Gemini API request failed', details: errBody });
+      const detail = await upstream.text().catch(() => '');
+      return fail(res, 502, 'The AI service could not complete that request.', `Gemini stream ${upstream.status}: ${detail}`);
     }
 
     let headersSent = false;
@@ -127,7 +207,8 @@ export default async function handler(req, res) {
       headersSent = true;
       res.writeHead(200, {
         'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
+        'Cache-Control': 'no-store, no-transform',
+        'X-Content-Type-Options': 'nosniff',
         'X-Accel-Buffering': 'no',
         Connection: 'keep-alive'
       });
@@ -164,21 +245,19 @@ export default async function handler(req, res) {
     if (buffer.trim()) emit(buffer);
 
     if (!headersSent) {
-      return res.status(502).json({ error: 'Gemini API returned no text' });
+      return fail(res, 502, 'The AI service returned an empty response.');
     }
 
     return res.end();
   } catch (err) {
     if (err?.name === 'AbortError') {
-      if (!res.headersSent) return res.end();
+      // Either the client left or the upstream timed out. Both end the same way.
       return res.end();
     }
 
-    console.error('Gemini proxy error:', err);
-
-    if (res.headersSent) return res.end();
-    return res.status(500).json({ error: 'Internal server error calling Gemini API' });
+    return fail(res, 500, 'Unable to complete the request. Please try again.', err);
   } finally {
+    clearTimeout(timeout);
     res.off?.('close', onClientGone);
   }
 }

@@ -438,7 +438,15 @@ export const storage = {
 
   addCategory(category) {
     const list = this.getCategories();
-    list.push({ ...category, id: Date.now(), count: 0 });
+    // Rebuilt from named fields rather than spread: a spread would carry any
+    // key the caller happened to include straight into the synced vault.
+    list.push({
+      id: Date.now(),
+      name: String(category?.name || '').slice(0, 100),
+      description: String(category?.description || '').slice(0, 300),
+      icon: String(category?.icon || 'BookOpen').slice(0, 50),
+      count: 0
+    });
     this.saveCategories(list);
     return list;
   },
@@ -515,8 +523,12 @@ export const storage = {
     const notes = this.getNotes(resourceId);
     notes.unshift({
       id: Date.now(),
-      noteText,
-      pageNumber,
+      // Bounded because notes are synced into the vault, which Postgres caps at
+      // 3 MB. Without a limit here a pasted document is accepted locally and
+      // then silently fails to sync, which looks like a sync bug rather than
+      // the oversized note it actually is.
+      noteText: String(noteText || '').slice(0, 20000),
+      pageNumber: Number.isFinite(Number(pageNumber)) ? Number(pageNumber) : null,
       createdAt: new Date().toLocaleDateString()
     });
     this.saveNotes(resourceId, notes);

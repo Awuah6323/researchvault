@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Shield, Download, Upload, Check } from 'lucide-react';
 import { storage } from '../services/storage';
 import { useToast, useAnnounce } from '../components/FeedbackProvider';
+import { validateBackupFile, isValidBackupShape } from '../utils/fileValidation';
 
 export default function ProfileSettings({ userProfile, onSaveProfile, resources, onImportBackup, onLogout, onOpenInstallPwa, isStandalone }) {
   const [name, setName] = useState(userProfile?.name || '');
@@ -42,11 +43,21 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Checked before reading: JSON.parse on a very large string is what would
+    // freeze the tab, so an oversized file has to be refused rather than read
+    // and then rejected.
+    const check = validateBackupFile(file);
+    if (!check.ok) {
+      notify({ message: check.error, tone: 'error' });
+      e.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target.result);
-        if (Array.isArray(parsed)) {
+        if (isValidBackupShape(parsed)) {
           if (onImportBackup) {
             onImportBackup(parsed);
             setImportStatus(`Successfully restored ${parsed.length} papers!`);
