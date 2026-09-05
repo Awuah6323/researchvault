@@ -20,14 +20,16 @@ import {
   HelpCircle,
   X,
   Zap,
-  Info
+  Info,
+  PlusCircle,
+  Layers
 } from 'lucide-react';
 
 export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
-  const [slideDuration, setSlideDuration] = useState(10); // Default 10 seconds before moving to next slide
+  const [slideDuration, setSlideDuration] = useState(10);
   const touchStartX = useRef(null);
 
   const slides = [
@@ -37,149 +39,174 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       badgeIcon: Compass,
       title: 'Welcome to ResearchVault',
       subtitle: 'Your Smart AI-Powered Academic Workspace',
-      description: 'ResearchVault simplifies reading, organizing, and synthesizing academic papers. Search literature, generate AI summaries, manage notes, and sync across devices.',
-      navGuide: 'Use the Sidebar on desktop or the Bottom Navigation bar on mobile to switch between features seamlessly.',
+      description: 'ResearchVault centralizes your scholarly workflow: discover open-access research, organize custom paper libraries, read documents offline, run AI comparative synthesis, export citations, and sync seamlessly across devices.',
+      navGuide: 'Use the Sidebar on desktop or the Bottom Navigation bar on mobile to switch between features. The top navbar provides quick access to search, themes, cloud sync, and profile settings.',
       actionText: 'Explore App Features',
       actionTab: 'home',
-      gradient: 'linear-gradient(135deg, rgba(37, 99, 235, 0.15) 0%, rgba(147, 51, 234, 0.15) 100%)',
       accentColor: 'var(--primary)',
       icon: BookOpen,
       features: [
         'Centralized Literature Management',
-        'Gemini AI Summaries & Insights',
-        'Automatic Multi-Format Citations',
-        'Offline PWA & Cloud Vault Sync'
+        'Distraction-Free PDF Document Reader',
+        'Multi-Paper AI Literature Synthesis',
+        'Cross-Device Cloud Vault Sync'
       ]
     },
     {
       id: 'search',
-      badge: 'Navigation & Discovery',
+      badge: 'Discovery & Search',
       badgeIcon: Search,
       title: 'Global Academic Search',
-      subtitle: 'Access 200M+ Research Papers Instantly',
-      description: 'Discover literature from OpenAlex, arXiv, and CrossRef directly by topic, author name, or DOI string.',
-      navGuide: 'Click "Academic Search" in the sidebar or press the top search bar anytime to query external literature and import papers with 1-click.',
+      subtitle: 'Query 200M+ Papers via OpenAlex, arXiv & CrossRef',
+      description: 'Discover literature from OpenAlex, arXiv, and CrossRef directly by topic, author name, or DOI string. Filter results by publication year, citations, and open-access status, then import papers into your library in one click.',
+      navGuide: 'Click "Academic Search" in the sidebar or mobile menu, or type in the top search bar anytime to search literature. Click the "+" button on any search result card to import it directly.',
       actionText: 'Try Academic Search',
       actionTab: 'search',
-      gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%)',
       accentColor: '#10b981',
       icon: Search,
       features: [
         'Search OpenAlex, arXiv & CrossRef',
         'Filter by Year, Citations & Open Access',
-        'Import Papers to Library in 1 Click',
-        'Direct PDF & Publisher DOI links'
+        'Direct PDF & Publisher DOI Resolution',
+        '1-Click Library Import with Metadata'
+      ]
+    },
+    {
+      id: 'add',
+      badge: 'Adding Literature',
+      badgeIcon: PlusCircle,
+      title: 'Add Papers by DOI, URL, or PDF Upload',
+      subtitle: 'Flexible Ingestion with Offline Document Storage',
+      description: 'Add literature to your library in seconds: enter a DOI or paper URL for automatic metadata retrieval, upload your own local PDF files directly from your computer or phone, or enter citation details manually.',
+      navGuide: 'Click the "+ Add Resource" button in the sidebar or mobile drawer anytime. Switch between DOI Auto-Fetch, Local PDF File Upload, or Manual Entry tabs.',
+      actionText: 'Add a Paper Now',
+      actionTab: 'addModal',
+      accentColor: '#06b6d4',
+      icon: PlusCircle,
+      features: [
+        'Auto-Fetch Metadata from DOI or URL',
+        'Direct Local PDF Upload & Caching',
+        'Magic-Byte Verified Document Ingestion',
+        'Manual Entry for Books & Theses'
       ]
     },
     {
       id: 'library',
-      badge: 'Organization',
+      badge: 'Library & Organization',
       badgeIcon: Library,
-      title: 'My Library & PDF Document Reader',
-      subtitle: 'Organize, Categorize & Annotate Papers',
-      description: 'Group papers into custom research folders, assign tags, track reading progress, and read papers in our distraction-free document viewer.',
-      navGuide: 'Navigate to "My Library" to filter by tags or "Categories & Folders" to manage topics. Click "Read" on any card to launch the reader.',
+      title: 'My Library, Categories & Reading Progress',
+      subtitle: 'Folder Hierarchies, Tags & Progress Percentage',
+      description: 'Structure your research into custom topic folders and category trees. Tag papers by methodology, star favorites, and track reading status (Unread, Reading, Completed) with individual progress percentages.',
+      navGuide: 'Navigate to "My Library" to browse and filter saved papers, or go to "Categories & Folders" to manage research hierarchies and organize papers by research topic.',
       actionText: 'Open My Library',
       actionTab: 'library',
-      gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(239, 68, 68, 0.15) 100%)',
       accentColor: '#f59e0b',
       icon: Library,
       features: [
         'Custom Folder & Category Trees',
-        'Built-in Web & PDF Reader',
-        'Reading Progress Tracker (%)',
-        'Star & Favorite Important Papers'
+        'Multi-Tag Filtering & Starred Favorites',
+        'Reading Status & Progress Tracking (%)',
+        'Instant Library Search & Sorting'
+      ]
+    },
+    {
+      id: 'reader',
+      badge: 'Document Reader',
+      badgeIcon: FileText,
+      title: 'Distraction-Free PDF Reader & In-Doc AI',
+      subtitle: 'Read Offline, Annotate & Query Papers Directly',
+      description: 'Read PDFs and academic papers in a clean, distraction-free viewer with zoom controls, fullscreen mode, and reading themes. Use the embedded In-Reader AI assistant to summarize sections or explain complex math and methods on the fly.',
+      navGuide: 'Click the "Read" button on any paper card in your library to launch the viewer. Open the "AI Assistant" sidebar inside the reader to interrogate the active document.',
+      actionText: 'View Library Documents',
+      actionTab: 'library',
+      accentColor: '#8b5cf6',
+      icon: FileText,
+      features: [
+        'Full-Featured PDF Viewer with Zoom & Fullscreen',
+        'Embedded In-Reader AI Copilot',
+        'Section Summaries & Concept Explanations',
+        'Reading Progress Autosave'
       ]
     },
     {
       id: 'synthesis',
       badge: 'AI Literature Review',
       badgeIcon: Sparkles,
-      title: 'AI Literature Review & Matrix Synthesis',
-      subtitle: 'Compare Papers & Extract Research Gaps',
-      description: 'Synthesize multiple papers into structured review matrices. Compare methodologies, core findings, sample sizes, and future research directions.',
-      navGuide: 'Click "AI Literature Review" in the sidebar to run synthesis matrices across saved papers or click "AI Summary" on any paper card.',
+      title: 'AI Literature Review & Synthesis Matrix',
+      subtitle: 'Compare Methodologies, Findings & Research Gaps',
+      description: 'Select multiple papers from your library to generate side-by-side comparative matrices. Gemini AI synthesizes core findings, compares study populations, extracts methodologies, identifies contradictions, and highlights unanswered research gaps.',
+      navGuide: 'Click "AI Literature Review" in the sidebar or mobile menu. Select two or more papers using the checkboxes, choose your synthesis focus, and click "Generate Review Matrix".',
       actionText: 'Launch AI Synthesis',
       actionTab: 'synthesis',
-      gradient: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)',
       accentColor: '#a855f7',
       icon: Sparkles,
       features: [
-        'Comparative Paper Matrix Grid',
-        'Methodology & Findings Extraction',
-        'Automatic Executive Summaries',
-        'Export Synthesis to Markdown/PDF'
+        'Cross-Paper Comparative Analysis Grid',
+        'Methodology & Sample Size Comparison',
+        'Research Gaps & Future Directions Extraction',
+        'Export Matrix to Markdown or Formatted PDF'
       ]
     },
     {
       id: 'aichat',
       badge: 'AI Research Assistant',
       badgeIcon: MessageSquare,
-      title: 'Conversational AI Research Assistant',
-      subtitle: 'Ask Questions & Brainstorm Hypotheses',
-      description: 'Chat directly with Gemini AI about your research topics. Interrogate paper contents, request plain-language explanations, or formulate research questions.',
-      navGuide: 'Select "AI Chat Assistant" from the menu to initiate an interactive Q&A session with prompt shortcuts for literature analysis.',
+      title: 'Conversational Research Assistant & Brainstorming',
+      subtitle: 'Academic Q&A with Pre-Built Research Prompts',
+      description: 'Engage with a specialized academic AI assistant powered by Gemini. Brainstorm hypotheses, critique argumentation, draft thesis statements, or interrogate literature with prompt templates designed specifically for researchers.',
+      navGuide: 'Click "AI Chat Assistant" in the menu. Use the prompt shortcut chips above the input box (e.g., "Explain Methodology", "Find Research Gaps") for instant analysis.',
       actionText: 'Chat with AI Assistant',
       actionTab: 'aichat',
-      gradient: 'linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%)',
-      accentColor: '#06b6d4',
+      accentColor: '#3b82f6',
       icon: MessageSquare,
       features: [
-        'Context-Aware Academic Q&A',
-        'Instant Literature Summarization',
-        'Hypothesis & Thesis Drafting',
-        'Customizable Prompt Templates'
+        'Context-Aware Academic Dialogue',
+        'Pre-Built Research Prompt Shortcuts',
+        'Hypothesis & Argument Critique',
+        'Safe Markdown Output with Math & Tables'
       ]
     },
     {
       id: 'notes',
       badge: 'Citations & Notes',
       badgeIcon: Quote,
-      title: 'Research Notes & Automatic Citations',
-      subtitle: '1-Click APA 7, BibTeX & IEEE Export',
-      description: 'Never format citations by hand again. Copy accurate APA 7, BibTeX, IEEE, or MLA references instantly, and maintain annotated research notes.',
-      navGuide: 'Click the quote icon on any paper card for quick citations, or visit "Research Notes" to compile personal annotations.',
-      actionText: 'View Research Notes',
+      title: 'Instant Multi-Format Citations & Research Notes',
+      subtitle: '1-Click APA 7, BibTeX & Paper-Linked Notes',
+      description: 'Generate accurate citations in APA 7th, MLA 9th, Chicago, Harvard, IEEE, or BibTeX format in a single click. Maintain structured research notes with rich text and Markdown, linked directly to papers in your library.',
+      navGuide: 'Click the quote icon (" ") on any paper card for instant citations. Click "Research Notes" in the sidebar to create, edit, and organize notes linked to your literature.',
+      actionText: 'Manage Research Notes',
       actionTab: 'notes',
-      gradient: 'linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(244, 63, 94, 0.15) 100%)',
       accentColor: '#ec4899',
       icon: Quote,
       features: [
-        'APA 7, BibTeX, IEEE & MLA Citations',
-        'Rich Text & Markdown Note Editor',
-        'Paper-Linked Annotation Logs',
-        'Quick Copy to Clipboard & LaTeX'
+        'APA 7, BibTeX, IEEE, MLA & Chicago Citations',
+        '1-Click Copy to Clipboard & LaTeX .bib',
+        'Markdown & Rich Text Note Editor',
+        'Notes Linked Directly to Library Papers'
       ]
     },
     {
       id: 'profile',
       badge: 'Cloud Sync & Customization',
       badgeIcon: Cloud,
-      title: 'Multi-Device Cloud Sync & Themes',
-      subtitle: 'Sync Vault Data & Personalize Style',
-      description: 'Sign into Cloud Vault to sync papers and notes across desktop, tablet, and mobile. Customize visual themes including Warm Sepia, Cyber Emerald, and OLED Dark.',
-      navGuide: 'Go to "Profile & Settings" to log in, enable background cloud sync, or change your theme via the top navbar palette button.',
+      title: 'Multi-Device Cloud Sync, Themes & PWA App',
+      subtitle: 'Supabase Sync, Offline Reading & Full Backups',
+      description: 'Sign in to sync your library and notes seamlessly across phone, tablet, and desktop via Supabase. Install the PWA for offline reading, switch between 4 curated visual themes, and export or restore complete JSON backups.',
+      navGuide: 'Go to "Profile & Settings" to log in, trigger cloud sync, or export backups. Switch themes via the palette button in the top navbar, or click "Install App" to add to your home screen.',
       actionText: 'Profile & Settings',
       actionTab: 'profile',
-      gradient: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%)',
       accentColor: '#22c55e',
       icon: Cloud,
       features: [
-        'Cloud Vault Multi-Device Sync',
-        '4 Premium Visual Themes',
-        'PWA Offline App Installation',
-        'Data Export & Vault Backup'
+        'Automatic Multi-Device Supabase Sync',
+        '4 Reading Themes (Sepia, Emerald, Blue, Dark)',
+        'Offline PWA Installation (Desktop & Mobile)',
+        'Complete JSON Library Backup Export & Restore'
       ]
     }
   ];
 
   const totalSlides = slides.length;
-
-  const handleCycleSpeed = () => {
-    if (slideDuration === 5) setSlideDuration(7);
-    else if (slideDuration === 7) setSlideDuration(10);
-    else setSlideDuration(5);
-  };
 
   useEffect(() => {
     if (!isPlaying || isHovered) return;
@@ -251,6 +278,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
     >
       {/* Floating Side Arrow Buttons: Left (Previous) */}
       <button
+        type="button"
         onClick={handlePrev}
         className="carousel-side-arrow"
         aria-label="Previous Slide"
@@ -283,6 +311,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
 
       {/* Floating Side Arrow Buttons: Right (Next) */}
       <button
+        type="button"
         onClick={handleNext}
         className="carousel-side-arrow"
         aria-label="Next Slide"
@@ -312,7 +341,8 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
       >
         <ChevronRight size={22} />
       </button>
-      {/* Dynamic Animated Progress Bar (5s-10s Auto-Slide Timer) */}
+
+      {/* Dynamic Animated Progress Bar (Auto-Slide Timer) */}
       <div style={{
         position: 'absolute',
         top: 0,
@@ -334,12 +364,12 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
         />
       </div>
 
-      {/* Main Slide Card Container */}
+      {/* Main Slide Card Container - Clean Solid Background (No Gradients) */}
       <div 
         className="onboarding-slide-card"
         style={{
           padding: '28px 32px',
-          background: currentSlide.gradient,
+          backgroundColor: 'var(--bg-card)',
           minHeight: '280px',
           display: 'flex',
           flexDirection: 'column',
@@ -360,7 +390,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
                 borderRadius: '20px',
                 fontSize: '0.8rem',
                 fontWeight: 700,
-                backgroundColor: 'var(--bg-card)',
+                backgroundColor: 'var(--bg-main)',
                 color: currentSlide.accentColor,
                 border: '1px solid var(--border-color)',
                 boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)'
@@ -376,7 +406,6 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-
             {/* Auto-Slide Play/Pause Button */}
             <button
               type="button"
@@ -389,7 +418,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
                 height: '32px',
                 borderRadius: '50%',
                 border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-card)',
+                backgroundColor: 'var(--bg-main)',
                 color: 'var(--text-main)',
                 display: 'flex',
                 alignItems: 'center',
@@ -413,7 +442,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
                   height: '32px',
                   borderRadius: '50%',
                   border: '1px solid var(--border-color)',
-                  backgroundColor: 'var(--bg-card)',
+                  backgroundColor: 'var(--bg-main)',
                   color: 'var(--text-muted)',
                   display: 'flex',
                   alignItems: 'center',
@@ -466,15 +495,14 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
               {currentSlide.description}
             </p>
 
-            {/* Navigation Tip Callout Box */}
+            {/* Navigation Tip Callout Box - Solid Clean Styling */}
             <div style={{
               display: 'flex',
               alignItems: 'flex-start',
               gap: '10px',
               padding: '10px 14px',
               borderRadius: '12px',
-              backgroundColor: 'rgba(255, 255, 255, 0.45)',
-              backdropFilter: 'blur(8px)',
+              backgroundColor: 'var(--bg-main)',
               border: '1px solid var(--border-color)',
               fontSize: '0.82rem',
               color: 'var(--text-main)',
@@ -489,7 +517,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
               </div>
             </div>
 
-            {/* Feature Checklist Tags */}
+            {/* Feature Checklist Tags - Solid Clean Styling */}
             <div style={{
               display: 'flex',
               flexWrap: 'wrap',
@@ -506,7 +534,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
                     fontSize: '0.76rem',
                     fontWeight: 600,
                     color: 'var(--text-main)',
-                    backgroundColor: 'var(--bg-card)',
+                    backgroundColor: 'var(--bg-main)',
                     padding: '4px 10px',
                     borderRadius: '12px',
                     border: '1px solid var(--border-color)'
@@ -518,9 +546,10 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
               ))}
             </div>
 
-            {/* Action CTA Buttons */}
+            {/* Action CTA Buttons - Clean Solid Styling */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <button
+                type="button"
                 onClick={() => {
                   try {
                     localStorage.setItem('researchvault_has_seen_onboarding', 'true');
@@ -553,6 +582,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
 
               {onClose && (
                 <button
+                  type="button"
                   onClick={() => {
                     try {
                       localStorage.setItem('researchvault_has_seen_onboarding', 'true');
@@ -567,7 +597,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
                     borderRadius: '14px',
                     fontSize: '0.86rem',
                     fontWeight: 700,
-                    backgroundColor: 'var(--bg-card)',
+                    backgroundColor: 'var(--bg-main)',
                     border: '1px solid var(--border-color)',
                     color: 'var(--text-main)',
                     cursor: 'pointer',
@@ -588,7 +618,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
               width: '100px',
               height: '100px',
               borderRadius: '24px',
-              backgroundColor: 'var(--bg-card)',
+              backgroundColor: 'var(--bg-main)',
               border: '1px solid var(--border-color)',
               boxShadow: 'var(--card-shadow)',
               display: 'flex',
@@ -609,11 +639,12 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
           justifyContent: 'space-between',
           marginTop: '20px',
           paddingTop: '14px',
-          borderTop: '1px solid rgba(0, 0, 0, 0.06)'
+          borderTop: '1px solid var(--border-color)'
         }}>
           {/* Previous / Next Navigation Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
+              type="button"
               onClick={handlePrev}
               aria-label="Previous Slide"
               title="Previous Slide (← Left Arrow)"
@@ -624,7 +655,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
                 padding: '6px 14px',
                 borderRadius: '12px',
                 border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-card)',
+                backgroundColor: 'var(--bg-main)',
                 color: 'var(--text-main)',
                 fontSize: '0.82rem',
                 fontWeight: 700,
@@ -638,6 +669,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
             </button>
 
             <button
+              type="button"
               onClick={handleNext}
               aria-label="Next Slide"
               title="Next Slide (→ Right Arrow)"
@@ -648,7 +680,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
                 padding: '6px 14px',
                 borderRadius: '12px',
                 border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-card)',
+                backgroundColor: 'var(--bg-main)',
                 color: 'var(--text-main)',
                 fontSize: '0.82rem',
                 fontWeight: 700,
@@ -668,6 +700,7 @@ export default function OnboardingCarousel({ onNavigate, onOpenAddModal, onClose
               const isActive = index === currentIndex;
               return (
                 <button
+                  type="button"
                   key={slide.id}
                   onClick={() => setCurrentIndex(index)}
                   aria-label={`Go to slide ${index + 1}: ${slide.title}`}
