@@ -58,83 +58,48 @@ Your own judgement, and what it depends on.
 
 function sanitizeInput(text, maxLen = 4000) {
   if (!text) return "";
-  let clean = String(text)
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
-    .trim();
+  const clean = String(text).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim();
   return clean.length > maxLen ? clean.slice(0, maxLen) + "..." : clean;
 }
 
 function isCallingAI(message) {
   const text = String(message || "").toLowerCase().trim();
   return (
-    text === "ai" ||
-    text.startsWith("ai ") ||
-    text.startsWith("ai,") ||
-    text.startsWith("ai.") ||
-    text.startsWith("hey ai") ||
-    text.startsWith("hi ai") ||
-    text.startsWith("hello ai") ||
-    text.startsWith("researchvault ai")
+    text === "ai" || text.startsWith("ai ") || text.startsWith("ai,") ||
+    text.startsWith("ai.") || text.startsWith("hey ai") || text.startsWith("hi ai") ||
+    text.startsWith("hello ai") || text.startsWith("researchvault ai")
   );
 }
 
 function isGreeting(message) {
   const query = String(message || "").toLowerCase().trim();
-  const greetingPatterns = [
-    /^hi[\s!.,]*$/i,
-    /^hello[\s!.,]*$/i,
-    /^hey[\s!.,]*$/i,
-    /^greetings[\s!.,]*$/i,
-    /^good\s*(morning|afternoon|evening)[\s!.,]*$/i,
-    /^hi\s+there[\s!.,]*$/i,
-    /^what'?s\s+up[\s!.,]*$/i,
-    /^how\s+are\s+you[\s!.,]*$/i,
+  const patterns = [
+    /^hi[\s!.,]*$/i, /^hello[\s!.,]*$/i, /^hey[\s!.,]*$/i, /^greetings[\s!.,]*$/i,
+    /^good\s*(morning|afternoon|evening)[\s!.,]*$/i, /^hi\s+there[\s!.,]*$/i,
+    /^what'?s\s+up[\s!.,]*$/i, /^how\s+are\s+you[\s!.,]*$/i,
   ];
-  return (
-    greetingPatterns.some((pattern) => pattern.test(query)) ||
-    query.startsWith("hi ") ||
-    query.startsWith("hello ") ||
-    query.startsWith("hey ")
-  );
+  return patterns.some((p) => p.test(query)) || query.startsWith("hi ") ||
+    query.startsWith("hello ") || query.startsWith("hey ");
 }
 
-// Formats the last N turns of chat history for inclusion in a prompt.
 function formatChatHistory(chatHistory = [], turns = 8, perTurn = 1000) {
   return (chatHistory || [])
     .slice(-turns)
-    .map(
-      (h) =>
-        `${h.sender === "user" ? "User" : "ResearchVault AI"}: ${sanitizeInput(h.text, perTurn)}`
-    )
+    .map((h) => `${h.sender === "user" ? "User" : "ResearchVault AI"}: ${sanitizeInput(h.text, perTurn)}`)
     .join("\n");
 }
 
-// Returns a user-facing message for actionable API refusals (auth, rate limit, size).
-// Returns null for everything else so the fallback engine handles it instead.
 function explainApiRefusal(status, userName = "Scholar") {
-  if (status === 401 || status === 403) {
+  if (status === 401 || status === 403)
     return `Your session has expired, ${userName}. Please sign in again to keep using the AI features — your library and notes are safe on this device.`;
-  }
-  if (status === 429) {
+  if (status === 429)
     return `You have reached the AI request limit for now, ${userName}. This limit exists to keep the service available for everyone. Please wait a minute and try again.`;
-  }
-  if (status === 413) {
+  if (status === 413)
     return `That request is too large to send to the AI. Try selecting fewer papers, or asking about a shorter section of the document.`;
-  }
   return null;
 }
 
-/**
- * Calls Gemini through the /api/gemini proxy.
- * Supports both streaming (onChunk) and non-streaming modes.
- * Falls back to the scripted engine when the backend is unreachable.
- */
-async function callGeminiApi(
-  promptText,
-  userName = "Scholar",
-  rawUserMessage = "",
-  options = {}
-) {
+async function callGeminiApi(promptText, userName = "Scholar", rawUserMessage = "", options = {}) {
   const { mode = "chat", onChunk, signal } = options;
   const wantsStream = typeof onChunk === "function";
   let streamed = "";
@@ -155,23 +120,14 @@ async function callGeminiApi(
       if (wantsStream && apiResponse.body) {
         const reader = apiResponse.body.getReader();
         const decoder = new TextDecoder();
-
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
-          if (chunk) {
-            streamed += chunk;
-            onChunk(chunk);
-          }
+          if (chunk) { streamed += chunk; onChunk(chunk); }
         }
-
         const tail = decoder.decode();
-        if (tail) {
-          streamed += tail;
-          onChunk(tail);
-        }
-
+        if (tail) { streamed += tail; onChunk(tail); }
         if (streamed.trim()) return streamed;
       } else {
         const data = await apiResponse.json();
@@ -179,20 +135,12 @@ async function callGeminiApi(
       }
     } else {
       const explained = explainApiRefusal(apiResponse.status, userName);
-      if (explained) {
-        if (wantsStream) onChunk(explained);
-        return explained;
-      }
+      if (explained) { if (wantsStream) onChunk(explained); return explained; }
       console.warn(`/api/gemini responded with ${apiResponse.status}`);
     }
   } catch (backendErr) {
     if (backendErr?.name === 'AbortError') throw backendErr;
-
-    if (streamed.trim()) {
-      console.warn("Gemini stream ended early; keeping partial response.", backendErr);
-      return streamed;
-    }
-
+    if (streamed.trim()) { console.warn("Gemini stream ended early; keeping partial response.", backendErr); return streamed; }
     console.warn("Backend /api/gemini call failed.", backendErr);
   }
 
@@ -203,12 +151,7 @@ async function callGeminiApi(
   return fallback;
 }
 
-// Scripted fallback engine — runs only when Gemini is unavailable.
-function generateScholarlyFallbackResponse(
-  prompt,
-  userName = "Scholar",
-  rawUserMessage = ""
-) {
+function generateScholarlyFallbackResponse(prompt, userName = "Scholar", rawUserMessage = "") {
   const query = String(rawUserMessage || prompt || "").toLowerCase().trim();
 
   if (isGreeting(query)) {
@@ -344,20 +287,12 @@ If you give me your research topic, I can help you identify possible research ga
 Try asking again in a moment, or check that the API key/backend is set up correctly.`;
 }
 
-export async function generatePaperSummary(
-  title,
-  authors,
-  abstractOrText,
-  summaryType = "Executive Summary",
-  options = {}
-) {
+export async function generatePaperSummary(title, authors, abstractOrText, summaryType = "Executive Summary", options = {}) {
   const safeTitle = sanitizeInput(title, 300);
   const safeAuthors = sanitizeInput(authors, 300);
   const safeAbstract = sanitizeInput(abstractOrText, 12000);
   const safeType = sanitizeInput(summaryType, 100);
 
-  // Paper content is wrapped in [PAPER DATA] tags as defense-in-depth against
-  // prompt injection — content inside is treated as data, not instructions.
   const prompt = `
 You are ResearchVault AI, a friendly and highly knowledgeable academic research assistant.
 
@@ -401,14 +336,7 @@ Use an approachable academic tone.
   return callGeminiApi(prompt, safeAuthors || "Scholar", "", { mode: "summary", ...options });
 }
 
-export async function askPaperQuestion(
-  title,
-  content,
-  question,
-  chatHistory = [],
-  userName = "Scholar",
-  options = {}
-) {
+export async function askPaperQuestion(title, content, question, chatHistory = [], userName = "Scholar", options = {}) {
   const safeTitle = sanitizeInput(title, 300);
   const safeContent = sanitizeInput(content, 16000);
   const safeQuestion = sanitizeInput(question, 2000);
@@ -452,12 +380,7 @@ Answer the question directly and naturally.`;
   return callGeminiApi(prompt, safeUserName, safeQuestion, { mode: "chat", ...options });
 }
 
-export async function chatWithGemini(
-  userMessage,
-  chatHistory = [],
-  userName = "Scholar",
-  options = {}
-) {
+export async function chatWithGemini(userMessage, chatHistory = [], userName = "Scholar", options = {}) {
   const safeMsg = sanitizeInput(userMessage, 4000);
   const safeUserName = sanitizeInput(userName, 100);
   const historyText = formatChatHistory(chatHistory);
@@ -498,18 +421,11 @@ Respond naturally. Answer what was actually asked, at the length the question de
 export async function synthesizeLiteratureReview(papers, options = {}) {
   const list = Array.isArray(papers) ? papers : [];
   const count = list.length;
-
-  // Budget: 24,000 chars shared across all papers (2→12k each, 4→6k, 8+→3k floor).
+  // Budget: 24k chars shared — 2 papers → 12k each, 4 → 6k, 8+ → 3k floor.
   const perPaper = Math.max(3000, Math.min(12000, Math.floor(24000 / Math.max(count, 1))));
 
   const formatted = list
-    .map(
-      (p, idx) =>
-        `--- PAPER ${idx + 1} ---
-Title: ${sanitizeInput(p.title, 300)}
-Authors: ${sanitizeInput(p.authors, 300)}
-Content: ${sanitizeInput(p.abstractText, perPaper)}`
-    )
+    .map((p, idx) => `--- PAPER ${idx + 1} ---\nTitle: ${sanitizeInput(p.title, 300)}\nAuthors: ${sanitizeInput(p.authors, 300)}\nContent: ${sanitizeInput(p.abstractText, perPaper)}`)
     .join("\n\n");
 
   const labels = list.map((_, idx) => `Paper ${idx + 1}`).join(", ");
@@ -596,14 +512,7 @@ A closing paragraph giving your overall judgement of this body of work: what it 
   return callGeminiApi(prompt, "Scholar", "", { mode: "review", ...options });
 }
 
-// Formal peer review for a single paper — structured like a real journal submission review.
-export async function generatePeerReview(
-  title,
-  authors,
-  publicationInfo,
-  abstractOrText,
-  options = {}
-) {
+export async function generatePeerReview(title, authors, publicationInfo, abstractOrText, options = {}) {
   const safeTitle = sanitizeInput(title, 300);
   const safeAuthors = sanitizeInput(authors, 300);
   const safePubInfo = sanitizeInput(publicationInfo, 300);
