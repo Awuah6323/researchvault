@@ -70,41 +70,27 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenI
           <button
             type="button"
             onClick={onOpenInstallPwa}
+            className="btn-primary"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
               width: '100%',
-              padding: '12px',
-              borderRadius: '12px',
-              background: 'var(--gradient-glow)',
-              border: 'none',
-              color: '#ffffff',
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
-              transition: 'all 0.2s ease',
-              letterSpacing: '0.2px'
+              fontSize: '0.85rem'
             }}
           >
-            <Download size={17} aria-hidden="true" style={{ strokeWidth: 2.5 }} />
-            <span>Install App on Device</span>
+            <Download size={16} aria-hidden="true" />
+            <span>Install Application</span>
           </button>
         )}
 
         <div style={{
-          padding: '12px',
-          borderRadius: '12px',
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          fontSize: '0.75rem',
+          padding: '10px 12px',
+          borderRadius: '8px',
+          border: '1px solid var(--border-color)',
+          fontSize: '0.72rem',
           color: 'var(--text-sidebar)',
           lineHeight: 1.4
         }}>
-          <div style={{ fontWeight: 700, color: 'var(--text-sidebar-active)' }}>ResearchVault v2.0</div>
-          <div>Offline PWA Active</div>
-          <div>Gemini 2.0 Flash AI Enabled</div>
+          <div style={{ fontWeight: 600, color: 'var(--text-sidebar-active)' }}>ResearchVault</div>
+          <div>Offline Library Active</div>
         </div>
       </div>
     </aside>

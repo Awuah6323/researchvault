@@ -126,10 +126,10 @@ export default function Navbar({
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.5px', color: 'var(--text-main)', lineHeight: 1.1 }}>
-                Research<span className="text-gradient-emerald">Vault</span>
+                Research<span style={{ color: 'var(--primary)' }}>Vault</span>
               </div>
-              <div className="mobile-hide" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.8px', marginTop: '2px' }}>
-                ACADEMIC LITERATURE ENGINE
+              <div className="mobile-hide" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.5px', marginTop: '2px' }}>
+                Scholarly Reference Library
               </div>
             </div>
           </button>

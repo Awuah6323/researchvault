@@ -51,10 +51,10 @@ export default function HomeDashboard({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      {/* Glassmorphic Hero Welcome Banner */}
-      <div className="glass-card-accent hero-banner" style={{
-        padding: '32px',
-        borderRadius: '24px',
+      {/* Hero Welcome Banner */}
+      <div className="glass-card hero-banner" style={{
+        padding: '28px 32px',
+        borderRadius: '12px',
         color: 'var(--text-main)',
         display: 'flex',
         alignItems: 'center',
@@ -63,65 +63,43 @@ export default function HomeDashboard({
         overflow: 'hidden'
       }}>
         <div style={{ maxWidth: '640px', zIndex: 10 }}>
-          <div className="badge" style={{ marginBottom: '12px' }}>
-            <Sparkles size={14} /> Gemini 2.5 AI Research Vault
-          </div>
-          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '12px' }}>
-            Welcome back, <span className="text-gradient-emerald">{userProfile?.name || (userProfile?.email ? userProfile.email.split('@')[0] : 'Researcher')}</span>
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2rem', fontWeight: 700, lineHeight: 1.25, marginBottom: '10px' }}>
+            Welcome back, <span style={{ color: 'var(--primary)' }}>{userProfile?.name || (userProfile?.email ? userProfile.email.split('@')[0] : 'Researcher')}</span>
           </h1>
-          <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '20px' }}>
-            {userProfile?.institution || 'Academic Workspace'} • {userProfile?.fieldOfStudy || 'Literature Research'}. Organize your literature library, synthesize research papers with Gemini AI, and export instant citations.
+          <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '20px' }}>
+            {userProfile?.institution || 'Academic Workspace'} • {userProfile?.fieldOfStudy || 'Literature Research'}. Organize your literature library, synthesize research papers, and export citations.
           </p>
 
-          <div className="hero-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="hero-buttons" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button onClick={onOpenAddModal} className="btn-primary">
-              <Plus size={18} />
+              <Plus size={16} />
               <span>Import Paper</span>
             </button>
             <button onClick={() => onNavigate('search')} className="btn-secondary">
-              <Search size={18} />
+              <Search size={16} />
               <span>Search Academic Sources</span>
             </button>
             {!isStandalone && onOpenInstallPwa && (
               <button 
                 onClick={onOpenInstallPwa} 
-                style={{ 
-                  padding: '10px 18px', 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '8px', 
-                  color: '#ffffff', 
-                  background: 'var(--gradient-glow)', 
-                  border: 'none', 
-                  borderRadius: '12px',
-                  fontWeight: 700,
-                  fontSize: '0.88rem',
-                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
-                  cursor: 'pointer'
-                }}
+                className="btn-secondary"
               >
-                <Download size={18} style={{ strokeWidth: 2.5 }} />
-                <span>Install App on Device</span>
+                <Download size={16} />
+                <span>Install App</span>
               </button>
             )}
             <button 
               onClick={handleToggleGuide} 
-              className="neu-button" 
-              style={{ padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontWeight: 600 }}
+              className="btn-secondary"
             >
-              <Compass size={18} style={{ color: 'var(--primary)' }} />
-              <span>{showGuide ? 'Hide App Guide' : '💡 User Guide & Navigation'}</span>
+              <Compass size={16} style={{ color: 'var(--primary)' }} />
+              <span>{showGuide ? 'Hide Guide' : 'User Guide & Navigation'}</span>
             </button>
           </div>
         </div>
-
-        {/* Decorative background element */}
-        <div className="hero-bg-icon" style={{ opacity: 0.07, color: 'var(--primary)', position: 'absolute', right: '-20px', bottom: '-30px', pointerEvents: 'none' }}>
-          <BookOpen size={280} />
-        </div>
       </div>
 
-      {/* Auto-sliding 3s Feature Onboarding Carousel */}
+      {/* Feature Onboarding Carousel */}
       {showGuide && (
         <OnboardingCarousel 
           onNavigate={onNavigate}
@@ -130,46 +108,38 @@ export default function HomeDashboard({
         />
       )}
 
-      {/* Neumorphic Metric Cards Grid */}
+      {/* Metric Cards Grid - Editorial Academic Style */}
       <div className="metrics-grid">
-        <div className="neu-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Total Papers</span>
-            <div style={{ width: '36px', height: '36px', borderRadius: '12px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BookOpen size={18} />
-            </div>
+        <div className="glass-card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Papers</span>
+            <BookOpen size={16} style={{ color: 'var(--text-muted)' }} />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)' }}>{resources.length}</div>
+          <div style={{ fontSize: '1.85rem', fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text-main)' }}>{resources.length}</div>
         </div>
 
-        <div className="neu-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Starred Favorites</span>
-            <div style={{ width: '36px', height: '36px', borderRadius: '12px', backgroundColor: 'var(--accent-gold-light)', color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Star size={18} />
-            </div>
+        <div className="glass-card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Starred Favorites</span>
+            <Star size={16} style={{ color: 'var(--accent-gold)' }} />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)' }}>{favoritePapers.length}</div>
+          <div style={{ fontSize: '1.85rem', fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text-main)' }}>{favoritePapers.length}</div>
         </div>
 
-        <div className="neu-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Active Reading</span>
-            <div style={{ width: '36px', height: '36px', borderRadius: '12px', backgroundColor: 'var(--primary-light)', color: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <TrendingUp size={18} />
-            </div>
+        <div className="glass-card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active Reading</span>
+            <TrendingUp size={16} style={{ color: 'var(--text-muted)' }} />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)' }}>{readingInProgress.length}</div>
+          <div style={{ fontSize: '1.85rem', fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text-main)' }}>{readingInProgress.length}</div>
         </div>
 
-        <div className="neu-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Categories</span>
-            <div style={{ width: '36px', height: '36px', borderRadius: '12px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Award size={18} />
-            </div>
+        <div className="glass-card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Categories</span>
+            <Award size={16} style={{ color: 'var(--text-muted)' }} />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)' }}>{categories.length}</div>
+          <div style={{ fontSize: '1.85rem', fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text-main)' }}>{categories.length}</div>
         </div>
       </div>
 

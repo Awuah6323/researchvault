@@ -149,44 +149,44 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
             /* iOS Specific Instructions */
             <div>
               <div style={{
-                backgroundColor: 'rgba(99, 102, 241, 0.08)',
-                border: '1px solid rgba(99, 102, 241, 0.2)',
-                borderRadius: '16px',
-                padding: '14px',
-                marginBottom: '20px',
+                backgroundColor: 'var(--primary-light)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                marginBottom: '18px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px'
               }}>
-                <Smartphone size={24} style={{ color: '#6366f1', flexShrink: 0 }} />
+                <Smartphone size={22} style={{ color: 'var(--primary)', flexShrink: 0 }} />
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: 1.4 }}>
-                  Install on <strong>iPhone or iPad</strong> directly from Safari in 3 easy steps:
+                  Install on <strong>iPhone or iPad</strong> directly from Safari in 3 steps:
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--gradient-primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>1</div>
-                  <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', flex: 1 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '6px', backgroundColor: 'var(--primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem' }}>1</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', flex: 1 }}>
                     Tap the <strong>Share</strong> icon in your Safari browser bar
                   </div>
-                  <Share size={20} style={{ color: 'var(--primary)' }} />
+                  <Share size={18} style={{ color: 'var(--primary)' }} />
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--gradient-primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>2</div>
-                  <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '6px', backgroundColor: 'var(--primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem' }}>2</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', flex: 1 }}>
                     Scroll down and tap <strong>Add to Home Screen</strong>
                   </div>
-                  <PlusSquare size={20} style={{ color: 'var(--primary)' }} />
+                  <PlusSquare size={18} style={{ color: 'var(--primary)' }} />
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--gradient-primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>3</div>
-                  <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: 'var(--bg-main)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '6px', backgroundColor: 'var(--primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem' }}>3</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', flex: 1 }}>
                     Tap <strong>Add</strong> in the top right corner
                   </div>
-                  <CheckCircle size={20} style={{ color: 'var(--primary)' }} />
+                  <CheckCircle size={18} style={{ color: 'var(--primary)' }} />
                 </div>
               </div>
             </div>
@@ -194,55 +194,45 @@ export default function InstallPwaModal({ onClose, deferredPrompt, isStandalone,
             /* Chrome / Android / Edge / Desktop */
             <div>
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: '12px',
-                marginBottom: '20px'
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                padding: '14px',
+                backgroundColor: 'var(--bg-main)',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                marginBottom: '18px'
               }}>
-                <div style={{ padding: '14px 10px', backgroundColor: 'var(--bg-main)', borderRadius: '14px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
-                  <Zap size={20} style={{ color: 'var(--primary)', marginBottom: '6px' }} />
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Instant Launch</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Launch from Home / Desktop</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: 'var(--text-main)' }}>
+                  <CheckCircle size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                  <span><strong>Dedicated window:</strong> Distraction-free research workspace</span>
                 </div>
-                <div style={{ padding: '14px 10px', backgroundColor: 'var(--bg-main)', borderRadius: '14px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
-                  <ShieldCheck size={20} style={{ color: 'var(--primary)', marginBottom: '6px' }} />
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Offline Access</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Read papers offline</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: 'var(--text-main)' }}>
+                  <CheckCircle size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                  <span><strong>Offline support:</strong> Read saved papers without an active connection</span>
                 </div>
-                <div style={{ padding: '14px 10px', backgroundColor: 'var(--bg-main)', borderRadius: '14px', border: '1px solid var(--border-color)', textAlign: 'center' }}>
-                  <Sparkles size={20} style={{ color: 'var(--secondary)', marginBottom: '6px' }} />
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Full Screen</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Distraction-free</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: 'var(--text-main)' }}>
+                  <CheckCircle size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                  <span><strong>Fast launch:</strong> Opens instantly from your dock or taskbar</span>
                 </div>
               </div>
 
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '24px' }}>
-                Installing converts ResearchVault into a standalone application on your Android phone, tablet, PC, or Mac with full offline research support.
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '20px' }}>
+                Installing converts ResearchVault into a standalone desktop or mobile application on your device.
               </p>
 
               <button
                 onClick={handleInstallClick}
                 disabled={isInstalling}
+                className="btn-primary"
                 style={{
                   width: '100%',
-                  padding: '14px',
-                  borderRadius: '14px',
-                  fontSize: '1rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '10px',
-                  background: 'var(--gradient-primary)',
-                  color: '#ffffff',
-                  border: 'none',
-                  boxShadow: 'var(--card-shadow)',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s ease'
+                  padding: '12px',
+                  fontSize: '0.95rem'
                 }}
               >
-                <Download size={20} aria-hidden="true" />
-                <span>{isInstalling ? 'Installing...' : 'Install App Now'}</span>
+                <Download size={18} aria-hidden="true" />
+                <span>{isInstalling ? 'Installing...' : 'Install Application'}</span>
               </button>
 
               {/* Fallback guidance when the browser exposes no install prompt */}

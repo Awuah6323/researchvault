@@ -26,34 +26,34 @@ export default function AuthGate({ onLoginSuccess }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '16px',
-              background: 'linear-gradient(135deg, var(--primary, #2563eb), #7c3aed)',
+              width: '44px',
+              height: '44px',
+              borderRadius: '10px',
+              backgroundColor: 'var(--primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fff',
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)'
+              color: '#ffffff',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)'
             }}>
-              <BookOpen size={26} />
+              <BookOpen size={24} />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '1.6rem', letterSpacing: '-0.5px' }}>
-                Research<span style={{ color: 'var(--primary, #2563eb)' }}>Vault</span>
+              <div style={{ fontWeight: 800, fontSize: '1.5rem', letterSpacing: '-0.5px' }}>
+                Research<span style={{ color: 'var(--primary)' }}>Vault</span>
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #94a3b8)', fontWeight: 500 }}>
-                Academic Literature & Gemini AI Engine
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                Scholarly Literature & Reference Management
               </div>
             </div>
           </div>
 
-          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.4rem', fontWeight: 800, lineHeight: 1.2 }}>
-            Your Intelligent Academic Research Library
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.2rem', fontWeight: 700, lineHeight: 1.25, color: 'var(--text-main)' }}>
+            Scholarly research library and literature analysis
           </h1>
 
-          <p style={{ fontSize: '1rem', color: 'var(--text-muted, #94a3b8)', lineHeight: 1.6 }}>
-            Sign in or create an account to access 250M+ scholarly papers, Gemini 2.0 AI literature reviews, distracion-free PDF reader, and citation engines.
+          <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            Access academic papers across OpenAlex, arXiv, Crossref, and PubMed with structured literature reviews, integrated PDF reading, and citation exports.
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>

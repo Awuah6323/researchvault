@@ -139,20 +139,20 @@ export default function ResourceCard({
                 style={{
                   padding: '6px',
                   borderRadius: '8px',
-                  color: '#ef4444',
-                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  color: 'var(--danger)',
+                  backgroundColor: 'var(--danger-bg)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   border: 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease'
+                  transition: 'background-color 0.15s ease'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.25)';
+                  e.currentTarget.style.backgroundColor = 'var(--danger-border)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)';
+                  e.currentTarget.style.backgroundColor = 'var(--danger-bg)';
                 }}
               >
                 <Trash2 size={16} aria-hidden="true" />
@@ -183,7 +183,7 @@ export default function ResourceCard({
                     ? `Download PDF of "${resource.title}"`
                     : `Open PDF of "${resource.title}" in a new tab`
                 }
-                style={{ padding: '6px', borderRadius: '8px', color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+                style={{ padding: '6px', borderRadius: '8px', color: 'var(--success)', backgroundColor: 'var(--success-bg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
               >
                 <Download size={16} aria-hidden="true" />
               </a>

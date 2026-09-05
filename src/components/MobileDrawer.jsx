@@ -107,7 +107,7 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
               <img src="/logo_icon.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-sidebar-active)' }}>
-              Research<span className="text-gradient-emerald">Vault</span>
+              Research<span style={{ color: 'var(--primary)' }}>Vault</span>
             </div>
           </div>
 
@@ -133,7 +133,7 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
           <button
             type="button"
             onClick={() => {
@@ -143,11 +143,10 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
             className="btn-primary"
             style={{
               width: '100%',
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
               justifyContent: 'center'
             }}
           >
-            <PlusCircle size={18} aria-hidden="true" />
+            <PlusCircle size={16} aria-hidden="true" />
             <span>Add Paper</span>
           </button>
 
@@ -164,18 +163,18 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
                 justifyContent: 'center',
                 gap: '8px',
                 width: '100%',
-                padding: '10px',
-                borderRadius: '12px',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                padding: '9px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
                 border: '1px solid var(--border-color)',
                 color: 'var(--text-sidebar-active)',
-                fontWeight: 600,
-                fontSize: '0.88rem',
+                fontWeight: 500,
+                fontSize: '0.85rem',
                 cursor: 'pointer'
               }}
             >
-              <Compass size={17} aria-hidden="true" style={{ color: 'var(--primary)' }} />
-              <span>💡 How to Navigate &amp; Features</span>
+              <Compass size={16} aria-hidden="true" style={{ color: 'var(--primary)' }} />
+              <span>User Guide &amp; Features</span>
             </button>
           )}
 
@@ -186,27 +185,15 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
                 onClose();
                 onOpenInstallPwa();
               }}
+              className="btn-primary"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
                 width: '100%',
-                padding: '12px',
-                borderRadius: '12px',
-                background: 'var(--gradient-glow)',
-                border: 'none',
-                color: '#ffffff',
-                fontWeight: 700,
-                fontSize: '0.9rem',
-                cursor: 'pointer',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
-                transition: 'all 0.2s ease',
-                letterSpacing: '0.2px'
+                justifyContent: 'center',
+                fontSize: '0.85rem'
               }}
             >
-              <Download size={18} aria-hidden="true" style={{ strokeWidth: 2.5 }} />
-              <span>Install App on Phone / Tablet</span>
+              <Download size={16} aria-hidden="true" />
+              <span>Install Application</span>
             </button>
           )}
         </div>

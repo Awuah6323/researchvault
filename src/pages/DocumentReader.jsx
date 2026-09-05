@@ -163,7 +163,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
         }
       } catch (err) {
         if (active) {
-          setPdfJsError("Couldn't render PDF pages directly — try opening external source.");
+          setPdfJsError("Could not render PDF pages directly. Try opening the external source.");
         }
       } finally {
         if (active) setPdfJsLoading(false);

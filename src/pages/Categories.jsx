@@ -72,12 +72,12 @@ export default function Categories({ categories = [], resources = [], onAddCateg
             type="button"
             onClick={() => onSelectCategory(cat.name)}
             className="glass-card"
-            aria-label={`${cat.name} — ${cat.count} papers. ${cat.description || ''}`}
+            aria-label={`${cat.name}, ${cat.count} papers. ${cat.description || ''}`}
             style={{ padding: '24px', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '180px', textAlign: 'left', width: '100%', font: 'inherit', color: 'inherit' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
-              <div aria-hidden="true" style={{ padding: '10px', borderRadius: '12px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>
-                <BookOpen size={24} />
+              <div aria-hidden="true" style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>
+                <BookOpen size={22} />
               </div>
               <span className="badge">{cat.count} {cat.count === 1 ? 'Paper' : 'Papers'}</span>
             </div>

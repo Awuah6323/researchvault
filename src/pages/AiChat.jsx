@@ -31,7 +31,7 @@ export default function AiChat({ onSaveNote, resources = [] }) {
     {
       id: 1,
       sender: 'ai',
-      text: `Hello ${userName}! 👋 I am your ResearchVault AI Assistant. You can ask me any research question, or tag a paper from your library using the 📎 button below to ask questions about a specific paper.`,
+      text: `Hello ${userName}. I am your ResearchVault literature assistant. You can ask research questions, or attach a paper from your library using the paperclip button below to analyze its contents.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -227,10 +227,10 @@ export default function AiChat({ onSaveNote, resources = [] }) {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Sparkles style={{ color: 'var(--primary)' }} /> Gemini AI Research Chat Assistant
+          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>
+            Research Literature Assistant
           </h1>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Chat with AI or tag a paper with 📎 to ask questions about it.</p>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Query academic concepts, synthesize papers, or analyze documents from your library.</p>
         </div>
 
         <button
@@ -417,7 +417,7 @@ export default function AiChat({ onSaveNote, resources = [] }) {
             gap: '8px'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>📎 Tag a paper from your library</span>
+              <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)' }}>Tag a paper from your library</span>
               <button type="button" onClick={() => setShowPaperPicker(false)} aria-label="Close paper picker" style={{ color: 'var(--text-muted)', padding: '2px' }}>
                 <X size={16} aria-hidden="true" />
               </button>

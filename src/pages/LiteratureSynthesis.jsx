@@ -119,8 +119,8 @@ export default function LiteratureSynthesis({ resources }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div>
-        <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 800 }}>AI Literature Review & Peer Review Engine</h1>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Synthesize multi-paper literature reviews or generate single-paper formal academic peer review reports.</p>
+        <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Literature Review &amp; Synthesis</h1>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Synthesize cross-paper literature reviews or generate structured academic peer review reports.</p>
       </div>
 
       {/* Mode Switcher Tabs */}

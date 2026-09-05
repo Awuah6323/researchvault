@@ -34,7 +34,7 @@ function resolveAuthErrorMessage(err) {
     return 'This account still needs confirming. Open the link in the email we sent you, then sign in.';
   }
   if (/Password should be at least|password.*6 characters/i.test(raw)) {
-    return 'Please choose a longer password — at least 8 characters.';
+    return 'Please choose a longer password (at least 8 characters).';
   }
   if (/rate limit|too many requests/i.test(raw)) {
     return 'Too many attempts in a short time. Wait a minute and try again.';
@@ -274,59 +274,42 @@ export default function AuthPage({ onLoginSuccess }) {
           >
             <div
               style={{
-                width: '50px',
-
-                height: '50px',
-
-                borderRadius: '14px',
-
-                background:
-                  'linear-gradient(135deg, #00ff88 0%, #10b981 50%, #059669 100%)',
-
+                width: '44px',
+                height: '44px',
+                borderRadius: '10px',
+                backgroundColor: 'var(--primary)',
                 display: 'flex',
-
                 alignItems: 'center',
-
                 justifyContent: 'center',
-
-                color: '#03140a',
-
-                boxShadow:
-                  '0 4px 14px rgba(0, 0, 0, 0.25)',
+                color: '#ffffff',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
               }}
             >
-              <BookOpen size={28} />
+              <BookOpen size={24} />
             </div>
 
             <div>
               <div
                 style={{
                   fontWeight: 800,
-
-                  fontSize: '1.7rem',
-
+                  fontSize: '1.5rem',
                   letterSpacing: '-0.5px',
                 }}
               >
                 Research
-                <span className="text-gradient-emerald">
+                <span style={{ color: 'var(--primary)' }}>
                   Vault
                 </span>
               </div>
 
               <div
                 style={{
-                  fontSize: '0.75rem',
-
-                  color:
-                    'var(--text-muted, #82a493)',
-
-                  fontWeight: 600,
-
-                  letterSpacing: '0.5px',
+                  fontSize: '0.8rem',
+                  color: 'var(--text-muted)',
+                  fontWeight: 500,
                 }}
               >
-                SMART ACADEMIC LIBRARY & AI ENGINE
+                Scholarly Literature & Reference Workspace
               </div>
             </div>
           </div>
@@ -337,18 +320,15 @@ export default function AuthPage({ onLoginSuccess }) {
               style={{
                 fontFamily:
                   'var(--font-serif)',
-
-                fontSize: '2.5rem',
-
-                fontWeight: 800,
-
-                lineHeight: 1.2,
-
+                fontSize: '2.2rem',
+                fontWeight: 700,
+                lineHeight: 1.25,
                 marginBottom: '12px',
+                color: 'var(--text-main)',
               }}
             >
               Sign In to Your{' '}
-              <span className="text-gradient-emerald">
+              <span style={{ color: 'var(--primary)' }}>
                 Academic Workspace
               </span>
             </h1>

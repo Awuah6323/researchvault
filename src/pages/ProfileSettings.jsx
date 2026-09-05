@@ -72,7 +72,7 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
         }
       } catch (err) {
         notify({
-          message: 'Could not read that backup file — the JSON appears to be corrupted.',
+          message: 'Could not read that backup file. The JSON format appears invalid.',
           tone: 'error'
         });
       }
@@ -212,31 +212,18 @@ export default function ProfileSettings({ userProfile, onSaveProfile, resources,
 
       {/* PWA App Installation Card */}
       {!isStandalone && onOpenInstallPwa && (
-        <div className="glass-card-accent" style={{ padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+        <div className="glass-card" style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>Install Mobile & Desktop App</h3>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>Install Application</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-              Install ResearchVault on your phone, tablet, or PC for fast offline reading and home screen access.
+              Install ResearchVault on your phone, tablet, or desktop for offline reading and dock access.
             </p>
           </div>
           <button
             onClick={onOpenInstallPwa}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '14px',
-              background: 'var(--gradient-glow)',
-              color: '#ffffff',
-              border: 'none',
-              fontWeight: 700,
-              fontSize: '0.88rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)'
-            }}
+            className="btn-primary"
           >
-            <Download size={18} style={{ strokeWidth: 2.5 }} />
+            <Download size={16} />
             <span>Install App</span>
           </button>
         </div>
