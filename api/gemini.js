@@ -1,11 +1,3 @@
-// api/gemini.js
-// ResearchVault Gemini proxy (Vercel serverless function).
-//
-// The whole reason this endpoint exists is that GEMINI_API_KEY must never reach
-// the browser. Everything else here follows from that: because the key is
-// spendable and this is the only door to it, the endpoint has to care who is
-// knocking, how often, and how large the request is.
-
 import { beginRequest, fail, readJsonBody, clientIp } from './_lib/http.js';
 import { enforce, LIMITS } from './_lib/rateLimit.js';
 import { getUserFromRequest, isAuthConfigured } from './_lib/auth.js';
@@ -14,12 +6,9 @@ import { validate, str, bool, stripControlChars, isValidationError } from './_li
 const MODEL = 'gemini-3.5-flash';
 const API_ROOT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}`;
 
-// The largest prompt the app itself builds is the multi-paper synthesis, whose
-// content budget is 24,000 characters plus its instructions. 48 KB leaves room
-// for that with margin, and refuses anything that is not this app.
 const MAX_PROMPT_CHARS = 48000;
 const MAX_BODY_BYTES = 128 * 1024;
-const UPSTREAM_TIMEOUT_MS = 55000; // under the 60s function limit in vercel.json
+const UPSTREAM_TIMEOUT_MS = 55000;
 
 const MODES = {
   chat: {
@@ -95,18 +84,6 @@ function callGemini(promptText, generationConfig, apiKey, sse, signal) {
 export default async function handler(req, res) {
   if (!beginRequest(req, res, { methods: ['POST'] })) return;
 
-  // ---------------------------------------------------------------- WHO
-  //
-  // Without this the endpoint is an open, unmetered LLM relay billed to the
-  // project owner: anyone who reads the JavaScript bundle knows the path and
-  // the body shape. The client already holds a Supabase access token for every
-  // signed-in user, so sending it costs the app nothing.
-  //
-  // The guard is conditional on Supabase being configured because the app is
-  // designed to run without it (see .env.example: no credentials means local
-  // only). A deployment in that state cannot verify anyone, and demanding a
-  // token there would simply break the AI features. Anonymous callers still
-  // face the IP-keyed rate limit below.
   const user = await getUserFromRequest(req);
 
   if (isAuthConfigured() && !user) {
@@ -115,8 +92,6 @@ export default async function handler(req, res) {
 
   const identity = user ? `u:${user.id}` : `ip:${clientIp(req)}`;
 
-  // Two windows: a burst limit for a runaway client, and a daily ceiling so a
-  // single account cannot quietly spend the month's quota one minute at a time.
   if (!(await enforce(req, res, 'ai', {
     ...LIMITS.AI_PER_MINUTE,
     identity,
@@ -129,8 +104,6 @@ export default async function handler(req, res) {
     message: 'Daily AI request limit reached. Please try again tomorrow.'
   }))) return;
 
-  // ---------------------------------------------------------------- WHAT
-
   let input;
   try {
     input = validate(await readJsonBody(req, MAX_BODY_BYTES), SCHEMA);
@@ -139,16 +112,11 @@ export default async function handler(req, res) {
       return fail(res, 413, 'That request is too large to process.');
     }
     if (isValidationError(err)) {
-      // Validation messages are written by us and name only the field, so they
-      // are safe to return and genuinely useful to a developer.
       return fail(res, 400, err.message);
     }
     return fail(res, 400, 'Invalid request.', err);
   }
 
-  // Control and bidi characters are stripped after length validation: they
-  // carry no meaning for the model and are a way to smuggle text past a human
-  // reading the prompt.
   const promptText = stripControlChars(input.promptText);
   if (!promptText.trim()) {
     return fail(res, 400, 'promptText is required');
@@ -156,8 +124,6 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    // The client is told the feature is unavailable; the operator is told why.
-    // Reversing those two is how a misconfiguration becomes a disclosure.
     return fail(res, 503, 'The AI service is not available right now.', 'GEMINI_API_KEY is not set');
   }
 
@@ -169,8 +135,6 @@ export default async function handler(req, res) {
   };
   res.on('close', onClientGone);
 
-  // An upstream that never answers would otherwise hold the function open until
-  // the platform kills it, with the client waiting the whole time.
   const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
 
   try {
@@ -179,8 +143,6 @@ export default async function handler(req, res) {
 
       if (!response.ok) {
         const detail = await response.text().catch(() => '');
-        // Upstream status and body stay in the log. A provider error body can
-        // quote the request, name internal endpoints, and describe the account.
         return fail(res, 502, 'The AI service could not complete that request.', `Gemini ${response.status}: ${detail}`);
       }
 
@@ -251,7 +213,6 @@ export default async function handler(req, res) {
     return res.end();
   } catch (err) {
     if (err?.name === 'AbortError') {
-      // Either the client left or the upstream timed out. Both end the same way.
       return res.end();
     }
 
