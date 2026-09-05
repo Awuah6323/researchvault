@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:health": "node scripts/healthCheck.js",
-    "health-check": "node scripts/healthCheck.js"
+    "health-check": "node scripts/healthCheck.js",
+    "test:security": "node scripts/testSecurityControls.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

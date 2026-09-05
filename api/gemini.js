@@ -84,6 +84,10 @@ function callGemini(promptText, generationConfig, apiKey, sse, signal) {
 export default async function handler(req, res) {
   if (!beginRequest(req, res, { methods: ['POST'] })) return;
 
+  if (process.env.AI_DISABLED === 'true' || process.env.GEMINI_DISABLED === 'true') {
+    return fail(res, 503, 'The AI service is temporarily disabled for maintenance.');
+  }
+
   const user = await getUserFromRequest(req);
 
   if (isAuthConfigured() && !user) {

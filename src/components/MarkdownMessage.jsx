@@ -4,10 +4,6 @@
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-/**
- * Wide tables must scroll inside their own box. Without this the table forces
- * the whole chat column wider than the viewport on a phone.
- */
 function Table({ node, ...props }) {
   return (
     <div className="md-table-wrap">
@@ -16,29 +12,45 @@ function Table({ node, ...props }) {
   );
 }
 
-/**
- * Links in model output are untrusted. `noopener noreferrer` stops the opened
- * page from reaching back through window.opener.
- */
-function Anchor({ node, ...props }) {
-  return <a {...props} target="_blank" rel="noopener noreferrer" />;
+function isSafeHref(href) {
+  if (!href || typeof href !== 'string') return false;
+  const trimmed = href.trim();
+  if (trimmed === '' || trimmed === '#') return true;
+  if (trimmed.startsWith('#')) return true;
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) return true;
+
+  if (/^https?:\/\//i.test(trimmed) || /^mailto:[^\s@]+@[^\s@]+/i.test(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      const protocol = parsed.protocol.toLowerCase();
+      return protocol === 'https:' || protocol === 'http:' || protocol === 'mailto:';
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+function Anchor({ node, href, ...props }) {
+  const safeHref = isSafeHref(href) ? href : '#';
+  const isExternal = safeHref.startsWith('http://') || safeHref.startsWith('https://');
+  return (
+    <a
+      {...props}
+      href={safeHref}
+      target={isExternal ? '_blank' : undefined}
+      rel={isExternal ? 'noopener noreferrer' : undefined}
+    />
+  );
 }
 
 const COMPONENTS = { table: Table, a: Anchor };
 const PLUGINS = [remarkGfm];
 
-/**
- * Renders an AI response as formatted Markdown.
- *
- * @param {string}  children - the raw Markdown returned by the model
- * @param {boolean} compact  - tighter vertical rhythm, for chat bubbles
- * @param {string}  className - extra classes for the wrapper
- */
 export default function MarkdownMessage({ children, compact = false, className = '' }) {
   const text = typeof children === 'string' ? children : String(children ?? '');
 
-  // A streaming response starts empty. Rendering nothing is correct here — the
-  // caller shows its own typing indicator.
   if (!text.trim()) return null;
 
   return (
