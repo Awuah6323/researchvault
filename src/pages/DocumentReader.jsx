@@ -80,7 +80,16 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   const rawPaperText = extractedFullText || resource.fullText || resource.abstractText || '';
   const isAbstractOnly = !hasRealText || (rawPaperText || '').length < 800 || rawPaperText === (resource.abstractText || '').trim();
 
-  const [viewMode, setViewMode] = useState('page');
+  // A locally uploaded PDF always renders, and it is the thing the user just
+  // handed us — open on it. Remote sources (DOI / search imports) still start on
+  // the extracted text, because resolving those can fail and an abstract is a
+  // better landing state than a retry card.
+  const [viewMode, setViewMode] = useState(resource.pdfFileData ? 'pdf' : 'page');
+
+  // `hasPdf` survives both sync and the quota eviction in storage.saveResources;
+  // the bytes do not. So this covers a paper added on another device and one
+  // whose attachment was dropped locally to make room.
+  const pdfMissingLocally = Boolean(resource.hasPdf && !resource.pdfFileData && !hasPdfSource);
 
   const [readerState, setReaderState] = useState('idle');
   const [statusMessage, setStatusMessage] = useState('Finding the PDF...');
@@ -176,9 +185,14 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   // Render PDF.js Canvas Page
   const safePdfPage = Math.min(Math.max(1, pdfJsPageNum), Math.max(1, pdfJsNumPages || 1));
 
+  // `viewMode` is a dependency because the canvas only exists while PDF mode is
+  // showing. The document usually finishes loading while the text view is
+  // mounted, so this effect's first run finds a null ref and gives up — and
+  // without viewMode here nothing re-runs it when the canvas finally appears,
+  // leaving an empty canvas until the reader happens to change page or zoom.
   useEffect(() => {
     let cancelled = false;
-    if (!pdfJsDoc || !pdfCanvasRef.current) return;
+    if (viewMode !== 'pdf' || !pdfJsDoc || !pdfCanvasRef.current) return;
 
     (async () => {
       try {
@@ -202,7 +216,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
     })();
 
     return () => { cancelled = true; };
-  }, [pdfJsDoc, safePdfPage, pdfJsScale]);
+  }, [pdfJsDoc, safePdfPage, pdfJsScale, viewMode]);
 
   // Text Pagination
   const paperPages = React.useMemo(() => {
@@ -575,9 +589,13 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                       The paper may still be freely available on the publisher's site or institutional catalog. You can open the direct link or switch to extracted text reading mode.
                     </div>
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                      <a href={resource.downloadUrl || resource.sourceUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                        <ExternalLink size={14} /> Open Source
-                      </a>
+                      {/* A locally uploaded PDF has no source URL, and an anchor
+                          with href={undefined} is a button that reloads the app. */}
+                      {(resource.downloadUrl || resource.sourceUrl) && (
+                        <a href={resource.downloadUrl || resource.sourceUrl} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <ExternalLink size={14} /> Open Source
+                        </a>
+                      )}
                       <button onClick={loadPdfDocument} className="btn-secondary" style={{ padding: '8px 14px', fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', backgroundColor: 'transparent' }}>
                         <RefreshCw size={14} /> Try Again
                       </button>
@@ -636,6 +654,31 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                   >
                     Switch to PDF Mode
                   </button>
+                </div>
+              )}
+
+              {/* The record says a PDF was attached, but its bytes are not on
+                  this device — either it was added elsewhere (sync carries the
+                  metadata only) or it was evicted when localStorage filled up.
+                  Saying so beats a reader that just looks empty. */}
+              {pdfMissingLocally && !isExtractingPdfText && (
+                <div style={{
+                  margin: '8px 0 12px',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px'
+                }}>
+                  <FileSearch size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                    <strong style={{ color: 'var(--text-main)' }}>The original PDF file isn't stored on this device.</strong>{' '}
+                    {hasRealText
+                      ? 'The text below was extracted when the paper was added. Re-upload the PDF if you need the original pages.'
+                      : 'Re-upload the PDF from the device you added it on to read the original pages.'}
+                  </div>
                 </div>
               )}
 

@@ -24,6 +24,7 @@ import AuthPage from './pages/AuthPage';
 import PasswordResetModal from './components/PasswordResetModal';
 
 import { storage } from './services/storage';
+import { useToast } from './components/FeedbackProvider';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -45,6 +46,7 @@ export default function App() {
   const [userProfile, setUserProfile] = useState(() => storage.getSession());
   const [theme, setTheme] = useState('sepia');
   const [searchQuery, setSearchQuery] = useState('');
+  const toast = useToast();
 
   // Modals & Reader Active State
   const [activeReaderResource, setActiveReaderResource] = useState(null);
@@ -302,6 +304,11 @@ export default function App() {
   const handleAddResource = (newRes) => {
     const created = storage.addResource(newRes);
     setResources(storage.getResources());
+    // A PDF that would not fit in localStorage used to disappear without a word,
+    // which read as "the upload worked but I can't open my paper".
+    if (created && created.storageWarning) {
+      toast({ message: created.storageWarning, tone: 'error' });
+    }
   };
 
   const handleAddCategory = (newCat) => {

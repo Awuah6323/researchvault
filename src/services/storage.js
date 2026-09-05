@@ -127,6 +127,31 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+/** Millisecond timestamp of a resource; 0 when it carries no usable stamp. */
+function timeOf(resource) {
+  const stamp = resource && (resource.updatedAt || resource.addedAt);
+  const parsed = stamp ? Date.parse(stamp) : NaN;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/** Turns an eviction list into one sentence the user can act on. */
+function describeEviction(titles, textTrimmedToo = false) {
+  if (!titles.length) {
+    return textTrimmedToo
+      ? 'Local storage is full, so some extracted paper text was shortened to fit.'
+      : null;
+  }
+
+  const subject =
+    titles.length === 1
+      ? `the PDF file for "${titles[0]}"`
+      : `the PDF files for ${titles.length} papers`;
+
+  return `This device ran out of local storage, so ${subject} had to be removed. The papers, notes, and extracted text are still here.${
+    textTrimmedToo ? ' Some extracted text was shortened as well.' : ''
+  }`;
+}
+
 function getSyncedVersion() {
   const raw = localStorage.getItem(getScopedKey(BASE_KEYS.SYNC_VERSION));
   const parsed = Number(raw);
@@ -352,17 +377,57 @@ export const storage = {
 
   saveResources(resources, skipCloudPush = false) {
     const key = getScopedKey(BASE_KEYS.RESOURCES);
+    const result = { ok: true, evicted: [], warning: null };
 
     if (!writeJson(key, resources)) {
-      // Quota exceeded. Drop the heaviest field and keep the metadata rather
-      // than losing the write entirely.
-      const lighter = resources.map((r) => ({ ...r, pdfFileData: '' }));
-      if (!writeJson(key, lighter)) {
-        console.warn('Storage quota reached; could not save resources.');
+      // Quota exceeded. localStorage is ~5 MB per origin and a PDF held as a
+      // base64 data URL costs roughly 1.4x the file size, so two or three papers
+      // can fill it. Evict the *oldest* attachments one at a time and stop as
+      // soon as the write lands: dropping every PDF at once — which is what this
+      // used to do — threw away the file the user just added, plus every other
+      // paper's, to make room for one oversized upload.
+      const working = resources.map((r) => ({ ...r }));
+      const oldestPdfFirst = working
+        .map((r, index) => ({ index, at: timeOf(r) }))
+        .filter(({ index }) => working[index].pdfFileData)
+        .sort((a, b) => a.at - b.at);
+
+      let landed = false;
+      for (const { index } of oldestPdfFirst) {
+        const victim = working[index];
+        result.evicted.push(victim.title || `Paper ${victim.id}`);
+        // hasPdf is kept so the reader can explain the absence rather than
+        // behaving as though the paper never had a file.
+        working[index] = { ...victim, pdfFileData: '', hasPdf: true };
+        if (writeJson(key, working)) {
+          landed = true;
+          break;
+        }
+      }
+
+      if (landed) {
+        result.warning = describeEviction(result.evicted);
+      } else {
+        // Every attachment is gone and it still does not fit. Extracted full text
+        // is the next heaviest field; truncating it keeps the library usable.
+        const trimmed = working.map((r) => ({
+          ...r,
+          fullText: String(r.fullText || '').slice(0, 4000)
+        }));
+
+        if (writeJson(key, trimmed)) {
+          result.warning = describeEviction(result.evicted, true);
+        } else {
+          result.ok = false;
+          result.warning =
+            'This device has run out of local storage, so the change could not be saved. Delete a few papers and try again.';
+          console.warn('Storage quota reached; could not save resources.');
+        }
       }
     }
 
     if (!skipCloudPush) pushScheduler.schedule();
+    return result;
   },
 
   addResource(resource) {
@@ -378,8 +443,10 @@ export const storage = {
       lastPageRead: 1
     };
     list.unshift(newDoc);
-    this.saveResources(list);
-    return newDoc;
+    const saved = this.saveResources(list);
+    // storageWarning rides on the returned copy only — it is UI feedback about
+    // this one write, not a field of the paper, and is never persisted.
+    return saved.warning ? { ...newDoc, storageWarning: saved.warning } : newDoc;
   },
 
   toggleFavorite(id) {
