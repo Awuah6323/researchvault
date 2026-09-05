@@ -12,10 +12,6 @@ ACCURACY RULES — these apply without exception:
 - If you were given only an abstract, judge only what an abstract can support, and say that is what you are working from.
 `;
 
-/**
- * The conversational contract, shared by open chat and by questions asked about
- * a specific paper — both are the same activity from the reader's side.
- */
 const MODE_1_CHAT = `
 RESPONSE STYLE — match the answer to the question:
 
@@ -60,31 +56,16 @@ What the document itself reports.
 Your own judgement, and what it depends on.
 `;
 
-
-/**
- * Sanitizes input text to reduce control characters,
- * excessive input length, and basic prompt injection risks.
- */
 function sanitizeInput(text, maxLen = 4000) {
   if (!text) return "";
-
   let clean = String(text)
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
     .trim();
-
-  return clean.length > maxLen
-    ? clean.slice(0, maxLen) + "..."
-    : clean;
+  return clean.length > maxLen ? clean.slice(0, maxLen) + "..." : clean;
 }
 
-/**
- * Detect whether the user is directly calling the AI.
- */
 function isCallingAI(message) {
-  const text = String(message || "")
-    .toLowerCase()
-    .trim();
-
+  const text = String(message || "").toLowerCase().trim();
   return (
     text === "ai" ||
     text.startsWith("ai ") ||
@@ -97,14 +78,8 @@ function isCallingAI(message) {
   );
 }
 
-/**
- * Detect simple greetings.
- */
 function isGreeting(message) {
-  const query = String(message || "")
-    .toLowerCase()
-    .trim();
-
+  const query = String(message || "").toLowerCase().trim();
   const greetingPatterns = [
     /^hi[\s!.,]*$/i,
     /^hello[\s!.,]*$/i,
@@ -115,89 +90,44 @@ function isGreeting(message) {
     /^what'?s\s+up[\s!.,]*$/i,
     /^how\s+are\s+you[\s!.,]*$/i,
   ];
-
   return (
-    greetingPatterns.some((pattern) =>
-      pattern.test(query)
-    ) ||
+    greetingPatterns.some((pattern) => pattern.test(query)) ||
     query.startsWith("hi ") ||
     query.startsWith("hello ") ||
     query.startsWith("hey ")
   );
 }
 
-/**
- * Calls Gemini API.
- *
- * If Gemini is unavailable or the API key is missing,
- * the application automatically uses the friendly
- * ResearchVault Academic Fallback Engine.
- */
-/**
- * Render the recent turns of a conversation for the prompt.
- *
- * The last 8 turns is a deliberate compromise: enough for pronouns and
- * follow-ups to resolve, short enough that it does not dominate the prompt. When
- * a paper is tagged, the paper content is already the expensive part.
- */
+// Formats the last N turns of chat history for inclusion in a prompt.
 function formatChatHistory(chatHistory = [], turns = 8, perTurn = 1000) {
   return (chatHistory || [])
     .slice(-turns)
     .map(
       (h) =>
-        `${
-          h.sender === "user"
-            ? "User"
-            : "ResearchVault AI"
-        }: ${sanitizeInput(h.text, perTurn)}`
+        `${h.sender === "user" ? "User" : "ResearchVault AI"}: ${sanitizeInput(h.text, perTurn)}`
     )
     .join("\n");
 }
 
-/**
- * Turns a refusal from our own proxy into something worth reading.
- *
- * Only the statuses where the user can actually do something get a message.
- * Everything else returns null and falls through to the scripted engine, which
- * is the right answer for "the AI is unreachable" but the wrong one for "you
- * have hit today's limit".
- */
+// Returns a user-facing message for actionable API refusals (auth, rate limit, size).
+// Returns null for everything else so the fallback engine handles it instead.
 function explainApiRefusal(status, userName = "Scholar") {
   if (status === 401 || status === 403) {
     return `Your session has expired, ${userName}. Please sign in again to keep using the AI features — your library and notes are safe on this device.`;
   }
-
   if (status === 429) {
     return `You have reached the AI request limit for now, ${userName}. This limit exists to keep the service available for everyone. Please wait a minute and try again.`;
   }
-
   if (status === 413) {
     return `That request is too large to send to the AI. Try selecting fewer papers, or asking about a shorter section of the document.`;
   }
-
   return null;
 }
 
 /**
  * Calls Gemini through the /api/gemini proxy.
- *
- * Two modes of delivery, chosen by whether `onChunk` was passed:
- *
- *   without onChunk — one await, returns the finished string. Unchanged from
- *                     before, and still what the summarisers use.
- *   with onChunk    — the proxy streams raw text and every chunk is handed to
- *                     onChunk as it lands. The full string is still returned at
- *                     the end, so a caller that wants both gets both.
- *
- * If Gemini is unreachable the friendly ResearchVault fallback engine answers
- * instead. But note the ordering below: partial streamed text always beats the
- * fallback. Replacing half a real answer with canned filler because the
- * connection dropped at the end would be a downgrade, not a rescue.
- *
- * @param {object}   options
- * @param {string}   options.mode    - generation preset: 'chat' | 'review' | 'summary'
- * @param {Function} options.onChunk - called with each text delta as it arrives
- * @param {AbortSignal} options.signal - cancels the request
+ * Supports both streaming (onChunk) and non-streaming modes.
+ * Falls back to the scripted engine when the backend is unreachable.
  */
 async function callGeminiApi(
   promptText,
@@ -207,16 +137,9 @@ async function callGeminiApi(
 ) {
   const { mode = "chat", onChunk, signal } = options;
   const wantsStream = typeof onChunk === "function";
-
-  // Accumulated outside the try so the catch and the fallback path can both see
-  // how much real text already reached the caller.
   let streamed = "";
 
   try {
-    // The proxy requires a signed-in caller, because it holds the Gemini key
-    // and every call costs money. getAccessToken() refreshes a token that is
-    // close to expiring, so a long reading session does not start failing while
-    // the app still looks signed in.
     const headers = { 'Content-Type': 'application/json' };
     const token = await getAccessToken();
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -236,9 +159,6 @@ async function callGeminiApi(
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
-
-          // stream: true keeps a multi-byte character split across two chunks
-          // from being decoded as two replacement characters.
           const chunk = decoder.decode(value, { stream: true });
           if (chunk) {
             streamed += chunk;
@@ -255,30 +175,17 @@ async function callGeminiApi(
         if (streamed.trim()) return streamed;
       } else {
         const data = await apiResponse.json();
-        if (data && data.text) {
-          return data.text;
-        }
+        if (data && data.text) return data.text;
       }
     } else {
-      // A refusal the user can act on deserves a real explanation. Answering a
-      // rate limit or an expired session with the generic "having trouble
-      // reaching the AI service" fallback would send them to check a network
-      // connection that is working perfectly.
       const explained = explainApiRefusal(apiResponse.status, userName);
       if (explained) {
         if (wantsStream) onChunk(explained);
         return explained;
       }
-
-      // Status only. The body may carry upstream detail that is not ours to put
-      // in a browser console.
       console.warn(`/api/gemini responded with ${apiResponse.status}`);
     }
   } catch (backendErr) {
-    // The user pressed Stop or navigated away. Every chunk received so far was
-    // already handed to onChunk, so the caller is holding the partial answer —
-    // rethrowing lets it tell "cancelled" apart from "failed" without needing
-    // the text back from here.
     if (backendErr?.name === 'AbortError') throw backendErr;
 
     if (streamed.trim()) {
@@ -291,74 +198,40 @@ async function callGeminiApi(
 
   if (streamed.trim()) return streamed;
 
-  const fallback = generateScholarlyFallbackResponse(
-    promptText,
-    userName,
-    rawUserMessage
-  );
-
-  // A streaming caller renders from its onChunk handler, so the fallback has to
-  // be pushed through the same channel or it would never appear.
+  const fallback = generateScholarlyFallbackResponse(promptText, userName, rawUserMessage);
   if (wantsStream && fallback) onChunk(fallback);
-
   return fallback;
 }
 
-/**
- * Friendly ResearchVault AI fallback engine.
- *
- * This runs only when Gemini is unavailable (no key, network error,
- * or non-OK response) — it is a scripted safety net, not a real chatbot.
- */
+// Scripted fallback engine — runs only when Gemini is unavailable.
 function generateScholarlyFallbackResponse(
   prompt,
   userName = "Scholar",
   rawUserMessage = ""
 ) {
-  const query = String(rawUserMessage || prompt || "")
-    .toLowerCase()
-    .trim();
+  const query = String(rawUserMessage || prompt || "").toLowerCase().trim();
 
   if (isGreeting(query)) {
     const greetings = [
       `Hey ${userName}! 😊 It's great to hear from you. How can I help you with your research today?`,
-
       `Hello ${userName}! 👋 I hope you're doing well. What are we working on today?`,
-
       `Hey there! 😊 I'm ready when you are. Whether it's a research paper, literature review, or just a question that's been bothering you, let's figure it out together.`,
-
       `Good to see you, ${userName}! 🌟 What would you like to explore today?`,
     ];
-
-    return greetings[
-      Math.floor(
-        Math.random() * greetings.length
-      )
-    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
   }
 
   if (isCallingAI(query)) {
     const responses = [
       `Hey ${userName}! 😊 I'm right here. What can I help you with?`,
-
       `Yes, ${userName}! 👋 I'm listening. What's on your mind?`,
-
       `Hey! 😊 I'm ready. Tell me what you need help with and we'll work through it together.`,
-
       `I'm here, ${userName}! 🌟 What are we working on today?`,
     ];
-
-    return responses[
-      Math.floor(
-        Math.random() * responses.length
-      )
-    ];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
 
-  if (
-    query.includes("transformer") ||
-    query.includes("attention")
-  ) {
+  if (query.includes("transformer") || query.includes("attention")) {
     return `Hey ${userName}! 😊 Absolutely, let's break this down in a simple way.
 
 ### 🤖 Transformer Architecture & Attention Mechanisms
@@ -390,10 +263,7 @@ Transformers can process many parts of a sequence in parallel, making them highl
 If you'd like, I can also explain **self-attention using a simple real-world example**. That usually makes the concept much easier to understand.`;
   }
 
-  if (
-    query.includes("literature review") ||
-    query.includes("methodology")
-  ) {
+  if (query.includes("literature review") || query.includes("methodology")) {
     return `Hey ${userName}! 😊 That's an important part of academic research. Let's make it easier to approach.
 
 ### 📚 A Simple Literature Review Framework
@@ -430,10 +300,7 @@ A good literature review should tell a **story about what researchers know, what
 If you tell me your research topic, I can help you build the literature review structure around it.`;
   }
 
-  if (
-    query.includes("research topic") ||
-    query.includes("research title")
-  ) {
+  if (query.includes("research topic") || query.includes("research title")) {
     return `Hey ${userName}! 😊 I'd be happy to help you with that.
 
 Choosing a good research topic usually starts with three things:
@@ -447,10 +314,7 @@ We can also look at the **research gap**, the **relevance of the problem**, and 
 Tell me the area you're interested in, and I'll help you develop some strong research topics.`;
   }
 
-  if (
-    query.includes("research gap") ||
-    query.includes("gap in research")
-  ) {
+  if (query.includes("research gap") || query.includes("gap in research")) {
     return `That's a great question, ${userName}! 😊 Finding a research gap is one of the most important parts of developing a strong research project.
 
 A **research gap** is an area where existing studies have not fully answered a question, solved a problem, or explored a particular situation.
@@ -480,9 +344,6 @@ If you give me your research topic, I can help you identify possible research ga
 Try asking again in a moment, or check that the API key/backend is set up correctly.`;
 }
 
-/**
- * Generate an academic paper summary.
- */
 export async function generatePaperSummary(
   title,
   authors,
@@ -490,31 +351,13 @@ export async function generatePaperSummary(
   summaryType = "Executive Summary",
   options = {}
 ) {
-  const safeTitle = sanitizeInput(
-    title,
-    300
-  );
+  const safeTitle = sanitizeInput(title, 300);
+  const safeAuthors = sanitizeInput(authors, 300);
+  const safeAbstract = sanitizeInput(abstractOrText, 12000);
+  const safeType = sanitizeInput(summaryType, 100);
 
-  const safeAuthors = sanitizeInput(
-    authors,
-    300
-  );
-
-  const safeAbstract = sanitizeInput(
-    abstractOrText,
-    12000
-  );
-
-  const safeType = sanitizeInput(
-    summaryType,
-    100
-  );
-
-  // Security: untrusted paper content is wrapped in explicit delimiters.
-  // This is defense-in-depth against prompt injection: a paper whose text
-  // says "ignore previous instructions" is now structurally separated from
-  // the actual instructions. The model sees the boundary tags as part of the
-  // document structure, not as continuation of the system prompt.
+  // Paper content is wrapped in [PAPER DATA] tags as defense-in-depth against
+  // prompt injection — content inside is treated as data, not instructions.
   const prompt = `
 You are ResearchVault AI, a friendly and highly knowledgeable academic research assistant.
 
@@ -555,22 +398,9 @@ Discuss important limitations and possible directions for future research.
 Use an approachable academic tone.
 [/TASK]`;
 
-  return callGeminiApi(
-    prompt,
-    safeAuthors || "Scholar",
-    "",
-    { mode: "summary", ...options }
-  );
+  return callGeminiApi(prompt, safeAuthors || "Scholar", "", { mode: "summary", ...options });
 }
 
-/**
- * Ask a question about a specific academic paper — Mode 1, with the paper as
- * the grounding source.
- *
- * `chatHistory` matters more here than it looks. Without it a tagged paper
- * turned every message into an isolated one-shot question, so a follow-up like
- * "and what sample size did they use?" arrived with no idea who "they" were.
- */
 export async function askPaperQuestion(
   title,
   content,
@@ -579,27 +409,12 @@ export async function askPaperQuestion(
   userName = "Scholar",
   options = {}
 ) {
-  const safeTitle = sanitizeInput(
-    title,
-    300
-  );
-
-  const safeContent = sanitizeInput(
-    content,
-    16000
-  );
-
-  const safeQuestion = sanitizeInput(
-    question,
-    2000
-  );
-
+  const safeTitle = sanitizeInput(title, 300);
+  const safeContent = sanitizeInput(content, 16000);
+  const safeQuestion = sanitizeInput(question, 2000);
   const safeUserName = sanitizeInput(userName, 100);
   const historyText = formatChatHistory(chatHistory);
 
-  // Security: paper content and user input are wrapped in explicit delimiters
-  // as defense-in-depth against prompt injection. The model is told explicitly
-  // that content inside [PAPER DATA] is document data, not instructions.
   const prompt = `
 You are ResearchVault AI, a friendly, intelligent academic research assistant.
 
@@ -634,43 +449,20 @@ ${safeQuestion}
 
 Answer the question directly and naturally.`;
 
-  return callGeminiApi(
-    prompt,
-    safeUserName,
-    safeQuestion,
-    { mode: "chat", ...options }
-  );
+  return callGeminiApi(prompt, safeUserName, safeQuestion, { mode: "chat", ...options });
 }
 
-/**
- * Main conversational ResearchVault AI chat.
- *
- * This is a general-purpose chatbox: it is prompted to answer ANY
- * question the user asks (not just research topics), conversationally.
- */
 export async function chatWithGemini(
   userMessage,
   chatHistory = [],
   userName = "Scholar",
   options = {}
 ) {
-  const safeMsg = sanitizeInput(
-    userMessage,
-    4000
-  );
-
-  const safeUserName = sanitizeInput(
-    userName,
-    100
-  );
-
+  const safeMsg = sanitizeInput(userMessage, 4000);
+  const safeUserName = sanitizeInput(userName, 100);
   const historyText = formatChatHistory(chatHistory);
-
-  const directAICall =
-    isCallingAI(safeMsg);
-
-  const greeting =
-    isGreeting(safeMsg);
+  const directAICall = isCallingAI(safeMsg);
+  const greeting = isGreeting(safeMsg);
 
   const prompt = `
 You are ResearchVault AI, a friendly, intelligent, and knowledgeable academic research assistant.
@@ -700,45 +492,15 @@ ${safeMsg}
 
 Respond naturally. Answer what was actually asked, at the length the question deserves.`;
 
-  return callGeminiApi(
-    prompt,
-    safeUserName,
-    safeMsg,
-    { mode: "chat", ...options }
-  );
+  return callGeminiApi(prompt, safeUserName, safeMsg, { mode: "chat", ...options });
 }
 
-/**
- * Mode 3 — a comparative synthesis across two or more papers.
- *
- * This replaced a four-section thematic summary that could not actually compare
- * anything, for a structural reason: it truncated every paper to 2,000
- * characters, which is roughly an abstract. Asked to contrast methodologies, it
- * had no methodology sections to read. The content budget below is the more
- * important half of this rewrite; the section list is the visible half.
- *
- * Deliberately no comparison table. A table is the obvious way to lay two papers
- * side by side, but it stops working the moment there are four of them on a
- * phone screen, and it pushes the model toward three-word cells where the
- * interesting content is the reasoning. Prose per aspect carries more.
- */
-export async function synthesizeLiteratureReview(
-  papers,
-  options = {}
-) {
+export async function synthesizeLiteratureReview(papers, options = {}) {
   const list = Array.isArray(papers) ? papers : [];
   const count = list.length;
 
-  // One total budget shared out across however many papers were selected, rather
-  // than a fixed per-paper cap. Two papers each get real depth; a large
-  // selection degrades to abstract-level coverage instead of blowing up the
-  // prompt and the latency.
-  //
-  //   2 papers -> 12,000 each   4 -> 6,000   8+ -> 3,000 (floor)
-  const perPaper = Math.max(
-    3000,
-    Math.min(12000, Math.floor(24000 / Math.max(count, 1)))
-  );
+  // Budget: 24,000 chars shared across all papers (2→12k each, 4→6k, 8+→3k floor).
+  const perPaper = Math.max(3000, Math.min(12000, Math.floor(24000 / Math.max(count, 1))));
 
   const formatted = list
     .map(
@@ -750,13 +512,8 @@ Content: ${sanitizeInput(p.abstractText, perPaper)}`
     )
     .join("\n\n");
 
-  const labels = list
-    .map((_, idx) => `Paper ${idx + 1}`)
-    .join(", ");
+  const labels = list.map((_, idx) => `Paper ${idx + 1}`).join(", ");
 
-  // Security: all paper content is wrapped in explicit delimiters as defense-in-depth
-  // against prompt injection. A paper whose abstract says "ignore previous instructions"
-  // is structurally separated from the actual synthesis instructions.
   const prompt = `
 You are ResearchVault AI, acting as a senior researcher writing a comparative synthesis review of ${count} papers for a thesis literature chapter or a journal submission.
 
@@ -836,22 +593,10 @@ Specific, actionable directions that follow from the gaps above. Each should be 
 
 A closing paragraph giving your overall judgement of this body of work: what it establishes, how confidently, and what remains open.`;
 
-  return callGeminiApi(
-    prompt,
-    "Scholar",
-    "",
-    { mode: "review", ...options }
-  );
+  return callGeminiApi(prompt, "Scholar", "", { mode: "review", ...options });
 }
 
-/**
- * Generate a formal, professional Peer Review Report for a SINGLE paper —
- * structured like a real academic peer review (as used for conference/
- * journal submissions or thesis committee review), not a loose synthesis.
- *
- * This is distinct from synthesizeLiteratureReview, which handles MULTIPLE
- * papers and produces a comparative literature review instead.
- */
+// Formal peer review for a single paper — structured like a real journal submission review.
 export async function generatePeerReview(
   title,
   authors,
@@ -862,13 +607,8 @@ export async function generatePeerReview(
   const safeTitle = sanitizeInput(title, 300);
   const safeAuthors = sanitizeInput(authors, 300);
   const safePubInfo = sanitizeInput(publicationInfo, 300);
-  // Raised from 6,000. A review that assesses methodology and validity needs to
-  // have actually seen the methods section, which 6,000 characters rarely
-  // reached on a full paper.
   const safeContent = sanitizeInput(abstractOrText, 14000);
 
-  // Security: paper content is wrapped in explicit delimiters as defense-in-depth
-  // against prompt injection from malicious paper content.
   const prompt = `
 You are ResearchVault AI acting as an expert academic peer reviewer, writing a formal Peer Review Report to a professional publishing standard — the kind submitted to a journal editor or a thesis committee.
 ${CORE_RULES}
@@ -960,10 +700,5 @@ A numbered list of concrete, actionable revisions, ordered most to least importa
 
 If the provided content includes citations or referenced works, list them as a clean numbered reference list. If it does not, write exactly: "No reference list was available in the provided content."`;
 
-  return callGeminiApi(
-    prompt,
-    safeAuthors || "Scholar",
-    "",
-    { mode: "review", ...options }
-  );
+  return callGeminiApi(prompt, safeAuthors || "Scholar", "", { mode: "review", ...options });
 }
