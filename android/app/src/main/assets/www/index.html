@@ -1,20 +1,60 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="sepia">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https: http: blob: data:; frame-src 'self' https://accounts.google.com blob:; object-src 'self' blob:; worker-src 'self' blob: https://cdnjs.cloudflare.com; manifest-src 'self';" />
+    <!-- Pinch-zoom must stay enabled (WCAG 2.1 SC 1.4.4). Never re-add
+         maximum-scale or user-scalable=no: this is a document reader, and
+         low-vision users depend on zooming the page. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- This meta CSP is the fallback policy. In production the authoritative
+         one is the Content-Security-Policy RESPONSE HEADER set in vercel.json,
+         which is stricter and, critically, can carry frame-ancestors —
+         browsers IGNORE frame-ancestors in a meta tag, so clickjacking
+         protection is only ever real when it comes from the header.
+
+         This tag still matters for the Android WebView build, which loads from
+         file:///android_asset and so receives no server headers at all.
+
+         connect-src must list wss: explicitly. Supabase Realtime runs over a
+         WebSocket, and the https: source expression does NOT cover the wss:
+         scheme — without it the socket is blocked and cross-device updates
+         silently fall back to the slow polling safety net.
+
+         connect-src stays broad (https:) on purpose: the PDF resolver's first
+         tier fetches directly from whichever publisher or repository hosts a
+         paper, and those hosts are not knowable in advance. Narrowing it to an
+         allowlist would break open-access downloads.
+
+         frame-src names docs.google.com and scholar.google.com because the
+         search page embeds the Google Docs PDF viewer and a Scholar results
+         pane. object-src keeps blob: for the <embed> PDF preview. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' blob: data: https: wss:; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'self' blob:; frame-src 'self' blob: https://docs.google.com https://scholar.google.com; base-uri 'self'; form-action 'self'; manifest-src 'self';" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="theme-color" content="#10b981" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ResearchVault" />
+    
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" href="/logo_icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
     <title>ResearchVault | Smart Academic Library & Literature Synthesis</title>
     <meta name="description" content="Organize academic research, generate citations, read documents offline, and synthesize literature with Gemini AI." />
+    
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/assets/index-CMwEdppA.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BXavDA4r.css">
+    <!-- The Google Identity Services script is gone: Google sign-in is now a
+         plain redirect handled by Supabase, so there is no third-party script
+         and no injected iframe to make keyboard-accessible. -->
+    <script type="module" crossorigin src="/assets/index-CdQsFk8x.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DtrWThGj.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
   </body>
 </html>
