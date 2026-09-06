@@ -13,10 +13,10 @@ export default function ResourceCard({
   const confirm = useConfirm();
 
   return (
-    <article className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
+    <article className="glass-card" style={{ padding: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '10px' }}>
       <div>
         {/* Header Badges */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span className="badge">
               {resource.resourceType || 'Research Paper'}
@@ -54,9 +54,9 @@ export default function ResourceCard({
             onClick={() => onOpenReader(resource)}
             style={{
               fontFamily: 'var(--font-serif)',
-              fontSize: '1.1rem',
+              fontSize: '0.95rem',
               fontWeight: 700,
-              lineHeight: 1.3,
+              lineHeight: 1.25,
               color: 'var(--text-main)',
               cursor: 'pointer'
             }}
@@ -66,12 +66,12 @@ export default function ResourceCard({
         </h3>
 
         {/* Authors & Year */}
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
           <strong>{resource.authors}</strong> • {resource.publicationYear}
         </div>
 
         {resource.journal && (
-          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '10px' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '6px' }}>
             {resource.journal}
           </div>
         )}
@@ -79,11 +79,11 @@ export default function ResourceCard({
         {/* Abstract snippet */}
         {resource.abstractText && (
           <p style={{
-            fontSize: '0.85rem',
+            fontSize: '0.78rem',
             color: 'var(--text-muted)',
-            lineHeight: 1.4,
+            lineHeight: 1.35,
             display: '-webkit-box',
-            WebkitLineClamp: 3,
+            WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden'
           }}>
