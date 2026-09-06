@@ -780,7 +780,7 @@ export const storage = {
       fieldOfStudy: user.fieldOfStudy || 'General Research',
       researchInterests: user.researchInterests || 'Literature Review',
       isAuthenticated: true,
-      isGuest: false,
+      isGuest: !!options.isGuest,
       // Recorded so the UI can say "this device isn't syncing" rather than
       // implying a cloud backup exists when it does not.
       localOnly: !!options.localOnly
@@ -791,6 +791,36 @@ export const storage = {
       /* ignore */
     }
     this.saveProfile(profile, true);
+    return profile;
+  },
+
+  continueAsGuest(name = 'Guest Scholar', institution = 'Independent Researcher', fieldOfStudy = 'General Research') {
+    const guestUser = {
+      name: name.trim() || 'Guest Scholar',
+      email: 'guest_user@researchvault.local',
+      institution: institution.trim() || 'Independent Researcher',
+      fieldOfStudy: fieldOfStudy.trim() || 'General Research',
+      researchInterests: 'Academic Literature, Exploratory Research',
+      createdAt: nowIso()
+    };
+    this.cacheUserLocally(guestUser);
+    const profile = this.saveSession(guestUser, { localOnly: true, isGuest: true });
+    notifySyncListeners('local-only', this.getLastSyncTime());
+    return profile;
+  },
+
+  continueAsLocalUser({ name, email, institution, fieldOfStudy }) {
+    const userEmail = email && email.trim() ? email.trim().toLowerCase() : `scholar_${Date.now()}@researchvault.local`;
+    const user = createLocalOnlyUser({
+      name: name || 'Scholar',
+      email: userEmail,
+      institution: institution || 'University / Institution',
+      fieldOfStudy: fieldOfStudy || 'General Research'
+    });
+    this.cacheUserLocally(user);
+    const profile = this.saveSession(user, { localOnly: true });
+    notifySyncListeners('local-only', this.getLastSyncTime());
+    return profile;
   },
 
   getSession() {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, LogIn, UserPlus, Shield, Check, Lock, Mail, User, Building } from 'lucide-react';
+import { X, LogIn, UserPlus, Shield, Check, Lock, Mail, User, Building, Loader2 } from 'lucide-react';
 import { storage } from '../services/storage';
 import Modal from './Modal';
 
@@ -66,7 +66,9 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
       }
     } catch (err) {
       const msg = err && err.message ? err.message : '';
-      if (err?.name === 'BackendUnavailableError' || /unreachable|not configured/i.test(msg)) {
+      if (/rate limit|too many requests|over_email_send_rate_limit/i.test(msg)) {
+        setError('Too many attempts in a short time. Cloud email sending is temporarily rate-limited.');
+      } else if (err?.name === 'BackendUnavailableError' || /unreachable|not configured/i.test(msg)) {
         setError('Cloud sync is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.');
       } else {
         setError(msg || 'Could not sign you in. Please try again.');
@@ -331,7 +333,10 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
             }}
           >
             {submitting ? (
-              <span>Syncing Vault...</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <Loader2 size={18} className="animate-spin" aria-hidden="true" />
+                <span>{mode === 'login' ? 'Signing In...' : 'Creating Scholar Account...'}</span>
+              </span>
             ) : mode === 'login' ? (
               <>
                 <LogIn size={18} aria-hidden="true" />

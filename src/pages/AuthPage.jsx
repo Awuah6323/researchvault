@@ -12,6 +12,7 @@ import {
   Check,
   Eye,
   EyeOff,
+  Loader2,
 } from 'lucide-react';
 import { storage } from '../services/storage';
 
@@ -36,8 +37,8 @@ function resolveAuthErrorMessage(err) {
   if (/Password should be at least|password.*6 characters/i.test(raw)) {
     return 'Please choose a longer password (at least 8 characters).';
   }
-  if (/rate limit|too many requests/i.test(raw)) {
-    return 'Too many attempts in a short time. Wait a minute and try again.';
+  if (/rate limit|too many requests|over_email_send_rate_limit/i.test(raw)) {
+    return 'Too many attempts in a short time. Cloud email sending is temporarily rate-limited. You can wait a minute or continue as a Local Scholar below.';
   }
   if (err?.name === 'BackendUnavailableError' || /fetch|network|Failed to fetch|NetworkError|timeout|unreachable|not configured/i.test(raw)) {
     return 'Cloud sync is not configured on this local server. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.';
@@ -63,6 +64,39 @@ export default function AuthPage({ onLoginSuccess }) {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
+
+  const isRateLimited = Boolean(
+    error && /rate limit|too many attempts|too many requests|over_email_send_rate_limit/i.test(error)
+  );
+
+  const handleContinueLocal = () => {
+    try {
+      const profile = storage.continueAsLocalUser({
+        name: name.trim() || 'Scholar',
+        email: email.trim() || `scholar_${Date.now()}@researchvault.local`,
+        institution: institution.trim() || 'University / Institution',
+        fieldOfStudy: fieldOfStudy.trim() || 'General Research'
+      });
+      setSuccess(`Entering vault as Local Scholar (${profile.name})...`);
+      setTimeout(() => {
+        onLoginSuccess(profile);
+      }, 250);
+    } catch (e) {
+      console.error('Error entering local mode:', e);
+    }
+  };
+
+  const handleContinueGuest = () => {
+    try {
+      const profile = storage.continueAsGuest();
+      setSuccess('Entering vault as Guest Scholar...');
+      setTimeout(() => {
+        onLoginSuccess(profile);
+      }, 250);
+    } catch (e) {
+      console.error('Error entering guest mode:', e);
+    }
+  };
 
   /**
    * Google sign-in, handed off to Supabase.
@@ -740,19 +774,42 @@ export default function AuthPage({ onLoginSuccess }) {
               role="alert"
               style={{
                 padding: '12px 14px',
-
                 borderRadius: '10px',
-
                 backgroundColor: '#fee2e2',
-
                 color: '#991b1b',
-
                 fontSize: '0.85rem',
-
                 marginBottom: '16px',
+                lineHeight: 1.4,
               }}
             >
-              {error}
+              <div>{error}</div>
+              {isRateLimited && (
+                <div style={{ marginTop: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={handleContinueLocal}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      backgroundColor: '#991b1b',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: 600,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    <Check size={15} aria-hidden="true" />
+                    <span>Enter as Local Scholar (Instant Access)</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1207,7 +1264,10 @@ export default function AuthPage({ onLoginSuccess }) {
               }}
             >
               {submitting ? (
-                <span>Syncing Vault...</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <Loader2 size={18} className="animate-spin" aria-hidden="true" />
+                  <span>{activeTab === 'login' ? 'Signing In...' : 'Creating Scholar Account...'}</span>
+                </span>
               ) : activeTab === 'login' ? (
                 <>
                   <LogIn size={18} aria-hidden="true" />
@@ -1246,6 +1306,38 @@ export default function AuthPage({ onLoginSuccess }) {
                 Forgot password?
               </button>
             )}
+
+            {/* GUEST ACCESS OPTION */}
+            <div
+              style={{
+                marginTop: '18px',
+                paddingTop: '14px',
+                borderTop: '1px solid var(--border-color, #1e293b)',
+                textAlign: 'center',
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleContinueGuest}
+                disabled={submitting || googleLoading}
+                className="text-button"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted, #94a3b8)',
+                  fontSize: '0.82rem',
+                  fontWeight: 500,
+                  cursor: submitting || googleLoading ? 'not-allowed' : 'pointer',
+                  padding: '6px 10px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  borderRadius: '6px',
+                }}
+              >
+                <span>Continue as Guest Scholar (No Account Required) →</span>
+              </button>
+            </div>
           </form>
         </div>
       </div>
