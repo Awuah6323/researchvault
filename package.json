@@ -13,7 +13,7 @@
     "test:security": "node scripts/testSecurityControls.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.3",
+    "@supabase/supabase-js": "^2.114.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.344.0",
     "pdfjs-dist": "^6.2.108",
