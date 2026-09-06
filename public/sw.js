@@ -1,5 +1,5 @@
 // public/sw.js - Service worker offline cache shell
-const VERSION = 'v5';
+const VERSION = 'v6';
 
 // Split so a version bump can discard immutable bundles without throwing away
 // the shell that serves the offline page.

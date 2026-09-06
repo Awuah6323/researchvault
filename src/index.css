@@ -429,8 +429,12 @@ input, textarea, select {
 /* Responsive Card Grids */
 .paper-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.paper-card {
+  padding: 10px 12px !important;
 }
 
 .metrics-grid {
@@ -554,7 +558,11 @@ input, textarea, select {
   /* Grid Layouts on Mobile */
   .paper-card-grid {
     grid-template-columns: 1fr !important;
-    gap: 14px !important;
+    gap: 10px !important;
+  }
+
+  .paper-card {
+    padding: 10px 12px !important;
   }
 
   .metrics-grid {
