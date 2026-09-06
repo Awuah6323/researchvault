@@ -1,5 +1,5 @@
 // public/sw.js - Service worker offline cache shell
-const VERSION = 'v4';
+const VERSION = 'v5';
 
 // Split so a version bump can discard immutable bundles without throwing away
 // the shell that serves the offline page.
@@ -65,7 +65,7 @@ async function networkFirst(request) {
   const cache = await caches.open(SHELL_CACHE);
 
   try {
-    const response = await fetch(request);
+    const response = await fetch(request, { cache: 'reload' });
     if (response && response.ok) {
       cache.put(request, response.clone());
     }

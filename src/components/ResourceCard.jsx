@@ -13,22 +13,22 @@ export default function ResourceCard({
   const confirm = useConfirm();
 
   return (
-    <article className="glass-card" style={{ padding: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '10px' }}>
+    <article className="glass-card" style={{ padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '8px' }}>
       <div>
         {/* Header Badges */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span className="badge">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span className="badge" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
               {resource.resourceType || 'Research Paper'}
             </span>
             {resource.openAccess && (
-              <span className="badge">
+              <span className="badge" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
                 Open Access
               </span>
             )}
             {resource.pdfFileName && (
-              <span className="badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <FileCode size={12} aria-hidden="true" /> PDF Attached
+              <span className="badge" style={{ fontSize: '0.68rem', padding: '2px 6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <FileCode size={11} aria-hidden="true" /> PDF
               </span>
             )}
           </div>
@@ -36,25 +36,25 @@ export default function ResourceCard({
           <button
             type="button"
             onClick={() => onToggleFavorite(resource.id)}
-            style={{ color: resource.isFavorite ? 'var(--accent-gold)' : 'var(--text-muted)', padding: '4px' }}
+            style={{ color: resource.isFavorite ? 'var(--accent-gold)' : 'var(--text-muted)', padding: '3px' }}
             title={resource.isFavorite ? 'Unstar paper' : 'Star paper'}
             aria-label={resource.isFavorite ? `Remove "${resource.title}" from favourites` : `Add "${resource.title}" to favourites`}
             aria-pressed={!!resource.isFavorite}
           >
-            <Star size={18} aria-hidden="true" fill={resource.isFavorite ? 'var(--accent-gold)' : 'none'} />
+            <Star size={16} aria-hidden="true" fill={resource.isFavorite ? 'var(--accent-gold)' : 'none'} />
           </button>
         </div>
 
         {/* Title — a real button so it is focusable and works with Enter/Space.
             It used to be an <h3> with an onClick, unreachable by keyboard. */}
-        <h3 style={{ marginBottom: '6px' }}>
+        <h3 style={{ marginBottom: '4px' }}>
           <button
             type="button"
             className="text-button"
             onClick={() => onOpenReader(resource)}
             style={{
               fontFamily: 'var(--font-serif)',
-              fontSize: '0.95rem',
+              fontSize: '0.9rem',
               fontWeight: 700,
               lineHeight: 1.25,
               color: 'var(--text-main)',
@@ -66,12 +66,12 @@ export default function ResourceCard({
         </h3>
 
         {/* Authors & Year */}
-        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
           <strong>{resource.authors}</strong> • {resource.publicationYear}
         </div>
 
         {resource.journal && (
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '6px' }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '4px' }}>
             {resource.journal}
           </div>
         )}
@@ -79,9 +79,9 @@ export default function ResourceCard({
         {/* Abstract snippet */}
         {resource.abstractText && (
           <p style={{
-            fontSize: '0.78rem',
+            fontSize: '0.75rem',
             color: 'var(--text-muted)',
-            lineHeight: 1.35,
+            lineHeight: 1.3,
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
@@ -96,8 +96,8 @@ export default function ResourceCard({
       <div>
         {/* Progress Bar if reading in progress */}
         {resource.readingProgressPercent > 0 && (
-          <div style={{ marginBottom: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '3px' }}>
               <span>Reading Progress</span>
               <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{resource.readingProgressPercent}%</span>
             </div>
@@ -107,19 +107,19 @@ export default function ResourceCard({
               aria-valuemin={0}
               aria-valuemax={100}
               aria-label={`Reading progress for "${resource.title}"`}
-              style={{ height: '5px', borderRadius: '3px', backgroundColor: 'var(--border-color)', overflow: 'hidden' }}
+              style={{ height: '4px', borderRadius: '2px', backgroundColor: 'var(--border-color)', overflow: 'hidden' }}
             >
               <div style={{ width: `${resource.readingProgressPercent}%`, height: '100%', backgroundColor: 'var(--primary)', transition: 'width 0.3s ease' }} />
             </div>
           </div>
         )}
 
-        <div className="card-footer-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '8px' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+        <div className="card-footer-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '6px' }}>
+          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>
             {resource.category}
           </span>
 
-          <div className="card-action-group" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <div className="card-action-group" style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
             {/* Delete Button — icon only */}
             {onDeleteResource && (
               <button
@@ -137,8 +137,8 @@ export default function ResourceCard({
                 title="Delete paper from library"
                 aria-label={`Delete "${resource.title}" from library`}
                 style={{
-                  padding: '6px',
-                  borderRadius: '8px',
+                  padding: '5px',
+                  borderRadius: '6px',
                   color: 'var(--danger)',
                   backgroundColor: 'var(--danger-bg)',
                   display: 'inline-flex',
@@ -155,7 +155,7 @@ export default function ResourceCard({
                   e.currentTarget.style.backgroundColor = 'var(--danger-bg)';
                 }}
               >
-                <Trash2 size={16} aria-hidden="true" />
+                <Trash2 size={14} aria-hidden="true" />
               </button>
             )}
 
@@ -165,9 +165,9 @@ export default function ResourceCard({
               onClick={() => onOpenAiSummarizer(resource)}
               title="Gemini AI Summary"
               aria-label={`Generate Gemini AI summary of "${resource.title}"`}
-              style={{ padding: '6px', borderRadius: '8px', color: 'var(--primary)', backgroundColor: 'var(--primary-light)' }}
+              style={{ padding: '5px', borderRadius: '6px', color: 'var(--primary)', backgroundColor: 'var(--primary-light)' }}
             >
-              <Sparkles size={16} aria-hidden="true" />
+              <Sparkles size={14} aria-hidden="true" />
             </button>
 
             {/* Download PDF Button */}
@@ -183,9 +183,9 @@ export default function ResourceCard({
                     ? `Download PDF of "${resource.title}"`
                     : `Open PDF of "${resource.title}" in a new tab`
                 }
-                style={{ padding: '6px', borderRadius: '8px', color: 'var(--success)', backgroundColor: 'var(--success-bg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+                style={{ padding: '5px', borderRadius: '6px', color: 'var(--success)', backgroundColor: 'var(--success-bg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
               >
-                <Download size={16} aria-hidden="true" />
+                <Download size={14} aria-hidden="true" />
               </a>
             )}
 
@@ -195,9 +195,9 @@ export default function ResourceCard({
               onClick={() => onShowCitation(resource)}
               title="Generate Citation"
               aria-label={`Generate citation for "${resource.title}"`}
-              style={{ padding: '6px', borderRadius: '8px', color: 'var(--text-muted)' }}
+              style={{ padding: '5px', borderRadius: '6px', color: 'var(--text-muted)' }}
             >
-              <Quote size={16} aria-hidden="true" />
+              <Quote size={14} aria-hidden="true" />
             </button>
 
             {/* Read Button */}
@@ -206,9 +206,9 @@ export default function ResourceCard({
               onClick={() => onOpenReader(resource)}
               className="btn-primary card-read-btn"
               aria-label={`Read "${resource.title}"`}
-              style={{ padding: '6px 14px', fontSize: '0.8rem', flexShrink: 0 }}
+              style={{ padding: '5px 12px', fontSize: '0.76rem', flexShrink: 0 }}
             >
-              <BookOpen size={14} aria-hidden="true" />
+              <BookOpen size={13} aria-hidden="true" />
               <span>Read</span>
             </button>
           </div>
