@@ -1,31 +1,43 @@
 // api/_lib/rateLimit.js
-// Fixed-window rate limiting, shared across serverless instances when Upstash
-// Redis is configured and per-instance otherwise.
+// Fixed-window rate limiting, shared across serverless instances via Supabase
+// Postgres and per-instance otherwise.
 //
 // WHY THIS SHAPE: Vercel runs each function in isolated, short-lived instances
 // that scale horizontally, so an in-memory counter is per-instance and an
-// attacker spreading requests across warm instances slips past it. Redis is
-// therefore the real limiter, and the in-memory path is a deliberately
-// documented fallback rather than the design.
+// attacker spreading requests across warm instances slips past it. The shared
+// counter is therefore the real limiter, and the in-memory path is a
+// deliberately documented fallback rather than the design.
 //
-// The Upstash REST API is used over a Redis client library on purpose: it is
-// one fetch() with a bearer token, so there is no connection pool to manage
-// across cold starts and no dependency to add.
+// Supabase is the store because the app already depends on it — no second
+// vendor, no extra credential to rotate, and the counter lives beside the data
+// it is protecting. PostgREST is called with one fetch() rather than through
+// @supabase/supabase-js: the whole interaction is a single RPC, so there is no
+// client to construct on every cold start.
 //
 // To enable distributed limiting, set in the Vercel project:
-//   UPSTASH_REDIS_REST_URL
-//   UPSTASH_REDIS_REST_TOKEN
-// With neither set the app still runs and still limits, just per-instance.
+//   SUPABASE_URL                (or the existing VITE_SUPABASE_URL is reused)
+//   SUPABASE_SERVICE_ROLE_KEY
+// and apply supabase/schema.sql, which creates public.rate_limits and the
+// rv_rate_limit_hit function. With the key absent the app still runs and still
+// limits, just per-instance.
+//
+// The service-role key is required rather than preferred: rv_rate_limit_hit is
+// security definer with EXECUTE revoked from anon and authenticated, because a
+// counter the browser can increment is a counter one user can use to lock
+// another out. The key is read here only, stays server-side, and is never sent
+// to the client — nothing VITE_-prefixed is consulted for it.
 
 import { clientIp } from './http.js';
 
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || '';
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
-const REDIS_ENABLED = !!(REDIS_URL && REDIS_TOKEN);
+const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SHARED_ENABLED = !!(SUPABASE_URL && SERVICE_KEY);
+
+const RPC_TIMEOUT_MS = 2000;
 
 /** True when limits are shared across instances rather than per-instance. */
 export function isDistributed() {
-  return REDIS_ENABLED;
+  return SHARED_ENABLED;
 }
 
 // -------------------------------------------------------- IN-MEMORY FALLBACK
@@ -52,42 +64,66 @@ function memoryConsume(key, limit, windowSec) {
   return { count, resetAt };
 }
 
-// ------------------------------------------------------------------- REDIS
+// ----------------------------------------------------------------- SUPABASE
 
-/**
- * INCR the window key, and set its TTL on the first hit of the window.
- *
- * Pipelined so it is one round trip. INCR returning 1 means this request opened
- * the window, and only then does EXPIRE run — re-setting the TTL on every
- * request would slide the window forward forever and never let it reset.
- */
-async function redisConsume(key, windowSec, signal) {
-  const response = await fetch(`${REDIS_URL}/pipeline`, {
+function rpc(name, args, signal) {
+  return fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${REDIS_TOKEN}`,
-      'Content-Type': 'application/json'
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+      // One row is expected, so ask PostgREST for the object rather than an
+      // array wrapping it.
+      Accept: 'application/vnd.pgrst.object+json'
     },
-    body: JSON.stringify([
-      ['INCR', key],
-      ['EXPIRE', key, String(windowSec), 'NX'],
-      ['TTL', key]
-    ]),
+    body: JSON.stringify(args),
     signal
   });
+}
 
-  if (!response.ok) throw new Error(`Upstash responded ${response.status}`);
+/**
+ * Increments the window counter and reports where the caller stands.
+ *
+ * All the atomicity lives in the SQL function's `on conflict do update`, so
+ * this is one round trip and two instances hitting the same key at the same
+ * instant cannot both read the same count.
+ */
+async function sharedConsume(key, windowSec, signal) {
+  const response = await rpc('rv_rate_limit_hit', { p_key: key, p_window_seconds: windowSec }, signal);
 
-  const results = await response.json();
-  const count = Number(results?.[0]?.result);
-  const ttl = Number(results?.[2]?.result);
+  if (!response.ok) throw new Error(`Supabase responded ${response.status}`);
 
-  if (!Number.isFinite(count)) throw new Error('Unexpected Upstash response');
+  const row = await response.json();
+  const count = Number(row?.hits);
+  const resetAt = Date.parse(row?.reset_at);
+
+  if (!Number.isFinite(count)) throw new Error('Unexpected rv_rate_limit_hit response');
 
   return {
     count,
-    resetAt: Date.now() + (Number.isFinite(ttl) && ttl > 0 ? ttl : windowSec) * 1000
+    resetAt: Number.isFinite(resetAt) ? resetAt : Date.now() + windowSec * 1000
   };
+}
+
+/**
+ * Reclaims expired rows now and then.
+ *
+ * A per-minute limit mints a new key every minute for every caller, so the
+ * table needs sweeping. Doing it on a small fraction of requests keeps the
+ * limiter self-maintaining without requiring pg_cron, and it is deliberately
+ * not awaited: garbage collection must never add latency to, or fail, the
+ * request that happened to trigger it.
+ */
+function maybeCollectGarbage() {
+  if (Math.random() >= 0.005) return;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), RPC_TIMEOUT_MS);
+
+  rpc('rv_rate_limit_gc', {}, controller.signal)
+    .catch(() => {})
+    .finally(() => clearTimeout(timeout));
 }
 
 // -------------------------------------------------------------------- PUBLIC
@@ -106,17 +142,18 @@ export async function consume(bucket, identity, { limit, windowSec }) {
 
   let result;
 
-  if (REDIS_ENABLED) {
+  if (SHARED_ENABLED) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
+    const timeout = setTimeout(() => controller.abort(), RPC_TIMEOUT_MS);
     try {
-      result = await redisConsume(key, windowSec, controller.signal);
+      result = await sharedConsume(key, windowSec, controller.signal);
+      maybeCollectGarbage();
     } catch (err) {
-      // Fail OPEN, but only as far as the in-memory limiter. Redis being
+      // Fail OPEN, but only as far as the in-memory limiter. The database being
       // briefly unreachable should not take the app down, and it should not
       // remove the limit either — this degrades to per-instance limiting, which
-      // is what the app would have had with no Redis at all.
-      console.error('[rateLimit] Redis unavailable, falling back to in-memory:', err.message);
+      // is what the app would have had with no shared store at all.
+      console.error('[rateLimit] shared counter unavailable, falling back to in-memory:', err.message);
       result = memoryConsume(key, limit, windowSec);
     } finally {
       clearTimeout(timeout);

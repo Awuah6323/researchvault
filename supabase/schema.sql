@@ -172,3 +172,94 @@ create policy "Service role full access to health checks"
   using (auth.role() = 'service_role')
   with check (auth.role() = 'service_role');
 
+
+-- ------------------------------------------------------ API RATE LIMIT STORE
+--
+-- Shared fixed-window counters for the functions in /api.
+--
+-- WHY THIS EXISTS: Vercel runs each function in isolated instances that scale
+-- horizontally, so a counter held in one instance's memory is per-instance —
+-- a caller spreading requests across warm instances gets a multiple of the
+-- intended limit. Postgres is the one thing every instance already shares, so
+-- one row per (bucket, identity, window) makes a single limit apply to all of
+-- them without adding another service to the stack.
+--
+-- This table is written ONLY by the serverless functions, via the function
+-- below, using the service_role key. It is never reachable from the browser.
+
+create table if not exists public.rate_limits (
+  key          text primary key,
+  count        integer not null default 0,
+  window_start timestamptz not null default now(),
+  expires_at   timestamptz not null
+);
+
+-- Supports the garbage collector below. Rows are logically dead the moment
+-- expires_at passes, but nothing reclaims them without this.
+create index if not exists rate_limits_expires_at_idx
+  on public.rate_limits (expires_at);
+
+-- RLS on with NO policies: the default deny then applies to anon and
+-- authenticated, so even someone holding the public anon key cannot read the
+-- counters (which would leak usage patterns) or write them (which would let
+-- them exhaust another user's limit).
+alter table public.rate_limits enable row level security;
+
+revoke all on public.rate_limits from anon, authenticated;
+
+-- One round trip: open the window or increment it, and report where the caller
+-- now stands. `on conflict` makes this atomic, so two instances arriving at the
+-- same instant cannot both read 4 and both write 5.
+--
+-- Resetting is lazy rather than scheduled: an expired row is reused as the
+-- first hit of a new window, which is why a stale row can never grant a caller
+-- a free pass.
+create or replace function public.rv_rate_limit_hit(
+  p_key            text,
+  p_window_seconds integer
+)
+returns table (hits integer, reset_at timestamptz)
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  insert into public.rate_limits as rl (key, count, window_start, expires_at)
+  values (p_key, 1, now(), now() + make_interval(secs => p_window_seconds))
+  on conflict (key) do update
+    set count        = case when rl.expires_at <= now() then 1   else rl.count + 1   end,
+        window_start = case when rl.expires_at <= now() then now() else rl.window_start end,
+        expires_at   = case when rl.expires_at <= now()
+                            then now() + make_interval(secs => p_window_seconds)
+                            else rl.expires_at end
+  returning rl.count, rl.expires_at;
+$$;
+
+-- Reclaims expired rows. A per-minute limit mints a new key every minute for
+-- every caller, so without this the table grows forever.
+create or replace function public.rv_rate_limit_gc()
+returns integer
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  with gone as (
+    delete from public.rate_limits where expires_at <= now() - interval '1 hour'
+    returning 1
+  )
+  select count(*)::integer from gone;
+$$;
+
+-- security definer means these run as the owner, so EXECUTE is the whole
+-- boundary: without this revoke, anyone holding the public anon key could
+-- increment any key they liked and lock a named user out of the AI features.
+revoke all on function public.rv_rate_limit_hit(text, integer) from public, anon, authenticated;
+revoke all on function public.rv_rate_limit_gc() from public, anon, authenticated;
+
+grant execute on function public.rv_rate_limit_hit(text, integer) to service_role;
+grant execute on function public.rv_rate_limit_gc() to service_role;
+
+-- /api calls rv_rate_limit_gc() occasionally so no scheduler is required. If
+-- pg_cron is enabled, this is the deterministic version:
+--
+--   select cron.schedule('rv-rate-limit-gc', '17 * * * *', 'select public.rv_rate_limit_gc()');
+

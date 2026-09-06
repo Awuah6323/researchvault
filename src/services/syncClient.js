@@ -22,12 +22,43 @@ export class BackendUnavailableError extends Error {
   }
 }
 
+/**
+ * Supabase refused to send an auth email.
+ *
+ * This is a PROJECT-WIDE quota, not a per-person one: the built-in SMTP service
+ * allows only a couple of messages an hour across all users, and re-signing up
+ * with an address that already has an unconfirmed account triggers a further
+ * 60-second resend cooldown. Both arrive as the same 429, which is why a first
+ * signup can be refused for something the person did not do.
+ */
+export class EmailRateLimitError extends Error {
+  constructor(message, retryAfterSeconds) {
+    super(message || 'Confirmation email could not be sent right now.');
+    this.name = 'EmailRateLimitError';
+    this.retryAfterSeconds = retryAfterSeconds || 0;
+  }
+}
+
+function isEmailRateLimit(error) {
+  const code = String(error?.code || '');
+  const message = String(error?.message || '');
+  return (
+    code === 'over_email_send_rate_limit' ||
+    (Number(error?.status || 0) === 429 && /email|security purposes|rate limit/i.test(message))
+  );
+}
+
 function classifyError(error) {
   if (!error) return null;
 
   const name = error.name || '';
   const message = String(error.message || '');
   const status = Number(error.status || 0);
+
+  if (isEmailRateLimit(error)) {
+    const wait = /after (\d+) seconds?/i.exec(message);
+    return new EmailRateLimitError(message, wait ? Number(wait[1]) : 0);
+  }
 
   if (
     name === 'AuthRetryableFetchError' ||
@@ -187,7 +218,35 @@ export async function apiRegister({ name, email, password, institution, fieldOfS
     }
   });
 
-  if (error) throw classifyError(error);
+  if (error) {
+    const classified = classifyError(error);
+
+    // A refused confirmation email does not mean the account is unusable. The
+    // same 429 covers "the project's hourly email quota is spent" and "this
+    // address already signed up moments ago", and in both cases the account may
+    // already exist. Trying the credentials settles it, so a first-time signup
+    // is not turned away over a mail-server limit it had no part in.
+    if (classified instanceof EmailRateLimitError) {
+      const probe = await supabase.auth.signInWithPassword({
+        email: String(email || '').toLowerCase().trim(),
+        password
+      });
+
+      if (probe.data?.session) {
+        cachedSession = probe.data.session;
+        return { user: mapUser(probe.data.user), needsEmailConfirmation: false };
+      }
+
+      // Credentials accepted but unconfirmed: the account exists and its link
+      // was already sent, so say that rather than blaming the person for
+      // "too many attempts".
+      if (/email not confirmed/i.test(String(probe.error?.message || ''))) {
+        classified.accountAlreadyExists = true;
+      }
+    }
+
+    throw classified;
+  }
 
   // With email confirmation on (Supabase's default) signUp succeeds but returns
   // no session — the account is not usable until the link is clicked. Saying so

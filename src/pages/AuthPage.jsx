@@ -37,8 +37,14 @@ function resolveAuthErrorMessage(err) {
   if (/Password should be at least|password.*6 characters/i.test(raw)) {
     return 'Please choose a longer password (at least 8 characters).';
   }
-  if (/rate limit|too many requests|over_email_send_rate_limit/i.test(raw)) {
-    return 'Too many attempts in a short time. Cloud email sending is temporarily rate-limited. You can wait a minute or continue as a Local Scholar below.';
+  if (err?.name === 'EmailRateLimitError' || /rate limit|too many requests|over_email_send_rate_limit|security purposes/i.test(raw)) {
+    // Not the person's fault, and worth saying so: this quota belongs to the
+    // Supabase project's email service and is shared by everyone who signs up.
+    if (err?.accountAlreadyExists) {
+      return 'Your account was created and a confirmation link has already been sent to this address. Open that email, then sign in — no need to sign up again.';
+    }
+    const wait = Number(err?.retryAfterSeconds || 0);
+    return `The cloud email service has hit its sending quota${wait ? `, so a confirmation link can’t go out for another ${wait} seconds` : ''}. This is a limit on the vault’s mail service, not on your account. Wait a moment and try again, or continue as a Local Scholar below and connect the cloud later.`;
   }
   if (err?.name === 'BackendUnavailableError' || /fetch|network|Failed to fetch|NetworkError|timeout|unreachable|not configured/i.test(raw)) {
     return 'Cloud sync is not configured on this local server. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.';
@@ -65,8 +71,10 @@ export default function AuthPage({ onLoginSuccess }) {
 
   const [submitting, setSubmitting] = useState(false);
 
+  // Offer the local fallback only when the cloud is what refused — not when the
+  // account already exists, where the right next step is to sign in.
   const isRateLimited = Boolean(
-    error && /rate limit|too many attempts|too many requests|over_email_send_rate_limit/i.test(error)
+    error && /sending quota|mail service|rate.?limit|too many requests/i.test(error)
   );
 
   const handleContinueLocal = () => {

@@ -66,8 +66,12 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
       }
     } catch (err) {
       const msg = err && err.message ? err.message : '';
-      if (/rate limit|too many requests|over_email_send_rate_limit/i.test(msg)) {
-        setError('Too many attempts in a short time. Cloud email sending is temporarily rate-limited.');
+      if (err?.name === 'EmailRateLimitError' || /rate limit|too many requests|over_email_send_rate_limit|security purposes/i.test(msg)) {
+        setError(
+          err?.accountAlreadyExists
+            ? 'Your account was created and a confirmation link has already been sent. Open that email, then sign in.'
+            : 'The cloud email service has hit its sending quota. That is a limit on the vault’s mail service, not on your account — wait a moment and try again.'
+        );
       } else if (err?.name === 'BackendUnavailableError' || /unreachable|not configured/i.test(msg)) {
         setError('Cloud sync is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.');
       } else {
