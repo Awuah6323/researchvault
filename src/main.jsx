@@ -15,12 +15,38 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-// Register PWA Service Worker for offline capabilities & browser installability
-if ('serviceWorker' in navigator) {
+// Service Worker management:
+// In development / localhost, proactively unregister workers and clear caches so Vite dev server updates are immediate.
+// In production, register PWA Service Worker for offline capabilities.
+const isLocalhost = Boolean(
+  typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '[::1]' ||
+    window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
+  )
+);
+
+if (import.meta.env.DEV || isLocalhost) {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(async (registrations) => {
+      const hadController = Boolean(navigator.serviceWorker.controller);
+      for (const reg of registrations) {
+        await reg.unregister();
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      if (hadController) {
+        console.info('[ResearchVault] Localhost Service Worker unregistered. Refreshing cleanly...');
+        window.location.reload();
+      }
+    });
+  }
+} else if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((reg) => {
-        // Check for updates on every page load
         reg.update().catch(() => {});
         if (reg.waiting) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -30,20 +56,17 @@ if ('serviceWorker' in navigator) {
           if (installing) {
             installing.addEventListener('statechange', () => {
               if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-                // New update available, activate immediately
                 installing.postMessage({ type: 'SKIP_WAITING' });
               }
             });
           }
         });
-        console.log('PWA ServiceWorker registered with scope:', reg.scope);
       })
       .catch((err) => {
         console.warn('PWA ServiceWorker registration failed:', err);
       });
   });
 
-  // When the new service worker takes over, reload once to ensure all assets are fresh
   let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!refreshing) {
@@ -52,5 +75,6 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
+
 
 
