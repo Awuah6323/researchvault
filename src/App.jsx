@@ -48,7 +48,6 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const toast = useToast();
 
-  // Modals & Reader Active State
   const [activeReaderResource, setActiveReaderResource] = useState(null);
   const [citationModalResource, setCitationModalResource] = useState(null);
   const [aiModalResource, setAiModalResource] = useState(null);
@@ -56,12 +55,8 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUserGuideModal, setShowUserGuideModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // Set when the app is opened from a password-reset email, which signs the
-  // user in with a session whose only purpose is choosing a new password.
   const [showPasswordReset, setShowPasswordReset] = useState(false);
 
-  // PWA Install State
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -76,7 +71,6 @@ export default function App() {
     setUserProfile(session);
     refreshAppData();
 
-    // Auto-trigger Onboarding Carousel Modal for first-time logins unless explicitly opted out
     try {
       const neverShow = localStorage.getItem('researchvault_never_show_onboarding');
       const hasSeen = localStorage.getItem('researchvault_has_seen_onboarding');
@@ -96,12 +90,10 @@ export default function App() {
     setTheme(savedTheme);
     document.documentElement.setAttribute('data-theme', savedTheme);
 
-    // Initialize history state on app startup
     if (!window.history.state) {
       window.history.replaceState({ tab: 'home' }, '', '#home');
     }
 
-    // Auto-trigger Onboarding Carousel Modal for first-time visitors unless opted out
     try {
       const neverShowOnboarding = localStorage.getItem('researchvault_never_show_onboarding');
       const hasSeenOnboarding = localStorage.getItem('researchvault_has_seen_onboarding');
@@ -110,14 +102,12 @@ export default function App() {
       }
     } catch (e) {}
 
-    // Subscribe to cloud sync state changes to auto-refresh data
     const unsubscribeSync = storage.subscribeSyncState((state) => {
       if (state === 'synced') {
         refreshAppData();
       }
     });
 
-    // Initial Cloud Vault pull for logged-in account
     if (session && session.email) {
       storage.pullCloudVault(session.email).then(() => {
         refreshAppData();
@@ -125,8 +115,6 @@ export default function App() {
     }
 
     const pullIfActive = () => {
-      // Don't sync a backgrounded tab: on mobile this was waking the radio
-      // every 15s and draining battery for a screen nobody was looking at.
       if (document.visibilityState !== 'visible') return;
       const activeSession = storage.getSession();
       if (!activeSession || !activeSession.email) return;
@@ -144,13 +132,6 @@ export default function App() {
       pullIfActive();
     };
 
-    /**
-     * Restores a stored Supabase session and watches for auth changes.
-     *
-     * Three things depend on this: a returning visitor staying signed in, the
-     * Google redirect landing back here with a session in the URL, and the
-     * password-reset link opening the app in recovery mode.
-     */
     let disposeAuth = () => {};
     storage
       .initAuth((event, user) => {
@@ -169,30 +150,22 @@ export default function App() {
       })
       .then((dispose) => {
         disposeAuth = dispose || (() => {});
-        // Realtime needs a session, so it can only start once one exists.
         storage.startRealtimeSync();
       });
 
-    // Safety net, not the primary mechanism. Another device's change arrives
-    // over the realtime subscription within about a second; this only covers a
-    // socket that dropped without us noticing, so it can be slow and cheap.
     const autoSyncInterval = setInterval(pullIfActive, 180000);
 
-    // Sync immediately when the tab becomes visible again rather than waiting
-    // out the remainder of the interval.
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') pullIfActive();
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Detect if running in standalone PWA mode
     const checkStandalone = () => {
       const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
       setIsStandalone(isStandaloneMode);
     };
     checkStandalone();
 
-    // Listen for browser PWA installation event
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -211,7 +184,6 @@ export default function App() {
     };
   }, []);
 
-  // Close all open modals & drawers
   const closeAllModals = () => {
     setIsMobileMenuOpen(false);
     setActiveReaderResource(null);
@@ -222,7 +194,6 @@ export default function App() {
     setShowUserGuideModal(false);
   };
 
-  // Hardware Back Button & Browser Popstate Integration
   useEffect(() => {
     const handlePopState = (event) => {
       const hasOpenModal = 
@@ -231,7 +202,7 @@ export default function App() {
         !!citationModalResource || 
         !!aiModalResource || 
         showAddModal || 
-        showAuthModal ||
+        showAuthModal || 
         showUserGuideModal;
 
       if (hasOpenModal) {
@@ -253,7 +224,6 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [isMobileMenuOpen, activeReaderResource, citationModalResource, aiModalResource, showAddModal, showAuthModal]);
 
-  // Tab navigation with history pushState
   const handleNavigate = (tabName) => {
     if (tabName !== activeTab) {
       window.history.pushState({ tab: tabName }, '', `#${tabName}`);
@@ -265,7 +235,6 @@ export default function App() {
     closeAllModals();
   };
 
-  // Open modal with history pushState
   const handleOpenModal = (setter, value = true) => {
     window.history.pushState({ tab: activeTab, isModal: true }, '');
     setter(value);
@@ -304,8 +273,6 @@ export default function App() {
   const handleAddResource = (newRes) => {
     const created = storage.addResource(newRes);
     setResources(storage.getResources());
-    // A PDF that would not fit in localStorage used to disappear without a word,
-    // which read as "the upload worked but I can't open my paper".
     if (created && created.storageWarning) {
       toast({ message: created.storageWarning, tone: 'error' });
     }
@@ -331,7 +298,6 @@ export default function App() {
     setUserProfile(null);
   };
 
-  // Mandatory Authentication Gate Check
   if (!userProfile || !userProfile.isAuthenticated) {
     return (
       <AuthPage
@@ -346,7 +312,6 @@ export default function App() {
       backgroundColor: 'var(--bg-main)',
       color: 'var(--text-main)'
     }}>
-      {/* First tab stop: lets keyboard users jump the nav on every page. */}
       <a href="#main-content" className="skip-link">Skip to main content</a>
 
       <Navbar
@@ -487,7 +452,6 @@ export default function App() {
         isStandalone={isStandalone}
       />
 
-      {/* Reader Full Screen Overlay */}
       {activeReaderResource && (
         <DocumentReader
           resource={activeReaderResource}
@@ -499,7 +463,6 @@ export default function App() {
         />
       )}
 
-      {/* Citation Generator Modal */}
       {citationModalResource && (
         <CitationModal
           resource={citationModalResource}
@@ -507,7 +470,6 @@ export default function App() {
         />
       )}
 
-      {/* Gemini AI Summarizer Modal */}
       {aiModalResource && (
         <AiSummarizerModal
           resource={aiModalResource}
@@ -516,7 +478,6 @@ export default function App() {
         />
       )}
 
-      {/* Add Paper Modal */}
       {showAddModal && (
         <AddResourceModal
           categories={categories}
@@ -525,7 +486,6 @@ export default function App() {
         />
       )}
 
-      {/* Login & Sign Up Auth Modal */}
       {showAuthModal && (
         <AuthModal
           onClose={() => setShowAuthModal(false)}
@@ -533,9 +493,6 @@ export default function App() {
         />
       )}
 
-      {/* Shown when the app is opened from a password-reset email. Rendered
-          above everything else because the recovery session is only good for
-          this one task. */}
       {showPasswordReset && (
         <PasswordResetModal
           onDone={() => {
@@ -546,7 +503,6 @@ export default function App() {
         />
       )}
 
-      {/* PWA Install Modal */}
       {showInstallModal && (
         <InstallPwaModal
           onClose={() => setShowInstallModal(false)}
@@ -556,7 +512,6 @@ export default function App() {
         />
       )}
 
-      {/* User Guide & Onboarding Carousel Modal */}
       <UserGuideModal
         isOpen={showUserGuideModal}
         onClose={() => {

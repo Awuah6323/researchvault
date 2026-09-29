@@ -1,7 +1,5 @@
-// public/sw.js - Service worker offline cache shell
 const VERSION = 'v7';
 
-// Detect localhost / development environment
 const isLocalhost = Boolean(
   self.location.hostname === 'localhost' ||
   self.location.hostname === '[::1]' ||
@@ -9,7 +7,6 @@ const isLocalhost = Boolean(
 );
 
 if (isLocalhost) {
-  // In development, instantly self-destruct, clear caches, and never intercept requests
   self.addEventListener('install', () => {
     self.skipWaiting();
   });
@@ -28,11 +25,7 @@ if (isLocalhost) {
         })
     );
   });
-
-  // DO NOT add a fetch listener that calls respondWith on localhost.
-  // Passing through allows Vite dev server, HMR, and fresh modules to load unobstructed.
 } else {
-  // Production PWA Caching Strategy
   const SHELL_CACHE = `researchvault-shell-${VERSION}`;
   const ASSET_CACHE = `researchvault-assets-${VERSION}`;
   const CURRENT_CACHES = [SHELL_CACHE, ASSET_CACHE];
@@ -136,21 +129,17 @@ if (isLocalhost) {
 
     const url = new URL(request.url);
 
-    // Cross-origin bypass: Supabase, Gemini, fonts, external PDFs
     if (url.origin !== self.location.origin) return;
 
-    // Never intercept API routes or development modules
     if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/src/') || url.pathname.startsWith('/@')) {
       return;
     }
 
-    // HTML navigations always check network first
     if (request.mode === 'navigate') {
       event.respondWith(networkFirst(request));
       return;
     }
 
-    // Content-hashed bundles
     if (isImmutableAsset(url)) {
       event.respondWith(cacheFirst(request, ASSET_CACHE));
       return;

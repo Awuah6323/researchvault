@@ -64,7 +64,6 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenI
         </nav>
       </div>
 
-      {/* Footer Info & PWA Install Button */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {!isStandalone && (
           <button

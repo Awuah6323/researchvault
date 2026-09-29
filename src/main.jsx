@@ -15,9 +15,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-// Service Worker management:
-// In development / localhost, proactively unregister workers and clear caches so Vite dev server updates are immediate.
-// In production, register PWA Service Worker for offline capabilities.
 const isLocalhost = Boolean(
   typeof window !== 'undefined' && (
     window.location.hostname === 'localhost' ||
@@ -38,7 +35,6 @@ if (import.meta.env.DEV || isLocalhost) {
         await Promise.all(keys.map((k) => caches.delete(k)));
       }
       if (hadController) {
-        console.info('[ResearchVault] Localhost Service Worker unregistered. Refreshing cleanly...');
         window.location.reload();
       }
     });
@@ -75,6 +71,3 @@ if (import.meta.env.DEV || isLocalhost) {
     }
   });
 }
-
-
-

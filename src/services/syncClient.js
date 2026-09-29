@@ -39,6 +39,13 @@ export class EmailRateLimitError extends Error {
   }
 }
 
+export class EmailDeliveryError extends Error {
+  constructor(message) {
+    super(message || 'Supabase could not send the confirmation email.');
+    this.name = 'EmailDeliveryError';
+  }
+}
+
 function isEmailRateLimit(error) {
   const code = String(error?.code || '');
   const message = String(error?.message || '');
@@ -60,8 +67,13 @@ function classifyError(error) {
     return new EmailRateLimitError(message, wait ? Number(wait[1]) : 0);
   }
 
+  if (/error sending confirmation email|error sending.*email|smtp|mail delivery/i.test(message)) {
+    return new EmailDeliveryError(
+      'Supabase failed to send the confirmation email (mail service 500 error). In your Supabase Dashboard, configure custom SMTP (e.g., Resend, Brevo, or Gmail) under Project Settings → Authentication → SMTP Settings, or turn off "Confirm email" under Authentication → Providers → Email.'
+    );
+  }
+
   if (
-    name === 'AuthRetryableFetchError' ||
     name === 'TypeError' ||
     /failed to fetch|networkerror|load failed|fetch failed/i.test(message) ||
     status === 0 ||
@@ -69,6 +81,10 @@ function classifyError(error) {
     status === 503 ||
     status === 504
   ) {
+    return new BackendUnavailableError();
+  }
+
+  if (name === 'AuthRetryableFetchError' && /network|fetch|connect|timeout/i.test(message)) {
     return new BackendUnavailableError();
   }
 
@@ -258,7 +274,14 @@ export async function apiRegister({ name, email, password, institution, fieldOfS
     };
   }
 
-  cachedSession = data.session;
+  // When email confirmation is disabled, Supabase returns an active session immediately.
+  // Since we prompt the user to manually sign in on the login screen, we clear this session.
+  try {
+    await supabase.auth.signOut();
+  } catch (e) {
+    /* ignore */
+  }
+  cachedSession = null;
   return { user: mapUser(data.user), needsEmailConfirmation: false };
 }
 

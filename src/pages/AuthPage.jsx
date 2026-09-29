@@ -46,6 +46,9 @@ function resolveAuthErrorMessage(err) {
     const wait = Number(err?.retryAfterSeconds || 0);
     return `The cloud email service has hit its sending quota${wait ? `, so a confirmation link can’t go out for another ${wait} seconds` : ''}. This is a limit on the vault’s mail service, not on your account. Wait a moment and try again, or continue as a Local Scholar below and connect the cloud later.`;
   }
+  if (err?.name === 'EmailDeliveryError' || /error sending confirmation email|error sending.*email|smtp|mail delivery/i.test(raw)) {
+    return raw || 'Supabase failed to send the confirmation email (error 500 from mail service). In your Supabase Dashboard, configure custom SMTP (e.g., Resend, Brevo, or Gmail) under Project Settings → Authentication → SMTP Settings, or turn off "Confirm email" under Authentication → Providers → Email.';
+  }
   if (err?.name === 'BackendUnavailableError' || /fetch|network|Failed to fetch|NetworkError|timeout|unreachable|not configured/i.test(raw)) {
     return 'Cloud sync is not configured on this local server. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.';
   }
@@ -221,24 +224,20 @@ export default function AuthPage({ onLoginSuccess }) {
           'Computer Science'
         );
 
-        // Supabase confirms email addresses by default, which means the account
-        // exists but has no session yet. Entering the app here would produce
-        // something that looks signed in and silently fails to sync, so stop
-        // and say what has to happen next.
+        // Prompt the user to log in and redirect to the login tab
         if (user.needsEmailConfirmation) {
           setSuccess(
-            `Almost there — we sent a confirmation link to ${email.trim()}. Open it, then sign in.`
+            `Account created! A confirmation link has been sent to ${email.trim()}. Please verify your email, then sign in below.`
           );
-          setActiveTab('login');
-          setPassword('');
-          return;
+        } else {
+          setSuccess(
+            `Account created successfully for ${user.name}! Please sign in with your email and password below.`
+          );
         }
 
-        setSuccess(
-          `Account created successfully for ${user.name}! Synchronizing vault...`
-        );
-
-        onLoginSuccess(storage.getProfile());
+        setActiveTab('login');
+        setPassword('');
+        return;
       }
     } catch (err) {
       console.error(

@@ -661,39 +661,16 @@ export const storage = {
     institution = 'University / Institution',
     fieldOfStudy = 'General Research'
   ) {
-    try {
-      const { user, needsEmailConfirmation } = await apiRegister({
-        name,
-        email,
-        password,
-        institution,
-        fieldOfStudy
-      });
+    const { user, needsEmailConfirmation } = await apiRegister({
+      name,
+      email,
+      password,
+      institution,
+      fieldOfStudy
+    });
 
-      this.cacheUserLocally(user);
-
-      // With email confirmation enabled the account is not usable yet: there is
-      // no session, so signing them in would produce an app that silently fails
-      // to sync. Hand the flag back and let the UI say "check your email".
-      if (needsEmailConfirmation) {
-        return { ...user, needsEmailConfirmation: true };
-      }
-
-      this.saveSession(user);
-      this.startRealtimeSync();
-      await this.pullCloudVault(user.email, { force: true });
-      return { ...user, needsEmailConfirmation: false };
-    } catch (err) {
-      // A validation failure (weak password, email taken) must surface as-is.
-      // Only an unreachable backend falls through to local-only mode.
-      if (!(err instanceof BackendUnavailableError)) throw err;
-
-      const user = createLocalOnlyUser({ name, email, institution, fieldOfStudy });
-      this.cacheUserLocally(user);
-      this.saveSession(user, { localOnly: true });
-      notifySyncListeners('local-only', this.getLastSyncTime());
-      return user;
-    }
+    this.cacheUserLocally(user);
+    return { ...user, needsEmailConfirmation };
   },
 
   async loginUser(email, password) {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, BookOpen, Quote, Sparkles, Download, CheckCircle, ExternalLink, Trash2, FileCode } from 'lucide-react';
+import { Star, BookOpen, Quote, Sparkles, Download, Trash2, FileCode } from 'lucide-react';
 import { useConfirm } from './FeedbackProvider';
 
 export default function ResourceCard({
@@ -15,7 +15,6 @@ export default function ResourceCard({
   return (
     <article className="glass-card paper-card" style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px' }}>
       <div>
-        {/* Header Badges */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
             <span className="badge" style={{ fontSize: '0.66rem', padding: '1px 5px' }}>
@@ -45,8 +44,6 @@ export default function ResourceCard({
           </button>
         </div>
 
-        {/* Title — a real button so it is focusable and works with Enter/Space.
-            It used to be an <h3> with an onClick, unreachable by keyboard. */}
         <h3 style={{ marginBottom: '2px' }}>
           <button
             type="button"
@@ -66,7 +63,6 @@ export default function ResourceCard({
           </button>
         </h3>
 
-        {/* Authors & Year */}
         <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '2px', lineHeight: 1.2 }}>
           <strong>{resource.authors}</strong> • {resource.publicationYear}
         </div>
@@ -77,7 +73,6 @@ export default function ResourceCard({
           </div>
         )}
 
-        {/* Abstract snippet */}
         {resource.abstractText && (
           <p style={{
             fontSize: '0.73rem',
@@ -94,9 +89,7 @@ export default function ResourceCard({
         )}
       </div>
 
-      {/* Footer & Actions */}
       <div>
-        {/* Progress Bar if reading in progress */}
         {resource.readingProgressPercent > 0 && (
           <div style={{ marginBottom: '6px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
@@ -122,7 +115,6 @@ export default function ResourceCard({
           </span>
 
           <div className="card-action-group" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-            {/* Delete Button — icon only */}
             {onDeleteResource && (
               <button
                 type="button"
@@ -161,7 +153,6 @@ export default function ResourceCard({
               </button>
             )}
 
-            {/* AI Summary */}
             <button
               type="button"
               onClick={() => onOpenAiSummarizer(resource)}
@@ -172,7 +163,6 @@ export default function ResourceCard({
               <Sparkles size={13} aria-hidden="true" />
             </button>
 
-            {/* Download PDF Button */}
             {(resource.pdfFileData || resource.downloadUrl || resource.sourceUrl) && (
               <a
                 href={resource.pdfFileData || resource.downloadUrl || resource.sourceUrl}
@@ -191,7 +181,6 @@ export default function ResourceCard({
               </a>
             )}
 
-            {/* Citation Format */}
             <button
               type="button"
               onClick={() => onShowCitation(resource)}
@@ -202,7 +191,6 @@ export default function ResourceCard({
               <Quote size={13} aria-hidden="true" />
             </button>
 
-            {/* Read Button */}
             <button
               type="button"
               onClick={() => onOpenReader(resource)}

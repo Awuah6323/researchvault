@@ -1,13 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { X, Home, Search, Library, FolderKanban, MessageSquare, FileText, Sparkles, User, PlusCircle, BookOpen, Download, Compass } from 'lucide-react';
+import { X, Home, Search, Library, FolderKanban, MessageSquare, FileText, Sparkles, User, PlusCircle, Download, Compass } from 'lucide-react';
 
 export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, onOpenAddModal, onOpenInstallPwa, onOpenUserGuide, isStandalone }) {
   const panelRef = useRef(null);
   const restoreFocusRef = useRef(null);
 
-  // The drawer covers the whole screen and its backdrop swallows pointer
-  // events, so without Escape a keyboard user had no way out of it at all —
-  // and the bottom nav underneath became unclickable.
   useEffect(() => {
     if (!isOpen) return undefined;
 
@@ -19,7 +16,7 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
       const first = panelRef.current?.querySelector('button, a[href]');
       try {
         (first || panelRef.current)?.focus({ preventScroll: true });
-      } catch (e) { /* unmounted between frames */ }
+      } catch (e) {}
     });
 
     const handleKeyDown = (e) => {
@@ -57,7 +54,7 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
       if (previous && typeof previous.focus === 'function' && document.contains(previous)) {
         try {
           previous.focus({ preventScroll: true });
-        } catch (e) { /* opener already gone */ }
+        } catch (e) {}
       }
     };
   }, [isOpen, onClose]);
@@ -77,10 +74,8 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
 
   return (
     <div className="mobile-drawer-wrapper">
-      {/* Dark backdrop overlay */}
       <div className="mobile-drawer-backdrop" onClick={onClose} />
 
-      {/* Sliding Sidebar Panel */}
       <div
         className="mobile-drawer-panel"
         ref={panelRef}
@@ -89,7 +84,6 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
         aria-label="Main navigation"
         tabIndex={-1}
       >
-        {/* Drawer Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
@@ -132,7 +126,6 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
           </button>
         </div>
 
-        {/* Action Buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
           <button
             type="button"
@@ -202,7 +195,6 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
           Navigation
         </h2>
 
-        {/* Nav Items List */}
         <nav aria-labelledby="mobile-drawer-nav-heading" style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -240,7 +232,6 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
           })}
         </nav>
 
-        {/* Footer Info */}
         <div style={{
           marginTop: '16px',
           padding: '12px',
@@ -258,4 +249,3 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
     </div>
   );
 }
-

@@ -75,7 +75,6 @@ export default function Navbar({
         width: '100%',
         boxSizing: 'border-box'
       }}>
-        {/* Brand Logo & Mobile Menu Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           {onOpenMobileMenu && (
             <button
@@ -91,10 +90,6 @@ export default function Navbar({
                 color: 'var(--primary)',
                 padding: '6px 8px',
                 cursor: 'pointer',
-                /* No `display` here on purpose. The stylesheet hides this
-                   button above 768px; an inline display would beat that rule
-                   and leave a mobile hamburger on desktop, where it also
-                   became the page's first tab stop. */
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
@@ -135,7 +130,6 @@ export default function Navbar({
           </button>
         </div>
 
-        {/* Global Search Bar */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -190,9 +184,7 @@ export default function Navbar({
           />
         </form>
 
-        {/* Horizontal Sliding Action Controls Bar: User Account, Install App, User Guide, Theme Mode & Cloud Sync */}
         <div className="nav-actions-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'nowrap' }}>
-          {/* User Guide Carousel Trigger */}
           {onOpenUserGuide && (
             <button
               type="button"
@@ -220,10 +212,6 @@ export default function Navbar({
             </button>
           )}
 
-
-
-          {/* Cloud Sync Status Badge — a real button, and a polite live region
-              so sync state changes are announced instead of colour-only. */}
           <button
             type="button"
             onClick={() => storage.pullCloudVault()}
@@ -260,7 +248,6 @@ export default function Navbar({
             <span className="mobile-hide">{SYNC_LABELS[syncState] || 'Synced'}</span>
           </button>
 
-          {/* Theme Dropdown */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <Palette size={16} aria-hidden="true" style={{ color: 'var(--primary)', flexShrink: 0 }} />
             <label htmlFor="theme-select" className="sr-only">Colour theme</label>
@@ -287,7 +274,6 @@ export default function Navbar({
             </select>
           </div>
 
-          {/* User Account / Profile Button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button
               type="button"
