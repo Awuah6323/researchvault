@@ -109,6 +109,12 @@ export default function App() {
     });
 
     if (session && session.email) {
+      // Fire-and-forget: wake the Supabase database if it was paused due to
+      // inactivity (free-tier 7-day limit). The health endpoint runs a
+      // lightweight DB query, so by the time pullCloudVault fires the
+      // database is already accepting connections.
+      fetch('/api/health').catch(() => {});
+
       storage.pullCloudVault(session.email).then(() => {
         refreshAppData();
       });

@@ -1,15 +1,18 @@
-name: ResearchVault Supabase Health Check
+name: ResearchVault Supabase Keep-Alive
 
 on:
   schedule:
-    # Runs 3 times every day at 02:00, 10:00, and 18:00 UTC
-    - cron: '0 2,10,18 * * *'
-  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+    # Every 4 hours — 6 pings per day keeps the free-tier Supabase database
+    # well under the 7-day inactivity pause threshold.
+    - cron: '30 */4 * * *'
+  workflow_dispatch: # Manual trigger from the GitHub Actions tab
 
 jobs:
-  health-check:
-    name: Execute 3x Daily Supabase Health Check
+  keep-alive:
+    name: Supabase Database Keep-Alive Ping
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,14 +20,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
-      - name: Run Supabase Health Check
+      - name: Run keep-alive health check
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
-        run: npm run test:health
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          DEPLOYED_URL: ${{ secrets.DEPLOYED_URL }}
+        run: node scripts/healthCheck.js

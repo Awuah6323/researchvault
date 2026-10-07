@@ -118,9 +118,16 @@ export default async function handler(req, res) {
     identity: `ip:${clientIp(req)}`
   }))) return;
 
-  // Liveness check for anonymous callers
+  // Anonymous callers still query the database to keep Supabase active
+  // (preventing the free-tier 7-day inactivity pause), but receive only a
+  // simplified response — no internal details are exposed.
   if (!isAuthorizedProbe(req)) {
-    return res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+    const result = await performHealthCheck();
+    return res.status(200).json({
+      status: result.statusCode === 200 ? 'ok' : 'degraded',
+      database: result.body.database,
+      timestamp: new Date().toISOString()
+    });
   }
 
   const result = await performHealthCheck();
