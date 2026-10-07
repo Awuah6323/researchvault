@@ -100,8 +100,6 @@ export async function performHealthCheck(customConfig = null) {
 }
 
 function isAuthorizedProbe(req) {
-  if (req.headers?.['x-vercel-cron']) return true;
-
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
 

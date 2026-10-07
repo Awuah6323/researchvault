@@ -6,6 +6,7 @@ import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 import { getPdfData, dataUrlToUint8Array } from '../services/pdfStorage';
 import MarkdownMessage from '../components/MarkdownMessage';
 import { useConfirm, useAnnounce } from '../components/FeedbackProvider';
+import { sanitizeResourceUrl } from '../utils/fileValidation';
 
 const PLACEHOLDER_TEXT = 'Imported paper document in ResearchVault digital library.';
 
@@ -351,17 +352,21 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
             <Sparkles size={14} /> <span className="btn-text">AI</span>
           </button>
 
-          {(resource.downloadUrl || resource.sourceUrl) && (
-            <a
-              href={resource.downloadUrl || resource.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ padding: '6px', color: '#10b981', display: 'inline-flex', alignItems: 'center' }}
-              title="Download or View Original Source"
-            >
-              <Download size={16} />
-            </a>
-          )}
+          {(() => {
+            const safeSrc = sanitizeResourceUrl(resource.downloadUrl || resource.sourceUrl);
+            if (!safeSrc) return null;
+            return (
+              <a
+                href={safeSrc}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ padding: '6px', color: '#10b981', display: 'inline-flex', alignItems: 'center' }}
+                title="Download or View Original Source"
+              >
+                <Download size={16} />
+              </a>
+            );
+          })()}
 
           <button
             type="button"
@@ -462,7 +467,7 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                 <span>Viewing Abstract Summary</span>
               </div>
               <a
-                href={resource.sourceUrl || resource.downloadUrl || (resource.doi ? `https://doi.org/${resource.doi}` : '#')}
+                href={sanitizeResourceUrl(resource.sourceUrl || resource.downloadUrl, resource.doi ? `https://doi.org/${encodeURIComponent(resource.doi)}` : '#')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-primary"

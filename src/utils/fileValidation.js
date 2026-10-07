@@ -155,3 +155,36 @@ export function isValidBackupShape(parsed) {
       (typeof item.title === 'string' || typeof item.id === 'string' || typeof item.id === 'number')
   );
 }
+
+/**
+ * Ensures a resource URL (sourceUrl, downloadUrl, pdfFileData) uses only safe protocols.
+ * Blocks javascript:, vbscript:, data:text/html, etc. to prevent DOM XSS.
+ */
+export function isSafeResourceUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (trimmed === '' || trimmed === '#') return false;
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    } catch {
+      return false;
+    }
+  }
+
+  if (/^blob:/i.test(trimmed)) return true;
+
+  // Allow only PDF data URLs
+  if (/^data:application\/pdf(?:;[a-z0-9_-]+=[a-z0-9_-]+)*;base64,/i.test(trimmed)) {
+    return true;
+  }
+
+  return false;
+}
+
+export function sanitizeResourceUrl(url, fallback = '') {
+  return isSafeResourceUrl(url) ? url.trim() : fallback;
+}
+

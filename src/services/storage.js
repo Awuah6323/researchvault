@@ -26,6 +26,7 @@ import {
   vaultFingerprint,
   resourceKey
 } from './vaultMerge';
+import { sanitizeResourceUrl, isSafeResourceUrl } from '../utils/fileValidation';
 
 const BASE_KEYS = {
   RESOURCES: 'researchvault_resources',
@@ -622,7 +623,13 @@ export const storage = {
     const existingIds = new Set(current.map((r) => r.id));
     const newItems = importedResources
       .filter((r) => r.title && !existingIds.has(r.id))
-      .map((r) => ({ ...r, updatedAt: r.updatedAt || nowIso() }));
+      .map((r) => ({
+        ...r,
+        downloadUrl: r.downloadUrl ? sanitizeResourceUrl(r.downloadUrl) : undefined,
+        sourceUrl: r.sourceUrl ? sanitizeResourceUrl(r.sourceUrl) : undefined,
+        pdfFileData: r.pdfFileData && isSafeResourceUrl(r.pdfFileData) ? r.pdfFileData : undefined,
+        updatedAt: r.updatedAt || nowIso()
+      }));
 
     const updated = [...newItems, ...current];
     this.saveResources(updated);

@@ -4,6 +4,7 @@
  */
 
 import { getPdfData } from './pdfStorage';
+import { getAccessToken } from './syncClient';
 
 const PDF_MAGIC_BYTES = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
 
@@ -89,7 +90,11 @@ async function fetchDirectPdf(url) {
  */
 async function fetchProxyPdf(url, backendEndpoint = '/api/pdfProxy') {
   const proxyUrl = `${backendEndpoint}?url=${encodeURIComponent(url)}`;
-  const response = await fetch(proxyUrl);
+  const headers = {};
+  const token = await getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(proxyUrl, { headers });
   if (!response.ok) {
     throw new Error(`Proxy Error HTTP ${response.status}`);
   }

@@ -140,4 +140,53 @@ if (allPassed) {
   process.exit(1);
 }
 
+// ------------------------------------------------------------- 3. CLIENT IP SPOOFING IMMUNITY
+console.log('=== TEST 3: Client IP Spoofing Prevention ===');
+import { clientIp } from '../api/_lib/http.js';
+
+const spoofReq = {
+  headers: {
+    'x-forwarded-for': '203.0.113.195, 198.51.100.2',
+    'x-real-ip': '198.51.100.2'
+  }
+};
+const resolvedIp = clientIp(spoofReq);
+console.log('Resolved IP:', resolvedIp);
+if (resolvedIp === '198.51.100.2') {
+  console.log('✓ PASS: clientIp prioritizes trusted x-real-ip over spoofed leading x-forwarded-for.\n');
+} else {
+  console.error(`✗ FAIL: clientIp returned ${resolvedIp} instead of trusted proxy IP.`);
+  process.exit(1);
+}
+
+// ------------------------------------------------------------- 4. RESOURCE URL SANITIZATION
+console.log('=== TEST 4: Resource Link Sanitization (DOM XSS Protection) ===');
+import { isSafeResourceUrl, sanitizeResourceUrl } from '../src/utils/fileValidation.js';
+
+const resourceUrlTests = [
+  { url: 'javascript:alert(document.domain)', safe: false },
+  { url: 'JAVASCRIPT:/*payload*/window.location="http://evil.com"', safe: false },
+  { url: 'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==', safe: false },
+  { url: 'vbscript:msgbox("hello")', safe: false },
+  { url: 'https://arxiv.org/pdf/2301.00001.pdf', safe: true },
+  { url: 'http://example.com/paper.pdf', safe: true },
+  { url: 'blob:https://researchvault.vercel.app/b89895c1', safe: true },
+  { url: 'data:application/pdf;base64,JVBERi0xLjQK...', safe: true }
+];
+
+let urlTestsPassed = true;
+for (const tc of resourceUrlTests) {
+  const safe = isSafeResourceUrl(tc.url);
+  const pass = safe === tc.safe;
+  console.log(`[${pass ? 'PASS' : 'FAIL'}] "${tc.url.slice(0, 45)}..." -> Safe: ${safe} (Expected: ${tc.safe})`);
+  if (!pass) urlTestsPassed = false;
+}
+
+if (!urlTestsPassed) {
+  console.error('✗ FAIL: Some resource URL sanitization tests failed.');
+  process.exit(1);
+}
+console.log('✓ PASS: All resource URL sanitization checks passed cleanly.\n');
+
 console.log('=== ALL TARGETED CONTROLS VERIFIED SUCCESSFULLY ===');
+

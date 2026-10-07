@@ -248,13 +248,24 @@ export function readJsonBody(req, maxBytes) {
  * address, so trusting a later entry would let a caller pick its own bucket.
  */
 export function clientIp(req) {
+  // On Vercel, x-real-ip and x-vercel-ip are stamped by the edge proxy and
+  // cannot be spoofed by incoming client headers.
+  if (req.headers?.['x-real-ip']) {
+    return String(req.headers['x-real-ip']).trim();
+  }
+  if (req.headers?.['x-vercel-ip']) {
+    return String(req.headers['x-vercel-ip']).trim();
+  }
+
   const forwarded = req.headers?.['x-forwarded-for'];
   if (forwarded) {
-    const first = String(forwarded).split(',')[0].trim();
-    if (first) return first;
+    // When behind an untrusted chain, the rightmost entry is appended by the
+    // closest proxy rather than supplied by the client.
+    const parts = String(forwarded).split(',').map((p) => p.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
   }
+
   return (
-    req.headers?.['x-real-ip'] ||
     req.socket?.remoteAddress ||
     'unknown'
   );

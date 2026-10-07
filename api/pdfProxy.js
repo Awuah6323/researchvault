@@ -1,7 +1,7 @@
 import https from 'node:https';
 import { beginRequest, fail, clientIp } from './_lib/http.js';
 import { enforce, LIMITS } from './_lib/rateLimit.js';
-import { getUserFromRequest } from './_lib/auth.js';
+import { getUserFromRequest, isAuthConfigured } from './_lib/auth.js';
 import { resolveSafeUrl, isUnsafeUrlError } from './_lib/ssrf.js';
 
 const PDF_MAGIC = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d]); // %PDF-
@@ -78,6 +78,7 @@ async function fetchPdf(rawUrl, redirectsLeft = MAX_REDIRECTS) {
             response.destroy();
             request.destroy();
             reject(new Error('PDF exceeds the 50 MB limit'));
+            return;
           }
         });
 
@@ -102,6 +103,11 @@ export default async function handler(req, res) {
   if (!beginRequest(req, res, { methods: ['GET'] })) return;
 
   const user = await getUserFromRequest(req);
+
+  if (isAuthConfigured() && !user) {
+    return fail(res, 401, 'Sign in to retrieve documents through the proxy.');
+  }
+
   const identity = user ? `u:${user.id}` : `ip:${clientIp(req)}`;
 
   if (!(await enforce(req, res, 'pdf', { ...LIMITS.PDF_PER_MINUTE, identity }))) return;

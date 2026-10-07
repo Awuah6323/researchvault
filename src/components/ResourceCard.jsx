@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, BookOpen, Quote, Sparkles, Download, Trash2, FileCode } from 'lucide-react';
 import { useConfirm } from './FeedbackProvider';
+import { sanitizeResourceUrl } from '../utils/fileValidation';
 
 export default function ResourceCard({
   resource,
@@ -163,23 +164,27 @@ export default function ResourceCard({
               <Sparkles size={13} aria-hidden="true" />
             </button>
 
-            {(resource.pdfFileData || resource.downloadUrl || resource.sourceUrl) && (
-              <a
-                href={resource.pdfFileData || resource.downloadUrl || resource.sourceUrl}
-                download={resource.pdfFileData ? (resource.pdfFileName || `${resource.title}.pdf`) : undefined}
-                target={resource.pdfFileData ? undefined : "_blank"}
-                rel={resource.pdfFileData ? undefined : "noopener noreferrer"}
-                title="Download PDF File"
-                aria-label={
-                  resource.pdfFileData
-                    ? `Download PDF of "${resource.title}"`
-                    : `Open PDF of "${resource.title}" in a new tab`
-                }
-                style={{ padding: '4px 5px', borderRadius: '5px', color: 'var(--success)', backgroundColor: 'var(--success-bg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
-              >
-                <Download size={13} aria-hidden="true" />
-              </a>
-            )}
+            {(() => {
+              const safeUrl = sanitizeResourceUrl(resource.pdfFileData || resource.downloadUrl || resource.sourceUrl);
+              if (!safeUrl) return null;
+              return (
+                <a
+                  href={safeUrl}
+                  download={resource.pdfFileData ? (resource.pdfFileName || `${resource.title}.pdf`) : undefined}
+                  target={resource.pdfFileData ? undefined : "_blank"}
+                  rel={resource.pdfFileData ? undefined : "noopener noreferrer"}
+                  title="Download PDF File"
+                  aria-label={
+                    resource.pdfFileData
+                      ? `Download PDF of "${resource.title}"`
+                      : `Open PDF of "${resource.title}" in a new tab`
+                  }
+                  style={{ padding: '4px 5px', borderRadius: '5px', color: 'var(--success)', backgroundColor: 'var(--success-bg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+                >
+                  <Download size={13} aria-hidden="true" />
+                </a>
+              );
+            })()}
 
             <button
               type="button"
