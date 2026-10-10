@@ -4,10 +4,9 @@
 // Designed to run in GitHub Actions every 4 hours to prevent the free-tier
 // Supabase database from pausing after 7 days of inactivity.
 //
-// IMPORTANT: This script does NOT import from api/ — those modules depend on
-// the Vercel serverless runtime and crash when run as plain Node.js.
+// ZERO EXTERNAL DEPENDENCIES: Uses native Node.js fetch (Node 18+) so GitHub
+// Actions does not need a slow npm install / npm ci step.
 
-import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -36,32 +35,72 @@ function loadEnv() {
 
 loadEnv();
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY =
+const rawUrl =
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  '';
+const SUPABASE_URL = rawUrl.trim().replace(/\/+$/, '');
+
+const rawKey =
   process.env.SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.SUPABASE_KEY ||
+  process.env.VITE_SUPABASE_KEY ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  '';
+const SUPABASE_KEY = rawKey.trim();
 
 // ---------------------------------------------------------------------------
 // Checks
 // ---------------------------------------------------------------------------
 
-/** Check 1 — The actual keep-alive: run a lightweight query against the DB. */
-async function checkDatabase(supabase) {
+/** Check 1 — The actual keep-alive: run a lightweight query against the DB via PostgREST. */
+async function checkDatabase() {
   const start = Date.now();
-  const { count, error } = await supabase
-    .from('vaults')
-    .select('user_id', { count: 'exact', head: true });
+  try {
+    // 1. Primary check: Query the vaults table
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/vaults?select=user_id&limit=1`, {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        Prefer: 'count=exact'
+      },
+      signal: AbortSignal.timeout(15000)
+    });
+    const ms = Date.now() - start;
 
-  const ms = Date.now() - start;
+    if (res.ok) {
+      const countHeader = res.headers.get('content-range');
+      console.log(`✅ Database connected (${ms} ms) — PostgREST status ${res.status}${countHeader ? ` [count: ${countHeader}]` : ''}`);
+      return true;
+    }
 
-  if (error) {
-    console.error(`❌ Database query FAILED (${ms} ms): ${error.message}`);
+    // 2. Fallback check: If table not found (404), query the PostgREST root OpenAPI schema.
+    // This still executes a real PostgreSQL catalog query to wake the DB.
+    if (res.status === 404) {
+      console.warn(`⚠️  Table 'vaults' returned 404. Checking PostgREST schema...`);
+      const schemaRes = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`
+        },
+        signal: AbortSignal.timeout(15000)
+      });
+      if (schemaRes.ok) {
+        console.log(`✅ Database connected via PostgREST schema (${Date.now() - start} ms)`);
+        return true;
+      }
+    }
+
+    const errorText = await res.text().catch(() => '');
+    console.error(`❌ Database query FAILED (${ms} ms): HTTP ${res.status} ${res.statusText} ${errorText}`);
+    return false;
+  } catch (err) {
+    const ms = Date.now() - start;
+    console.error(`❌ Database query FAILED (${ms} ms): ${err.message}`);
     return false;
   }
-
-  console.log(`✅ Database connected (${ms} ms) — ${count ?? 0} vault row(s)`);
-  return true;
 }
 
 /** Check 2 — Verify the Supabase Auth service is responding. */
@@ -69,7 +108,8 @@ async function checkAuth() {
   const start = Date.now();
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/health`, {
-      headers: { apikey: SUPABASE_KEY }
+      headers: { apikey: SUPABASE_KEY },
+      signal: AbortSignal.timeout(10000)
     });
     const ms = Date.now() - start;
 
@@ -124,9 +164,12 @@ async function main() {
 
   // --- Validate credentials ---
   if (!SUPABASE_URL || !SUPABASE_KEY) {
-    console.error('❌ FATAL: Missing SUPABASE_URL or SUPABASE_ANON_KEY.');
-    console.error('   → GitHub repo: Settings → Secrets → Actions');
-    console.error('   → Local: add them to .env');
+    console.error('❌ FATAL: Missing Supabase credentials in GitHub Actions.');
+    console.error('   Please ensure repository secrets are configured in GitHub:');
+    console.error('   → Repo Settings → Secrets and variables → Actions');
+    console.error('   → Required secrets:');
+    console.error('       • VITE_SUPABASE_URL (or SUPABASE_URL)');
+    console.error('       • VITE_SUPABASE_ANON_KEY (or SUPABASE_ANON_KEY / SUPABASE_KEY)');
     process.exit(1);
   }
 
@@ -137,13 +180,9 @@ async function main() {
   );
   console.log(`🔗 Supabase URL: ${safeUrl}`);
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-
   // --- Run all checks ---
   console.log('\n--- Check 1: Direct Database Query (Keep-Alive) ---');
-  const dbOk = await checkDatabase(supabase);
+  const dbOk = await checkDatabase();
 
   console.log('\n--- Check 2: Auth Service Health ---');
   const authOk = await checkAuth();
@@ -158,12 +197,8 @@ async function main() {
     console.log(' ✅ Keep-alive completed — database will not pause');
   } else {
     console.error(' ❌ Database check FAILED — investigate immediately');
-    console.error(
-      '    The free-tier Supabase project may already be paused.'
-    );
-    console.error(
-      '    → Go to https://supabase.com/dashboard and unpause the project.'
-    );
+    console.error('    The free-tier Supabase project may already be paused.');
+    console.error('    → Go to https://supabase.com/dashboard and unpause the project.');
   }
   if (!authOk) {
     console.warn(' ⚠️  Auth service degraded — Google sign-in may be affected');

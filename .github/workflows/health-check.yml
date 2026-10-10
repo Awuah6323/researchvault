@@ -21,14 +21,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
 
       - name: Run keep-alive health check
         env:
-          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          DEPLOYED_URL: ${{ secrets.DEPLOYED_URL }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || secrets.SUPABASE_URL || vars.VITE_SUPABASE_URL || vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY || secrets.SUPABASE_KEY || secrets.VITE_SUPABASE_KEY || vars.VITE_SUPABASE_ANON_KEY || vars.SUPABASE_ANON_KEY || vars.SUPABASE_KEY }}
+          DEPLOYED_URL: ${{ secrets.DEPLOYED_URL || vars.DEPLOYED_URL }}
         run: node scripts/healthCheck.js
