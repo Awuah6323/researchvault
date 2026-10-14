@@ -10,6 +10,7 @@ import BottomNav from './components/BottomNav';
 import MobileDrawer from './components/MobileDrawer';
 import InstallPwaModal from './components/InstallPwaModal';
 import UserGuideModal from './components/UserGuideModal';
+import BatchImportModal from './components/BatchImportModal';
 
 import HomeDashboard from './pages/HomeDashboard';
 import AcademicSearch from './pages/AcademicSearch';
@@ -17,6 +18,9 @@ import MyLibrary from './pages/MyLibrary';
 import Categories from './pages/Categories';
 import DocumentReader from './pages/DocumentReader';
 import LiteratureSynthesis from './pages/LiteratureSynthesis';
+import LiteratureMatrix from './pages/LiteratureMatrix';
+import CitationGraph from './pages/CitationGraph';
+import FlashcardsManager from './pages/FlashcardsManager';
 import ProfileSettings from './pages/ProfileSettings';
 import NotesManager from './pages/NotesManager';
 import AiChat from './pages/AiChat';
@@ -27,14 +31,15 @@ import { storage } from './services/storage';
 import { useToast } from './components/FeedbackProvider';
 
 export default function App() {
+  const ALL_TABS = ['home', 'search', 'library', 'matrix', 'graph', 'synthesis', 'flashcards', 'categories', 'aichat', 'notes', 'profile'];
   const [activeTab, setActiveTab] = useState(() => {
     try {
       const hash = window.location.hash ? window.location.hash.replace('#', '') : null;
-      if (hash && ['home', 'search', 'library', 'categories', 'aichat', 'notes', 'synthesis', 'profile'].includes(hash)) {
+      if (hash && ALL_TABS.includes(hash)) {
         return hash;
       }
       const saved = localStorage.getItem('researchvault_active_tab');
-      if (saved && ['home', 'search', 'library', 'categories', 'aichat', 'notes', 'synthesis', 'profile'].includes(saved)) {
+      if (saved && ALL_TABS.includes(saved)) {
         return saved;
       }
     } catch (e) {}
@@ -52,6 +57,7 @@ export default function App() {
   const [citationModalResource, setCitationModalResource] = useState(null);
   const [aiModalResource, setAiModalResource] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBatchImportModal, setShowBatchImportModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUserGuideModal, setShowUserGuideModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -196,6 +202,7 @@ export default function App() {
     setCitationModalResource(null);
     setAiModalResource(null);
     setShowAddModal(false);
+    setShowBatchImportModal(false);
     setShowAuthModal(false);
     setShowUserGuideModal(false);
   };
@@ -340,6 +347,7 @@ export default function App() {
           activeTab={activeTab}
           onNavigate={handleNavigate}
           onOpenAddModal={() => handleOpenModal(setShowAddModal, true)}
+          onOpenBatchImport={() => handleOpenModal(setShowBatchImportModal, true)}
           onOpenInstallPwa={() => handleOpenModal(setShowInstallModal, true)}
           isStandalone={isStandalone}
         />
@@ -380,6 +388,9 @@ export default function App() {
               onOpenAiSummarizer={(r) => handleOpenModal(setAiModalResource, r)}
               onDeleteResource={handleDeleteResource}
               onOpenAddModal={() => handleOpenModal(setShowAddModal, true)}
+              onOpenBatchImport={() => handleOpenModal(setShowBatchImportModal, true)}
+              onNavigate={handleNavigate}
+              onViewGraph={(r) => handleNavigate('graph')}
               onSyncCloud={async () => {
                 const session = storage.getSession();
                 if (session && session.email) {
@@ -387,6 +398,26 @@ export default function App() {
                   refreshAppData();
                 }
               }}
+            />
+          )}
+
+          {activeTab === 'matrix' && (
+            <LiteratureMatrix
+              resources={resources}
+            />
+          )}
+
+          {activeTab === 'graph' && (
+            <CitationGraph
+              resources={resources}
+              onAddResource={handleAddResource}
+              onOpenReader={(r) => handleOpenModal(setActiveReaderResource, r)}
+            />
+          )}
+
+          {activeTab === 'flashcards' && (
+            <FlashcardsManager
+              resources={resources}
             />
           )}
 
@@ -453,6 +484,10 @@ export default function App() {
           setIsMobileMenuOpen(false);
           handleOpenModal(setShowAddModal, true);
         }}
+        onOpenBatchImport={() => {
+          setIsMobileMenuOpen(false);
+          handleOpenModal(setShowBatchImportModal, true);
+        }}
         onOpenInstallPwa={() => handleOpenModal(setShowInstallModal, true)}
         onOpenUserGuide={() => handleOpenModal(setShowUserGuideModal, true)}
         isStandalone={isStandalone}
@@ -489,6 +524,14 @@ export default function App() {
           categories={categories}
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddResource}
+        />
+      )}
+
+      {showBatchImportModal && (
+        <BatchImportModal
+          isOpen={showBatchImportModal}
+          onClose={() => setShowBatchImportModal(false)}
+          onImportCompleted={handleImportBackup}
         />
       )}
 

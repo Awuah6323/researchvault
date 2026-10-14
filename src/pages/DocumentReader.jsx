@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Sparkles, FileText, ChevronLeft, ChevronRight, Send, Download, ExternalLink, Trash2, Loader2, X, FileSearch } from 'lucide-react';
+import { ArrowLeft, Sparkles, FileText, ChevronLeft, ChevronRight, Send, Download, ExternalLink, Trash2, Loader2, X, FileSearch, Volume2, Highlighter, Quote, Zap, Check } from 'lucide-react';
 import { storage } from '../services/storage';
-import { generatePaperSummary, askPaperQuestion, generatePeerReview } from '../services/geminiService';
+import { generatePaperSummary, askPaperQuestion, generatePeerReview, explainSelectedPassage } from '../services/geminiService';
+import { getCitationKey } from '../services/citationGenerator';
 import { extractTextFromPdfFile } from '../utils/pdfExtractor';
 import { getPdfData, dataUrlToUint8Array } from '../services/pdfStorage';
 import MarkdownMessage from '../components/MarkdownMessage';
+import AudioBriefPlayer from '../components/AudioBriefPlayer';
 import { useConfirm, useAnnounce } from '../components/FeedbackProvider';
 import { sanitizeResourceUrl } from '../utils/fileValidation';
 
@@ -43,6 +45,12 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [aiSummaryType, setAiSummaryType] = useState('Executive Summary');
   const [aiLoading, setAiLoading] = useState(false);
+  const [highlights, setHighlights] = useState(() => storage.getHighlights(resource.id));
+  const [selectedTextData, setSelectedTextData] = useState(null);
+  const [selectionExplanation, setSelectionExplanation] = useState(null);
+  const [selectionLoading, setSelectionLoading] = useState(false);
+  const [showAudioBrief, setShowAudioBrief] = useState(false);
+  const [drawerTab, setDrawerTab] = useState('notes');
   const [aiSummaryResult, setAiSummaryResult] = useState('');
   const [aiError, setAiError] = useState('');
   const [aiQuestion, setAiQuestion] = useState('');
@@ -370,9 +378,19 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
 
           <button
             type="button"
+            onClick={() => setShowAudioBrief(true)}
+            className="btn-secondary"
+            style={{ padding: '5px 9px', fontSize: '0.78rem', color: 'var(--primary)', borderColor: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            title="Listen to 2-Voice Audio Briefing"
+          >
+            <Volume2 size={14} /> <span className="btn-text">Audio</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => { setShowNotesDrawer(!showNotesDrawer); setShowAiPanel(false); }}
             style={{ padding: '6px', color: 'inherit', border: 'none', background: 'none', cursor: 'pointer' }}
-            title="Notes for this page"
+            title="Notes & Highlights"
             aria-label={showNotesDrawer ? 'Hide notes panel' : 'Show notes panel'}
             aria-expanded={showNotesDrawer}
           >
@@ -506,7 +524,23 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
                 {progressPercent}% completed
               </span>
             </div>
-            <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', letterSpacing: '0.01em' }}>
+            <div
+              onMouseUp={() => {
+                const sel = window.getSelection();
+                if (!sel || sel.isCollapsed) return;
+                const text = sel.toString().trim();
+                if (text.length > 5) {
+                  const range = sel.getRangeAt(0);
+                  const rect = range.getBoundingClientRect();
+                  setSelectedTextData({
+                    text,
+                    x: Math.min(window.innerWidth - 340, Math.max(10, rect.left + rect.width / 2 - 160)),
+                    y: Math.max(70, rect.top - 50)
+                  });
+                }
+              }}
+              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', letterSpacing: '0.01em', position: 'relative' }}
+            >
               {activePageText}
             </div>
           </div>
@@ -641,14 +675,14 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
         </button>
       </footer>
 
-      {/* Notes Drawer */}
+      {/* Notes & Highlights Drawer */}
       {showNotesDrawer && (
         <div className="notes-drawer-mobile" style={{
           position: 'fixed',
           right: 0,
           top: '60px',
           bottom: '60px',
-          width: 'min(320px, 100vw)',
+          width: 'min(360px, 100vw)',
           backgroundColor: 'var(--bg-card)',
           borderLeft: '1px solid var(--border-color)',
           padding: '20px',
@@ -658,36 +692,268 @@ export default function DocumentReader({ resource, onClose, onDeleteResource }) 
           zIndex: 520
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Notes for Page {safeCurrentPage}</h3>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                onClick={() => setDrawerTab('notes')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  backgroundColor: drawerTab === 'notes' ? 'var(--primary)' : 'transparent',
+                  color: drawerTab === 'notes' ? '#fff' : 'var(--text-muted)',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Notes ({notes.length})
+              </button>
+              <button
+                onClick={() => setDrawerTab('highlights')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  backgroundColor: drawerTab === 'highlights' ? 'var(--primary)' : 'transparent',
+                  color: drawerTab === 'highlights' ? '#fff' : 'var(--text-muted)',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Highlights ({highlights.length})
+              </button>
+            </div>
             <button type="button" onClick={() => setShowNotesDrawer(false)} aria-label="Close notes panel" style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
               <X size={18} aria-hidden="true" />
             </button>
           </div>
 
-          <form onSubmit={handleAddNote} style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
-            <label htmlFor="reader-new-note" className="sr-only">Add a note for page {safeCurrentPage}</label>
-            <input
-              id="reader-new-note"
-              type="text"
-              value={newNote}
-              onChange={(e) => setNewNote(e.target.value)}
-              placeholder="Add observation..."
-              style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}
-            />
-            <button type="submit" className="btn-primary" aria-label="Save note" style={{ padding: '8px' }}>
-              <Send size={14} aria-hidden="true" />
-            </button>
-          </form>
+          {drawerTab === 'notes' ? (
+            <>
+              <form onSubmit={handleAddNote} style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+                <label htmlFor="reader-new-note" className="sr-only">Add a note for page {safeCurrentPage}</label>
+                <input
+                  id="reader-new-note"
+                  type="text"
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  placeholder="Add observation..."
+                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}
+                />
+                <button type="submit" className="btn-primary" aria-label="Save note" style={{ padding: '8px' }}>
+                  <Send size={14} aria-hidden="true" />
+                </button>
+              </form>
 
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {notes.map(n => (
-              <div key={n.id} style={{ padding: '10px', borderRadius: '8px', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>Page {n.pageNumber} • {n.createdAt}</div>
-                <div>{n.noteText}</div>
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {notes.map(n => (
+                  <div key={n.id} style={{ padding: '10px', borderRadius: '8px', backgroundColor: 'var(--bg-main)', fontSize: '0.85rem' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>Page {n.pageNumber} • {n.createdAt}</div>
+                    <div>{n.noteText}</div>
+                  </div>
+                ))}
               </div>
+            </>
+          ) : (
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {highlights.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  Select any text passage in the document to highlight with academic color codes or generate AI explanations.
+                </div>
+              ) : (
+                highlights.map(h => (
+                  <div
+                    key={h.id}
+                    style={{
+                      padding: '10px',
+                      borderRadius: '8px',
+                      backgroundColor: 'var(--bg-main)',
+                      borderLeft: `4px solid ${h.color || 'var(--primary)'}`,
+                      fontSize: '0.82rem'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span className="badge" style={{ fontSize: '0.66rem' }}>{h.category}</span>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Pg {h.pageNumber}</span>
+                        <button
+                          onClick={() => {
+                            const updated = storage.deleteHighlight(resource.id, h.id);
+                            setHighlights(updated);
+                          }}
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '1px' }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', color: 'var(--text-main)', lineHeight: 1.35 }}>
+                      "{h.text}"
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Floating Text Selection Action Bar */}
+      {selectedTextData && (
+        <div style={{
+          position: 'fixed',
+          left: `${selectedTextData.x}px`,
+          top: `${selectedTextData.y}px`,
+          zIndex: 600,
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '10px',
+          padding: '6px 8px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }}>
+          {/* Highlight Color Pickers */}
+          <div style={{ display: 'flex', gap: '3px', paddingRight: '6px', borderRight: '1px solid var(--border-color)' }}>
+            {[
+              { label: 'Claim', color: '#fef08a' },
+              { label: 'Evidence', color: '#bbf7d0' },
+              { label: 'Method', color: '#fed7aa' },
+              { label: 'Doubt', color: '#e9d5ff' }
+            ].map(col => (
+              <button
+                key={col.label}
+                onClick={() => {
+                  const updated = storage.addHighlight(resource.id, {
+                    text: selectedTextData.text,
+                    category: col.label,
+                    color: col.color,
+                    pageNumber: safeCurrentPage
+                  });
+                  setHighlights(updated);
+                  setSelectedTextData(null);
+                }}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  backgroundColor: col.color,
+                  border: '1px solid rgba(0,0,0,0.2)',
+                  cursor: 'pointer'
+                }}
+                title={`Highlight as ${col.label}`}
+              />
             ))}
           </div>
+
+          {/* AI Explain */}
+          <button
+            onClick={async () => {
+              setSelectionLoading(true);
+              try {
+                const exp = await explainSelectedPassage(selectedTextData.text, resource.title, 'explain');
+                setSelectionExplanation({ title: 'Plain-English Explanation', text: exp });
+              } catch (e) {
+                setSelectionExplanation({ title: 'Explanation', text: 'Could not connect to AI.' });
+              } finally {
+                setSelectionLoading(false);
+              }
+            }}
+            className="btn-secondary"
+            style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+            title="Explain in simple academic language"
+          >
+            <Sparkles size={12} />
+            <span>Explain</span>
+          </button>
+
+          {/* AI Critique */}
+          <button
+            onClick={async () => {
+              setSelectionLoading(true);
+              try {
+                const exp = await explainSelectedPassage(selectedTextData.text, resource.title, 'critique');
+                setSelectionExplanation({ title: 'Critical Red-Team Critique', text: exp });
+              } catch (e) {
+                setSelectionExplanation({ title: 'Critique', text: 'Could not connect to AI.' });
+              } finally {
+                setSelectionLoading(false);
+              }
+            }}
+            className="btn-secondary"
+            style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+            title="Critique assumptions & validity"
+          >
+            <Zap size={12} />
+            <span>Critique</span>
+          </button>
+
+          {/* Copy LaTeX Quote */}
+          <button
+            onClick={() => {
+              const citeKey = getCitationKey(resource);
+              const code = `\\begin{quote}\n"${selectedTextData.text}"\n\\end{quote} \\cite{${citeKey}}`;
+              navigator.clipboard.writeText(code);
+              announce('Copied LaTeX quote with citation key');
+              setSelectedTextData(null);
+            }}
+            className="btn-secondary"
+            style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+            title="Copy formatted LaTeX quote environment"
+          >
+            <Quote size={12} />
+            <span>LaTeX</span>
+          </button>
+
+          <button
+            onClick={() => setSelectedTextData(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
+          >
+            <X size={14} />
+          </button>
         </div>
+      )}
+
+      {/* Floating Explanation Result Modal */}
+      {selectionExplanation && (
+        <div style={{
+          position: 'fixed',
+          right: '24px',
+          bottom: '80px',
+          width: '360px',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
+          zIndex: 650
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary)' }}>
+              {selectionExplanation.title}
+            </span>
+            <button
+              onClick={() => setSelectionExplanation(null)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div style={{ fontSize: '0.82rem', color: 'var(--text-main)', lineHeight: 1.45, maxHeight: '200px', overflowY: 'auto' }}>
+            {selectionExplanation.text}
+          </div>
+        </div>
+      )}
+
+      {/* Audio Brief Synthesizer Modal */}
+      {showAudioBrief && (
+        <AudioBriefPlayer
+          item={resource}
+          isOpen={showAudioBrief}
+          onClose={() => setShowAudioBrief(false)}
+        />
       )}
     </div>
   );

@@ -201,11 +201,32 @@ export function readJsonBody(req, maxBytes) {
     return Promise.resolve(req.body);
   }
 
+  // Body supplied as a raw JSON string
+  if (typeof req.body === 'string') {
+    if (Buffer.byteLength(req.body) > maxBytes) {
+      const err = new Error('Request body too large');
+      err.code = 'BODY_TOO_LARGE';
+      throw err;
+    }
+    try {
+      return Promise.resolve(req.body.trim() ? JSON.parse(req.body) : {});
+    } catch {
+      const err = new Error('Malformed JSON body');
+      err.code = 'BAD_JSON';
+      throw err;
+    }
+  }
+
   const declared = Number(req.headers?.['content-length'] || 0);
   if (declared > maxBytes) {
     const err = new Error('Request body too large');
     err.code = 'BODY_TOO_LARGE';
     return Promise.reject(err);
+  }
+
+  // Not a readable stream (e.g. unit tests or mock request objects)
+  if (typeof req.on !== 'function') {
+    return Promise.resolve({});
   }
 
   return new Promise((resolve, reject) => {

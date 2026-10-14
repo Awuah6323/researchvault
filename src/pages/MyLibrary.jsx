@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, ArrowUpDown, Grid, List, UploadCloud, RefreshCw, Loader2, Download, FileText } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, Grid, List, UploadCloud, RefreshCw, Loader2, Download, FileText, Layers, Table, GitFork } from 'lucide-react';
 import ResourceCard from '../components/ResourceCard';
 import { exportLibraryCitationsPdf } from '../services/citationPdfExporter';
 
@@ -12,6 +12,9 @@ export default function MyLibrary({
   onOpenAiSummarizer,
   onDeleteResource,
   onOpenAddModal,
+  onOpenBatchImport,
+  onNavigate,
+  onViewGraph,
   onSyncCloud
 }) {
   const [activeTabFilter, setActiveTabFilter] = useState('ALL');
@@ -74,6 +77,42 @@ export default function MyLibrary({
             <UploadCloud size={16} />
             <span>Add Paper</span>
           </button>
+
+          {onOpenBatchImport && (
+            <button
+              onClick={onOpenBatchImport}
+              className="btn-secondary"
+              style={{ padding: '8px 14px', fontSize: '0.85rem', borderColor: 'var(--primary)', color: 'var(--primary)' }}
+              title="Batch import from BibTeX, RIS, or PDF files"
+            >
+              <Layers size={15} />
+              <span>Batch Import &amp; Migration</span>
+            </button>
+          )}
+
+          {onNavigate && (
+            <>
+              <button
+                onClick={() => onNavigate('matrix')}
+                className="btn-secondary"
+                style={{ padding: '8px 12px', fontSize: '0.85rem' }}
+                title="Open Comparative Literature Matrix"
+              >
+                <Table size={15} />
+                <span>Matrix</span>
+              </button>
+
+              <button
+                onClick={() => onNavigate('graph')}
+                className="btn-secondary"
+                style={{ padding: '8px 12px', fontSize: '0.85rem' }}
+                title="Open Citation Network Graph"
+              >
+                <GitFork size={15} />
+                <span>Graph</span>
+              </button>
+            </>
+          )}
 
           {onSyncCloud && (
             <button
@@ -178,6 +217,7 @@ export default function MyLibrary({
               onShowCitation={onShowCitation}
               onOpenAiSummarizer={onOpenAiSummarizer}
               onDeleteResource={onDeleteResource}
+              onViewGraph={onViewGraph}
             />
           ))}
         </div>

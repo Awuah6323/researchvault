@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { X, Home, Search, Library, FolderKanban, MessageSquare, FileText, Sparkles, User, PlusCircle, Download, Compass } from 'lucide-react';
+import { X, Home, Search, Library, FolderKanban, MessageSquare, FileText, Sparkles, User, PlusCircle, Download, Compass, Table, GitFork, Brain, Layers } from 'lucide-react';
 
-export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, onOpenAddModal, onOpenInstallPwa, onOpenUserGuide, isStandalone }) {
+export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, onOpenAddModal, onOpenBatchImport, onOpenInstallPwa, onOpenUserGuide, isStandalone }) {
   const panelRef = useRef(null);
   const restoreFocusRef = useRef(null);
 
@@ -65,10 +65,13 @@ export default function MobileDrawer({ isOpen, onClose, activeTab, onNavigate, o
     { id: 'home', label: 'Dashboard', icon: Home },
     { id: 'search', label: 'Academic Search', icon: Search },
     { id: 'library', label: 'My Library', icon: Library },
-    { id: 'categories', label: 'Categories & Folders', icon: FolderKanban },
+    { id: 'matrix', label: 'Literature Matrix (LaTeX)', icon: Table },
+    { id: 'graph', label: 'Citation Network', icon: GitFork },
+    { id: 'synthesis', label: 'AI Review & Gaps', icon: Sparkles },
+    { id: 'flashcards', label: 'Flashcards & Study', icon: Brain },
     { id: 'aichat', label: 'AI Chat Assistant', icon: MessageSquare },
     { id: 'notes', label: 'Research Notes', icon: FileText },
-    { id: 'synthesis', label: 'AI Literature Review', icon: Sparkles },
+    { id: 'categories', label: 'Categories & Folders', icon: FolderKanban },
     { id: 'profile', label: 'Profile & Settings', icon: User }
   ];
 

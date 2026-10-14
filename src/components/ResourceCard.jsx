@@ -1,7 +1,9 @@
-import React from 'react';
-import { Star, BookOpen, Quote, Sparkles, Download, Trash2, FileCode } from 'lucide-react';
-import { useConfirm } from './FeedbackProvider';
+import React, { useState } from 'react';
+import { Star, BookOpen, Quote, Sparkles, Download, Trash2, FileCode, Volume2, GitFork, Check, Code2 } from 'lucide-react';
+import { useConfirm, useToast } from './FeedbackProvider';
 import { sanitizeResourceUrl } from '../utils/fileValidation';
+import { getCitationKey } from '../services/citationGenerator';
+import AudioBriefPlayer from './AudioBriefPlayer';
 
 export default function ResourceCard({
   resource,
@@ -9,9 +11,22 @@ export default function ResourceCard({
   onToggleFavorite,
   onShowCitation,
   onOpenAiSummarizer,
-  onDeleteResource
+  onDeleteResource,
+  onViewGraph
 }) {
   const confirm = useConfirm();
+  const toast = useToast();
+  const [copiedCite, setCopiedCite] = useState(false);
+  const [showAudioBrief, setShowAudioBrief] = useState(false);
+  const citeKey = getCitationKey(resource);
+
+  const handleCopyCite = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(`\\cite{${citeKey}}`);
+    setCopiedCite(true);
+    toast({ message: `Copied \\cite{${citeKey}} to clipboard!`, tone: 'success' });
+    setTimeout(() => setCopiedCite(false), 2000);
+  };
 
   return (
     <article className="glass-card paper-card" style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px' }}>
@@ -111,9 +126,32 @@ export default function ResourceCard({
         )}
 
         <div className="card-footer-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '4px' }}>
-          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-            {resource.category}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+              {resource.category}
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyCite}
+              title={`Copy LaTeX \\cite{${citeKey}}`}
+              style={{
+                fontSize: '0.66rem',
+                fontFamily: 'var(--font-mono)',
+                padding: '1px 5px',
+                borderRadius: '4px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: copiedCite ? 'var(--primary-light)' : 'var(--bg-main)',
+                color: copiedCite ? 'var(--primary)' : 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px'
+              }}
+            >
+              {copiedCite ? <Check size={10} /> : <Code2 size={10} />}
+              <span>\cite&#123;{citeKey}&#125;</span>
+            </button>
+          </div>
 
           <div className="card-action-group" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
             {onDeleteResource && (
@@ -151,6 +189,28 @@ export default function ResourceCard({
                 }}
               >
                 <Trash2 size={13} aria-hidden="true" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowAudioBrief(true)}
+              title="Listen to 2-Voice Audio Briefing"
+              aria-label={`Listen to audio brief of "${resource.title}"`}
+              style={{ padding: '4px 5px', borderRadius: '5px', color: 'var(--primary)', backgroundColor: 'var(--primary-light)' }}
+            >
+              <Volume2 size={13} aria-hidden="true" />
+            </button>
+
+            {onViewGraph && (
+              <button
+                type="button"
+                onClick={() => onViewGraph(resource)}
+                title="Explore in Citation Network Graph"
+                aria-label={`Explore "${resource.title}" in citation network`}
+                style={{ padding: '4px 5px', borderRadius: '5px', color: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
+              >
+                <GitFork size={13} aria-hidden="true" />
               </button>
             )}
 
@@ -209,6 +269,14 @@ export default function ResourceCard({
           </div>
         </div>
       </div>
+
+      {showAudioBrief && (
+        <AudioBriefPlayer
+          item={resource}
+          isOpen={showAudioBrief}
+          onClose={() => setShowAudioBrief(false)}
+        />
+      )}
     </article>
   );
 }

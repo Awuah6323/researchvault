@@ -39,8 +39,23 @@ export default function CitationModal({ resource, onClose }) {
         </button>
       </div>
 
-      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-        <strong>{resource.title}</strong>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', flex: 1, minWidth: '200px' }}>
+          <strong>{resource.title}</strong>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const citeKey = resource.citationKey || ((resource.authors || 'Author').split(',')[0].trim().replace(/[^a-zA-Z]/g, '').toLowerCase() + (resource.publicationYear || 2024));
+            navigator.clipboard.writeText(`\\cite{${citeKey}}`);
+            announce(`Copied \\cite{${citeKey}} to clipboard`);
+          }}
+          className="btn-secondary"
+          style={{ padding: '3px 8px', fontSize: '0.72rem', fontFamily: 'var(--font-mono)' }}
+          title="Copy LaTeX \\cite{} command"
+        >
+          \cite&#123;{resource.citationKey || ((resource.authors || 'Author').split(',')[0].trim().replace(/[^a-zA-Z]/g, '').toLowerCase() + (resource.publicationYear || 2024))}&#125;
+        </button>
       </div>
 
       {/* Style Selector Tabs */}

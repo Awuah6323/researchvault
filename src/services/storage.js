@@ -39,7 +39,10 @@ const BASE_KEYS = {
   LAST_SYNC: 'researchvault_last_sync',
   DELETED_IDS: 'researchvault_deleted_ids',
   SYNC_VERSION: 'researchvault_sync_version',
-  SYNC_FINGERPRINT: 'researchvault_sync_fingerprint'
+  SYNC_FINGERPRINT: 'researchvault_sync_fingerprint',
+  HIGHLIGHTS: 'researchvault_highlights',
+  FLASHCARDS: 'researchvault_flashcards',
+  MATRICES: 'researchvault_matrices'
 };
 
 const DEFAULT_CATEGORIES = [
@@ -611,6 +614,133 @@ export const storage = {
       });
     });
     return allNotes.sort((a, b) => b.id - a.id);
+  },
+
+  // ----------------------------------------------------------- HIGHLIGHTS
+  getHighlights(resourceId) {
+    return readJson(`${getScopedKey(BASE_KEYS.HIGHLIGHTS)}_${resourceId}`, []) || [];
+  },
+
+  saveHighlights(resourceId, highlightsList) {
+    writeJson(`${getScopedKey(BASE_KEYS.HIGHLIGHTS)}_${resourceId}`, highlightsList);
+  },
+
+  addHighlight(resourceId, highlight) {
+    const list = this.getHighlights(resourceId);
+    const newHighlight = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      text: String(highlight.text || '').slice(0, 5000),
+      color: highlight.color || '#fef08a',
+      category: highlight.category || 'Core Claim',
+      note: String(highlight.note || '').slice(0, 2000),
+      pageNumber: Number.isFinite(Number(highlight.pageNumber)) ? Number(highlight.pageNumber) : 1,
+      createdAt: new Date().toISOString()
+    };
+    list.unshift(newHighlight);
+    this.saveHighlights(resourceId, list);
+    return list;
+  },
+
+  deleteHighlight(resourceId, highlightId) {
+    const list = this.getHighlights(resourceId).filter(h => String(h.id) !== String(highlightId));
+    this.saveHighlights(resourceId, list);
+    return list;
+  },
+
+  // ---------------------------------------------------------- FLASHCARDS
+  getFlashcards() {
+    return readJson(getScopedKey(BASE_KEYS.FLASHCARDS), []) || [];
+  },
+
+  saveFlashcards(flashcards) {
+    writeJson(getScopedKey(BASE_KEYS.FLASHCARDS), flashcards);
+  },
+
+  addFlashcards(newCards) {
+    const existing = this.getFlashcards();
+    const formatted = (Array.isArray(newCards) ? newCards : [newCards]).map(c => ({
+      id: c.id || Date.now() + Math.floor(Math.random() * 10000),
+      question: String(c.question || '').trim(),
+      answer: String(c.answer || '').trim(),
+      paperTitle: c.paperTitle || 'General',
+      resourceId: c.resourceId || null,
+      deck: c.deck || 'Literature Review',
+      box: c.box || 1,
+      intervalDays: c.intervalDays || 1,
+      lastReviewed: c.lastReviewed || null,
+      nextReviewDate: c.nextReviewDate || new Date().toISOString(),
+      createdAt: c.createdAt || new Date().toISOString()
+    }));
+    const updated = [...formatted, ...existing];
+    this.saveFlashcards(updated);
+    return updated;
+  },
+
+  updateFlashcardReview(cardId, rating) {
+    const list = this.getFlashcards();
+    const updated = list.map(c => {
+      if (String(c.id) !== String(cardId)) return c;
+      let interval = c.intervalDays || 1;
+      let box = c.box || 1;
+      if (rating === 'again') {
+        interval = 1;
+        box = 1;
+      } else if (rating === 'hard') {
+        interval = Math.max(1, Math.round(interval * 1.2));
+      } else if (rating === 'good') {
+        interval = Math.max(2, Math.round(interval * 2));
+        box += 1;
+      } else if (rating === 'easy') {
+        interval = Math.max(4, Math.round(interval * 3));
+        box += 2;
+      }
+      const nextDate = new Date();
+      nextDate.setDate(nextDate.getDate() + interval);
+      return {
+        ...c,
+        box,
+        intervalDays: interval,
+        lastReviewed: new Date().toISOString(),
+        nextReviewDate: nextDate.toISOString()
+      };
+    });
+    this.saveFlashcards(updated);
+    return updated;
+  },
+
+  deleteFlashcard(cardId) {
+    const list = this.getFlashcards().filter(c => String(c.id) !== String(cardId));
+    this.saveFlashcards(list);
+    return list;
+  },
+
+  // ----------------------------------------------------------- MATRICES
+  getSavedMatrices() {
+    return readJson(getScopedKey(BASE_KEYS.MATRICES), []) || [];
+  },
+
+  saveMatrix(matrix) {
+    const list = this.getSavedMatrices();
+    const id = matrix.id || Date.now();
+    const existingIdx = list.findIndex(m => m.id === id);
+    const item = {
+      ...matrix,
+      id,
+      updatedAt: new Date().toISOString()
+    };
+    if (existingIdx >= 0) {
+      list[existingIdx] = item;
+    } else {
+      list.unshift(item);
+    }
+    writeJson(getScopedKey(BASE_KEYS.MATRICES), list);
+    return list;
+  },
+
+  deleteMatrix(matrixId) {
+    const list = this.getSavedMatrices().filter(m => String(m.id) !== String(matrixId));
+    writeJson(getScopedKey(BASE_KEYS.MATRICES), list);
+    return list;
   },
 
   // ---------------------------------------------------------------- BACKUP

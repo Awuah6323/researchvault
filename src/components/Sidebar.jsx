@@ -1,15 +1,18 @@
 import React from 'react';
-import { Home, Search, Library, FolderKanban, Sparkles, User, PlusCircle, FileText, MessageSquare, Download } from 'lucide-react';
+import { Home, Search, Library, FolderKanban, Sparkles, User, PlusCircle, FileText, MessageSquare, Download, Table, GitFork, Brain, Layers } from 'lucide-react';
 
-export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenInstallPwa, isStandalone }) {
+export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenBatchImport, onOpenInstallPwa, isStandalone }) {
   const menuItems = [
     { id: 'home', label: 'Dashboard', icon: Home },
     { id: 'search', label: 'Academic Search', icon: Search },
     { id: 'library', label: 'My Library', icon: Library },
-    { id: 'categories', label: 'Categories & Folders', icon: FolderKanban },
+    { id: 'matrix', label: 'Literature Matrix (LaTeX)', icon: Table },
+    { id: 'graph', label: 'Citation Network', icon: GitFork },
+    { id: 'synthesis', label: 'AI Review & Gaps', icon: Sparkles },
+    { id: 'flashcards', label: 'Flashcards & Study', icon: Brain },
     { id: 'aichat', label: 'AI Chat Assistant', icon: MessageSquare },
     { id: 'notes', label: 'Research Notes', icon: FileText },
-    { id: 'synthesis', label: 'AI Literature Review', icon: Sparkles },
+    { id: 'categories', label: 'Categories & Folders', icon: FolderKanban },
     { id: 'profile', label: 'Profile & Settings', icon: User }
   ];
 
@@ -25,21 +28,40 @@ export default function Sidebar({ activeTab, onNavigate, onOpenAddModal, onOpenI
       borderRight: '1px solid var(--border-color)',
       transition: 'background-color 0.3s ease'
     }}>
-      <div className="sidebar-nav-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div className="sidebar-nav-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <button
           type="button"
           onClick={onOpenAddModal}
           className="btn-primary"
           style={{
             width: '100%',
-            marginBottom: '8px'
+            marginBottom: '4px'
           }}
         >
           <PlusCircle size={18} aria-hidden="true" />
           <span>Add Paper</span>
         </button>
 
-        <h2 id="sidebar-nav-heading" className="mobile-hide" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-sidebar)', padding: '0 12px 6px' }}>
+        {onOpenBatchImport && (
+          <button
+            type="button"
+            onClick={onOpenBatchImport}
+            className="btn-secondary"
+            style={{
+              width: '100%',
+              marginBottom: '6px',
+              fontSize: '0.8rem',
+              padding: '7px 10px',
+              color: 'var(--text-sidebar-active)',
+              borderColor: 'var(--border-color)'
+            }}
+          >
+            <Layers size={16} aria-hidden="true" />
+            <span>Batch Import (.bib)</span>
+          </button>
+        )}
+
+        <h2 id="sidebar-nav-heading" className="mobile-hide" style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-sidebar)', padding: '0 12px 4px' }}>
           Navigation
         </h2>
 
